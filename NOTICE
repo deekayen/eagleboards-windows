@@ -1,0 +1,21 @@
+Review Board Scheduler for Windows
+Copyright 2026 David Norman
+
+This product is a C#/.NET port of the Review Board Scheduler
+(github.com/deekayen/eagleboards), a Java application reconstructed by
+decompiling a pre-existing application received only as a compiled JAR. The
+board-scheduling logic, data file formats and check-in web pages here derive
+from that project and, through it, from the original author's work. The Java
+project's PROVENANCE.md records the reconstruction method and the checksum of
+the original artifact.
+
+------------------------------------------------------------------------------
+THIRD-PARTY COMPONENTS
+------------------------------------------------------------------------------
+
+The published EagleBoards.exe bundles the .NET runtime, ASP.NET Core, WPF and
+Windows Forms (Microsoft Corporation / .NET Foundation), distributed under the
+MIT License.
+
+The test projects (not distributed) use xUnit.net (Apache License 2.0) and the
+Microsoft.NET.Test.Sdk (MIT License).

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>EagleBoards.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EagleBoards.Core\EagleBoards.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="EagleBoards.Tests" />
+  </ItemGroup>
+
+  <!-- The check-in pages ship inside the assembly, so the exe is the whole
+       install: nothing to unpack, nothing a stray folder can shadow. -->
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\*" LogicalName="wwwroot/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

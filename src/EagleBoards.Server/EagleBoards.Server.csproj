@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The check-in server with no window: for tests, CI, and running on a
+       machine with no desktop. Takes the same options as the Java jar. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>EagleBoards.Server</RootNamespace>
+    <AssemblyName>EagleBoards.Server</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EagleBoards.Web\EagleBoards.Web.csproj" />
+  </ItemGroup>
+
+</Project>

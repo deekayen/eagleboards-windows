@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Renders each window off-screen against synthetic data and saves PNGs,
+       so a UI change can be looked at without driving the desktop. Run it
+       with "dotnet run" on this project, passing an output folder.
+       Never shipped; never pointed at real data. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EagleBoards.App\EagleBoards.App.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,26 @@
+* text=auto
+
+# Sources and docs: LF everywhere, so a Windows checkout and the CI runners
+# see the same bytes.
+*.cs      text eol=lf
+*.xaml    text eol=lf
+*.csproj  text eol=lf
+*.props   text eol=lf
+*.slnx    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.properties text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# The check-in pages are served byte-for-byte out of the exe.
+src/EagleBoards.Web/wwwroot/** text eol=lf
+
+# Shell scripts must stay LF to run; batch files need CRLF for cmd.exe.
+*.sh      text eol=lf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+*.png     binary
+*.ico     binary
+*.gif     binary

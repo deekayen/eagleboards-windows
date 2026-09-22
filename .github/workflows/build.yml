@@ -1,0 +1,80 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build EagleBoards.slnx -c Release
+
+      - name: Unit tests
+        run: dotnet test tests/EagleBoards.Tests -c Release --no-build
+
+      # The Java project's end-to-end evening, unchanged apart from how the
+      # server is launched: the proof that the port's server behaves the same.
+      - name: Board evening (HTTP, end to end)
+        shell: bash
+        run: bash scripts/test-board-evening.sh
+
+      # Off-screen renders of every window over synthetic data, for review.
+      - name: UI snapshots
+        continue-on-error: true
+        run: dotnet run --project tests/EagleBoards.UiSnapshots -c Release --no-build -- snapshots
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-snapshots
+          path: snapshots/
+          if-no-files-found: ignore
+
+      - name: Publish the app (one self-contained exe)
+        shell: bash
+        run: |
+          VERSION=$(date -u +%Y.%-m.%-d)
+          dotnet publish src/EagleBoards.App -c Release -r win-x64 -p:Version="$VERSION" -o publish
+          ls -la publish
+
+      # A packaging mistake (a missing embedded page, a trimmed dependency)
+      # shows up only in the published build, so check the exe itself serves
+      # the check-in site. Loopback only; the window opens on the runner's
+      # desktop, which no one sees.
+      - name: Smoke test the published exe
+        shell: bash
+        run: |
+          mkdir -p smoke
+          cp config.properties smoke/
+          echo 'Type,ID,Last,First,Email,Phone,UnitType,Unit,UnitName,ProjectReview,FinalBoard,RegTime,Room,Flags,Sel,BoardHistory' > smoke/AdultHistory.csv
+          cd smoke
+          ../publish/EagleBoards.exe -d run -a AdultHistory.csv -c config.properties -port 18777 -bind 127.0.0.1 &
+          APP=$!
+          ok=0
+          for i in $(seq 1 60); do
+            if curl -sf -o index.html http://127.0.0.1:18777/; then ok=1; break; fi
+            sleep 1
+          done
+          [ "$ok" = 1 ] || { echo "published exe never served the check-in page"; cat run/eagleboards.log 2>/dev/null; exit 1; }
+          grep -q "Please Sign In" index.html
+          curl -sf http://127.0.0.1:18777/youth_register | grep -q "register-youth"
+          curl -sf http://127.0.0.1:18777/eb-data.js | grep -q "ebFetchRows"
+          curl -sf -X POST --data "Last=Smoke&First=Test&UnitType=Troop&Unit=1&BoardType=Final" http://127.0.0.1:18777/register-youth
+          grep -q "SCOUT:Smoke:Test:1" run/scouts.csv
+          taskkill //F //PID "$(cat /proc/$APP/winpid)" || kill $APP || true
+          echo "published exe OK"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: EagleBoards-win-x64
+          path: publish/EagleBoards.exe
