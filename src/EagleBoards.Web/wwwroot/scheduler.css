@@ -1,0 +1,228 @@
+
+pre, code {
+   font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace;
+   font-size:12px;
+}
+
+hr {
+   border: 0 solid #ccc;
+   border-top-width: 1px;
+   clear: both;
+   height: 0;
+}
+/* `Headings
+----------------------------------------------------------------------------------------------------*/
+
+h1, h2, h3, h4, h5, h6
+{
+   padding-top: 5px;
+   padding-bottom: 5px;
+   margin-top: 5px;
+   margin-bottom: 5px;
+   color: #555;
+   font-weight: normal;
+   text-align: center;
+   font: Verdana, Geneva, sans-serif
+}
+
+h1 {
+   font-size: 36px;
+}
+h2 {
+   font-size: 24px;
+
+}
+h3 {
+   font-size: 18px;
+}
+
+h4 {
+   font-size: 16px;
+}
+h5 {
+   font-size: 15px;
+}
+h6 {
+   font-size: 14px;
+}
+/* `Spacing
+----------------------------------------------------------------------------------------------------*/
+
+ol {
+   list-style: decimal;
+}
+ul {
+   list-style: disc;
+}
+li {
+   margin-left: 30px;
+}
+p, dl, hr, ol, ul, pre, table, address, fieldset, figure {
+   margin-bottom: 10px;
+}
+body, .body-text, .body-bold {
+   font: 13px/1.5 "Helvetica Neue", Arial, "Liberation Sans", FreeSans, sans-serif;
+   background: #fff;
+   color: #444;
+   font: Verdana, Geneva, sans-serif;
+   height: auto;
+   padding-bottom: 20px;
+}
+
+a:link {
+   color: #630;
+   text-decoration: underline;
+}
+a:hover {
+   color: #ffcc00;
+   text-decoration: underline;
+}
+a:visited {
+   color: #310;
+   text-decoration: underline;
+}
+a:active {
+   color: #310;
+   text-decoration: underline;
+}
+p {
+   overflow: hidden;
+   padding: 10px 0;
+   text-align: left;
+   font-size: 15px;
+   color: #555;
+   font: Verdana, Geneva, sans-serif;
+}
+.page-header{
+   text-align: center; 
+   font-family: sans-serif; 
+   font-style: italic;
+   font-size: 20pt;
+   color: #005;
+}
+
+.page-subheader{
+   text-align: center; 
+   font-family: sans-serif; 
+   font-style: bold;
+   font-size: 30pt;
+   color: #000099;
+}
+.body-text, .body-bold {
+   font-size: 10pt;
+}
+.body-bold {
+   font-weight: bold;
+}
+
+.body-box {
+   background: "images/box_body_repeat.gif";
+   background-repeat: repeat-y;
+   font-size: 10pt;
+   font-weight: normal;
+   padding-left: 7px;
+   padding-right: 7px;
+   padding-top: 7px;
+   padding-bottom: 7px;
+}
+
+
+.table-title {
+   color: #555;
+   width: 630;
+   height: 39;
+   font-size: 11pt;
+   background: no-repeat;
+   padding-left: 20px;
+   background-image:url(../images/section_header_bar_orange.gif);
+   font-weight: bold
+}
+
+.table-body {
+   color: #555;
+   font-size: 10pt;
+   padding-left: 30px;
+   padding-right: 20px;
+   padding-top: 7px;
+   padding-bottom: 0px;
+   margin-top: 7px;
+   margin-bottom: 0px;
+   font-weight: normal
+}
+
+.table-link {
+   font-size: 10pt;
+   padding-left: 30px;
+   padding-right: 20px;
+   padding-top: 0px;
+   padding-bottom: 20px;
+   margin-top: 0px;
+   margin-bottom: 20px;
+   font-weight: bold
+}
+
+.table-list, .table-list-2 {
+   font-size: 10pt;
+   padding-top: 20px;
+   padding-bottom: 0px;
+   margin-top: 0px;
+   margin-bottom: 0px;
+   font-weight: normal;
+   text-indent: 4px;
+}
+
+.table-list-2 {
+   padding-left: 4px;
+   margin-left: 0px;
+   padding-top: 5px;
+   padding-bottom: 0px;
+   margin-top: 0px;
+   /*list-style-image:url(../images/right_arrow.gif);*/
+   list-style-type: circle;
+   text-indent: 4px;
+
+}
+
+.simple-list {
+   padding-left: 4px;
+   margin-left: 0px;
+   padding-top: 5px;
+   padding-bottom: 0px;
+   margin-top: 0px;
+   /*list-style-image:url(../images/right_arrow.gif);*/
+   /*list-style-type: circle;*/
+   text-indent: 4px;
+
+}
+
+option, .small-input-text, .label-text, .testsm {
+   font-size: 10pt;
+   font-weight: normal;
+   color:#555;
+   font: Verdana, Geneva, sans-serif;
+   height: auto
+}
+
+.ui-accordion-header {
+   color:#555;
+   font-size: 10pt;
+   /*background: #aaa;*/
+
+}
+
+
+.ui-accordion-header-active {
+   background: #ffcc00;
+   color:#555;
+   font-size: 10pt;
+   font-weight: bold;
+
+}
+
+.ui-accordion-content {
+   padding: 1em 2.2em;
+   border-top: 0;
+   overflow: auto;
+   background: #ffeeaa;
+}
+

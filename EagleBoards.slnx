@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EagleBoards.Core/EagleBoards.Core.csproj" />
+    <Project Path="src/EagleBoards.Web/EagleBoards.Web.csproj" />
+    <Project Path="src/EagleBoards.Server/EagleBoards.Server.csproj" />
+    <Project Path="src/EagleBoards.App/EagleBoards.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EagleBoards.Tests/EagleBoards.Tests.csproj" />
+    <Project Path="tests/EagleBoards.UiSnapshots/EagleBoards.UiSnapshots.csproj" />
+  </Folder>
+</Solution>

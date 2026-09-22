@@ -1,0 +1,118 @@
+using System.Net;
+using System.Text;
+using EagleBoards.Web;
+using Microsoft.AspNetCore.Http;
+
+namespace EagleBoards.Tests;
+
+/// <summary>
+/// What a check-in station on the network may and may not do. Requests are
+/// fed straight to the dispatcher with a chosen remote address, so nothing
+/// listens on a real interface (and no firewall prompt appears).
+/// </summary>
+[Collection(ClockCollection.Name)]
+public class CheckInServerTests
+{
+    private static readonly IPAddress Station = IPAddress.Parse("192.168.1.50");
+
+    private static async Task<(int Status, string Body)> Send(CheckInServer server, IPAddress from, string method, string pathAndQuery, string? form = null)
+    {
+        var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = from;
+        context.Request.Method = method;
+        var q = pathAndQuery.IndexOf('?');
+        context.Request.Path = q < 0 ? pathAndQuery : pathAndQuery[..q];
+        context.Request.QueryString = q < 0 ? QueryString.Empty : new QueryString(pathAndQuery[q..]);
+        if (form != null)
+        {
+            context.Request.ContentType = "application/x-www-form-urlencoded";
+            context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(form));
+        }
+
+        var body = new MemoryStream();
+        context.Response.Body = body;
+        await server.DispatchAsync(context);
+        return (context.Response.StatusCode, Encoding.UTF8.GetString(body.ToArray()));
+    }
+
+    private static CheckInServer Server(Sandbox box) => new(box.Open(), new CheckInServerOptions());
+
+    [Fact]
+    public async Task AStationGetsTheSignInPages()
+    {
+        using var box = new Sandbox();
+        var server = Server(box);
+        Assert.Contains("Please Sign In", (await Send(server, Station, "GET", "/")).Body, StringComparison.Ordinal);
+        Assert.Contains("register-youth", (await Send(server, Station, "GET", "/youth_register")).Body, StringComparison.Ordinal);
+        Assert.Contains("register-adult", (await Send(server, Station, "GET", "/adult_register")).Body, StringComparison.Ordinal);
+        Assert.Equal(200, (await Send(server, Station, "GET", "/eb-data.js")).Status);
+    }
+
+    [Theory]
+    [InlineData("/scheduler")]
+    [InlineData("/admin")]
+    [InlineData("/configure")]
+    public async Task TheOldBrowserAdminPagesAreGone(string path)
+    {
+        using var box = new Sandbox();
+        Assert.Equal(404, (await Send(Server(box), IPAddress.Loopback, "GET", path)).Status);
+    }
+
+    [Fact]
+    public async Task AStationCanSignIn()
+    {
+        using var box = new Sandbox();
+        var server = Server(box);
+        Assert.Equal(200, (await Send(server, Station, "POST", "/register-youth", "Last=Aldridge&First=Alex&UnitType=Troop&Unit=1001&BoardType=Final")).Status);
+        Assert.Equal(200, (await Send(server, Station, "POST", "/register-adult", "Last=Able&First=Ann&UnitType=Troop&Unit=2001&FinalBoard=Chair&ProjectReview=Member")).Status);
+        var list = await Send(server, Station, "GET", "/youth-cells?cols=RegTimeHM,Last,First,UnitType,Unit");
+        Assert.Equal(200, list.Status);
+        Assert.Contains("<cell>Aldridge</cell>", list.Body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("POST", "/seat-board", "RoomID=ROOM:1&ScoutID=x&ChairID=y&MemberIDs=y")]
+    [InlineData("POST", "/complete-board", "ScoutID=x&Result=Approved")]
+    [InlineData("POST", "/reset-board", "ScoutID=x")]
+    [InlineData("POST", "/room-update", "!nativeeditor_status=inserted&gr_id=ROOM:9&Room=9")]
+    [InlineData("POST", "/adult-update", "!nativeeditor_status=updated&gr_id=x&Room=N/A")]
+    [InlineData("POST", "/update-config", "RefreshTimeSecs=1")]
+    [InlineData("GET", "/adult-history-cells", null)]
+    [InlineData("GET", "/room-cells", null)]
+    public async Task AStationCannotRunTheEvening(string method, string path, string? form)
+    {
+        using var box = new Sandbox();
+        Assert.Equal(403, (await Send(Server(box), Station, method, path, form)).Status);
+    }
+
+    [Theory]
+    [InlineData("/youth-cells?cols=Last,Phone")]
+    [InlineData("/youth-cells?cols=Last,First&data=DOB")]
+    [InlineData("/youth-cells?cols=Last,First&fmt=csv")]
+    [InlineData("/youth-cells")]
+    [InlineData("/adult-cells?cols=Last,Email")]
+    public async Task AStationSeesNamesAndUnitsNotContactDetails(string pathAndQuery)
+    {
+        using var box = new Sandbox();
+        Assert.Equal(403, (await Send(Server(box), Station, "GET", pathAndQuery)).Status);
+    }
+
+    [Fact]
+    public async Task TheAdminComputerKeepsTheWholeContract()
+    {
+        using var box = new Sandbox();
+        var server = Server(box);
+        Assert.Equal(200, (await Send(server, IPAddress.Loopback, "GET", "/youth-cells?cols=Last,Phone&fmt=csv")).Status);
+        Assert.Equal(200, (await Send(server, IPAddress.IPv6Loopback, "GET", "/room-cells")).Status);
+        Assert.Equal(200, (await Send(server, IPAddress.Parse("::ffff:127.0.0.1"), "GET", "/room-cells")).Status);
+    }
+
+    [Fact]
+    public async Task ARefusedBoardActionIs409WithTheReason()
+    {
+        using var box = new Sandbox();
+        var (status, body) = await Send(Server(box), IPAddress.Loopback, "POST", "/inprogress-board", "ScoutID=nobody");
+        Assert.Equal(409, status);
+        Assert.StartsWith("ERROR: Invalid Scout ID", body, StringComparison.Ordinal);
+    }
+}

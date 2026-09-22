@@ -1,0 +1,73 @@
+<Window x:Class="EagleBoards.App.StartupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Review Board Scheduler - Start an event night"
+        Width="640" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" FontSize="13">
+  <DockPanel Margin="20,16,20,16">
+
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <TextBlock Text="Review Board Scheduler" FontSize="22" FontWeight="SemiBold" />
+      <TextBlock Foreground="#555" TextWrapping="Wrap" Margin="0,4,0,0"
+                 Text="Pick where the data lives and which network the check-in stations are on. The check-in website starts when you press Start and stops when the scheduler is closed." />
+    </StackPanel>
+
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button x:Name="StartButton" Content="_Start" IsDefault="True" MinWidth="96" Padding="10,4" Click="OnStart" />
+        <Button Content="Cancel" IsCancel="True" MinWidth="96" Padding="10,4" Margin="8,0,0,0" />
+      </StackPanel>
+      <TextBlock x:Name="ProgressText" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
+    </DockPanel>
+
+    <Grid x:Name="Form">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <Label Grid.Row="0" Content="_Data folder:" Target="{Binding ElementName=DataFolderBox}" VerticalAlignment="Center" />
+      <TextBox Grid.Row="0" Grid.Column="1" x:Name="DataFolderBox" VerticalContentAlignment="Center" Padding="2" TextChanged="OnPathsChanged" />
+      <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="6,0,0,0" Padding="8,2" Click="OnBrowseDataFolder" />
+      <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Foreground="#666" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,8"
+                 Text="Holds config.properties, the adult history, and one folder per event night named by date." />
+
+      <Label Grid.Row="2" Content="_Event date:" Target="{Binding ElementName=EventDate}" VerticalAlignment="Center" />
+      <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
+        <DatePicker x:Name="EventDate" Width="140" SelectedDateChanged="OnDateChanged" />
+        <TextBlock x:Name="EventFolderText" Foreground="#666" VerticalAlignment="Center" Margin="10,0,0,0" />
+      </StackPanel>
+
+      <Label Grid.Row="3" Content="_Adult history:" Target="{Binding ElementName=HistoryBox}" VerticalAlignment="Center" Margin="0,8,0,0" />
+      <TextBox Grid.Row="3" Grid.Column="1" x:Name="HistoryBox" VerticalContentAlignment="Center" Padding="2" Margin="0,8,0,0" TextChanged="OnPathsChanged" />
+      <Button Grid.Row="3" Grid.Column="2" Content="Browse..." Margin="6,8,0,0" Padding="8,2" Click="OnBrowseHistory" />
+      <TextBlock Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" x:Name="HistoryStatus" Foreground="#666" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,8" />
+
+      <Label Grid.Row="5" Content="Check-in _network:" Target="{Binding ElementName=NetworkBox}" VerticalAlignment="Center" />
+      <ComboBox Grid.Row="5" Grid.Column="1" x:Name="NetworkBox" DisplayMemberPath="Label" />
+      <Button Grid.Row="5" Grid.Column="2" Content="Rescan" Margin="6,0,0,0" Padding="8,2" Click="OnRescan" />
+      <TextBlock Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Foreground="#666" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,8"
+                 Text="The venue Wi-Fi the check-in tablets or laptops are on. Serving only that network keeps the site off virtual and VPN adapters." />
+
+      <Label Grid.Row="7" Content="_Port:" Target="{Binding ElementName=PortBox}" VerticalAlignment="Center" />
+      <TextBox Grid.Row="7" Grid.Column="1" x:Name="PortBox" Width="80" HorizontalAlignment="Left" VerticalContentAlignment="Center" Padding="2" />
+
+      <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" x:Name="SugCheck" Margin="0,12,0,0" IsChecked="{x:Null}"
+                Content="Import tonight's sign-ups from _SignUpGenius" />
+      <TextBlock Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="2" x:Name="SugStatus" Foreground="#666" FontSize="12" TextWrapping="Wrap" Margin="20,2,0,0" />
+    </Grid>
+  </DockPanel>
+</Window>

@@ -1,0 +1,37 @@
+# ============================================================
+# PII / participant data — NEVER commit.
+# An event night writes into a data folder that may sit next to this code:
+#   - Master_AdultHistory.csv        (names, emails, phones)
+#   - 20??-??-??/ dated run folders  (adults/scouts/rooms CSVs, incl. minors)
+#   - *Board_Results* / Report.csv   (board outcomes with names)
+# ============================================================
+*.csv
+*.xls
+*.xlsx
+*.xlsm
+*.ods
+20??-??-??/
+*Board_Results*
+Master_AdultHistory*
+adult_history*
+
+# ============================================================
+# Secrets — NEVER commit.
+#   - .env        (SUG_KEY, the SignUpGenius API key)
+#   - LOGIN_INFO* (account credentials)
+# ============================================================
+.env
+LOGIN_INFO*
+
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+TestResults/
+*.user
+.vs/
+
+# Local tooling
+.claude/
+.DS_Store
