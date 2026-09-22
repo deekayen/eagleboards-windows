@@ -40,39 +40,18 @@ jobs:
           path: snapshots/
           if-no-files-found: ignore
 
+      # A build of main, not a release: the version says which run made it.
+      # Releases come from release.yml.
       - name: Publish the app (one self-contained exe)
         shell: bash
         run: |
-          VERSION=$(date -u +%Y.%-m.%-d)
+          VERSION="$(date -u +%Y.%m.%d)-ci.${{ github.run_number }}"
           dotnet publish src/EagleBoards.App -c Release -r win-x64 -p:Version="$VERSION" -o publish
           ls -la publish
 
-      # A packaging mistake (a missing embedded page, a trimmed dependency)
-      # shows up only in the published build, so check the exe itself serves
-      # the check-in site. Loopback only; the window opens on the runner's
-      # desktop, which no one sees.
       - name: Smoke test the published exe
         shell: bash
-        run: |
-          mkdir -p smoke
-          cp config.properties smoke/
-          echo 'Type,ID,Last,First,Email,Phone,UnitType,Unit,UnitName,ProjectReview,FinalBoard,RegTime,Room,Flags,Sel,BoardHistory' > smoke/AdultHistory.csv
-          cd smoke
-          ../publish/EagleBoards.exe -d run -a AdultHistory.csv -c config.properties -port 18777 -bind 127.0.0.1 &
-          APP=$!
-          ok=0
-          for i in $(seq 1 60); do
-            if curl -sf -o index.html http://127.0.0.1:18777/; then ok=1; break; fi
-            sleep 1
-          done
-          [ "$ok" = 1 ] || { echo "published exe never served the check-in page"; cat run/eagleboards.log 2>/dev/null; exit 1; }
-          grep -q "Please Sign In" index.html
-          curl -sf http://127.0.0.1:18777/youth_register | grep -q "register-youth"
-          curl -sf http://127.0.0.1:18777/eb-data.js | grep -q "ebFetchRows"
-          curl -sf -X POST --data "Last=Smoke&First=Test&UnitType=Troop&Unit=1&BoardType=Final" http://127.0.0.1:18777/register-youth
-          grep -q "SCOUT:Smoke:Test:1" run/scouts.csv
-          taskkill //F //PID "$(cat /proc/$APP/winpid)" || kill $APP || true
-          echo "published exe OK"
+        run: bash scripts/smoke-test-exe.sh publish/EagleBoards.exe
 
       - uses: actions/upload-artifact@v7
         with:

@@ -53,6 +53,7 @@ public partial class MainWindow : Window
         _session = session;
         _svc = session.Service;
         InitializeComponent();
+        Title = "Review Board Scheduler " + AppVersion.Text;
 
         _scoutView = new ListCollectionView(_scouts) { Filter = o => ScoutVisible((ScoutRow)o), IsLiveFiltering = true, IsLiveSorting = true };
         _scoutView.LiveFilteringProperties.Add(nameof(ScoutRow.Status));

@@ -1,0 +1,175 @@
+name: release
+
+# Publishes EagleBoards.exe as a GitHub Release. Two ways to cut one:
+#
+#   1. On GitHub: Actions -> release -> Run workflow. Releases main as
+#      today's date (v2026.09.22). Give a version to override, e.g. a second
+#      release the same day: 2026.09.22.1.
+#
+#   2. From a checkout: tag the commit and push the tag.
+#        git tag v2026.09.22
+#        git push origin v2026.09.22
+#
+# Versions are CalVer, the release date, as in the Java project. The tag is
+# the only place the version is written: it is stamped into the exe at build
+# time, so there is no file to bump first.
+#
+# Nothing is published unless the exact exe being attached builds, passes the
+# tests and the board evening, carries no data files, reports the right
+# version, and serves the check-in site in a smoke test.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (YYYY.MM.DD or YYYY.MM.DD.N). Leave blank for today.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write        # create the tag and the release, upload the exe
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0     # tag history, for the changelog link
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Work out the version
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          else
+            VERSION=$(date -u +%Y.%m.%d)
+          fi
+
+          if ! echo "$VERSION" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$'; then
+            echo "FAIL: '$VERSION' is not a release version. Use YYYY.MM.DD, or YYYY.MM.DD.N for a second one that day."
+            exit 1
+          fi
+
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "FAIL: release $TAG already exists. Run again with a version like $VERSION.1."
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" != "push" ] && git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "FAIL: tag $TAG already exists without a release. Push that tag again, or pick another version."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "releasing $TAG from $(git rev-parse --short HEAD)"
+
+      # A tag can be pushed from any commit, so don't assume main's CI
+      # covered this one.
+      - name: Build and test
+        shell: bash
+        run: |
+          dotnet build EagleBoards.slnx -c Release
+          dotnet test tests/EagleBoards.Tests -c Release --no-build
+          bash scripts/test-board-evening.sh
+
+      - name: Publish the exe
+        shell: bash
+        run: |
+          dotnet publish src/EagleBoards.App -c Release -r win-x64 \
+            -p:Version="${{ steps.version.outputs.version }}" -o publish
+          ls -la publish
+
+      - name: Refuse to publish an exe carrying data or secrets
+        shell: bash
+        env:
+          SUG_KEY: ${{ secrets.SUG_KEY }}
+        run: |
+          # The single-file exe is compressed, so look at what went into it:
+          # the build output for the published runtime. No participant data
+          # file may be anywhere in it.
+          BUILD=src/EagleBoards.App/bin/Release/net10.0-windows/win-x64
+          find "$BUILD" publish -type f > inputs.txt
+          if grep -Ei '\.csv$|\.xlsx?$|\.env$|AdultHistory|LOGIN_INFO|/20[0-9]{2}-[0-9]{2}-[0-9]{2}/' inputs.txt > found.txt; then
+            echo "FAIL: data or secret files in the release build:"
+            cat found.txt
+            exit 1
+          fi
+          echo "ok: no data or secret files in the build"
+
+          # The key is supplied at run time and must never be compiled in.
+          # Only scanned when the secret exists; never echoed.
+          if [ -n "$SUG_KEY" ]; then
+            if grep -rqF "$SUG_KEY" "$BUILD"; then
+              echo "FAIL: the SignUpGenius key appears in the release build"
+              exit 1
+            fi
+            echo "ok: SignUpGenius key absent from the build"
+          else
+            echo "note: no SUG_KEY secret in this repository; key scan skipped"
+          fi
+
+      - name: The exe reports this version
+        shell: pwsh
+        run: |
+          $v = (Get-Item publish/EagleBoards.exe).VersionInfo.ProductVersion
+          Write-Output "exe ProductVersion: $v"
+          if (-not $v.StartsWith('${{ steps.version.outputs.version }}')) {
+            throw "exe says '$v', expected ${{ steps.version.outputs.version }}"
+          }
+
+      - name: Smoke test the exact exe being published
+        shell: bash
+        run: bash scripts/smoke-test-exe.sh publish/EagleBoards.exe 18778
+
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          cd publish
+          sha256sum EagleBoards.exe > EagleBoards.exe.sha256
+          cd ..
+          PREV=$(git describe --tags --abbrev=0 --match 'v*' "HEAD^" 2>/dev/null || true)
+          {
+            echo "Download **EagleBoards.exe** below and put it in the data folder (for example"
+            echo '`C:\eagleboards`), or anywhere you like. There is nothing to install: it carries'
+            echo "its own .NET runtime. Double-click it to start an event night; see the README."
+            echo
+            echo "Windows may say it *protected your PC*, because the exe isn't code-signed. Choose"
+            echo "**More info**, then **Run anyway**. The first time it serves the check-in site,"
+            echo "Windows Firewall asks too: allow it on **private** networks."
+            echo
+            echo "Don't run this and the Java version at the same time: they share the port and"
+            echo "the data files. The SignUpGenius key is not in this build; the app reads it from"
+            echo 'a `.env` file in the data folder or the `SUG_KEY` environment variable.'
+            echo
+            echo 'Check the download with `certutil -hashfile EagleBoards.exe SHA256` against'
+            echo '`EagleBoards.exe.sha256`.'
+            if [ -n "$PREV" ]; then
+              echo
+              echo "**Full changelog:** https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
+            fi
+          } > release-notes.md
+          gh release create "$TAG" publish/EagleBoards.exe publish/EagleBoards.exe.sha256 \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file release-notes.md

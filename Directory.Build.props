@@ -7,9 +7,10 @@
     <Deterministic>true</Deterministic>
     <InvariantGlobalization>false</InvariantGlobalization>
 
-    <!-- CalVer, like the Java project: YYYY.MM.DD of the release. CI overrides
-         this with -p:Version=... when it publishes. -->
-    <Version>0.1.0</Version>
+    <!-- CalVer, like the Java project: YYYY.MM.DD of the release. Not set
+         here: release.yml stamps it from the tag (-p:Version=...), so local
+         builds say "dev" in their window titles. -->
+    <Version>0.0.0-dev</Version>
     <Product>Review Board Scheduler</Product>
     <Company>Review Board Scheduler contributors</Company>
     <Copyright>Copyright 2026 David Norman. Apache License 2.0.</Copyright>

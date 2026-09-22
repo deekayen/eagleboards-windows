@@ -65,11 +65,26 @@ district pre-registration CSV · `-sugkey`/`-sugid` SignUpGenius · `-port` ·
 verbose log. `EagleBoards.Server` (for tests, or a machine with no desktop)
 takes the same options and runs the check-in site with no window.
 
-## Getting a build
+## Getting the exe
 
-Every push to `main` builds `EagleBoards.exe` on GitHub Actions. Download it
-from the latest successful run's **EagleBoards-win-x64** artifact. To build it
-yourself you need the .NET 10 SDK:
+Download `EagleBoards.exe` from the repository's
+[**Releases**](https://github.com/deekayen/eagleboards-windows/releases) page.
+The version is in the window title. The exe isn't code-signed, so the first
+time Windows may say it *protected your PC*: choose **More info**, then
+**Run anyway**.
+
+**Cutting a release.** On GitHub go to **Actions → release → Run workflow**.
+That releases `main` as today's date (`v2026.09.22`); type a version to
+override it, e.g. `2026.09.22.1` for a second release the same day. Or tag a
+commit and push the tag (`git tag v2026.09.22 && git push origin v2026.09.22`).
+Either way the workflow builds, runs every test, checks the exe carries no data
+files, smoke-tests the exact exe, and only then publishes it with a SHA-256
+checksum. The version is stamped in from the tag; there's no file to bump.
+
+Every push to `main` also leaves a build of the latest code as the
+**EagleBoards-win-x64** artifact on its Actions run (its title says
+`YYYY.MM.DD-ci.N`); use a release for an event night. To build it yourself you
+need the .NET 10 SDK:
 
 ```bat
 dotnet publish src/EagleBoards.App -c Release -r win-x64 -o publish

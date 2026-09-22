@@ -37,8 +37,14 @@ runs a native WPF app instead of the Java app's browser pages.
   look at a UI change without driving the desktop.
 - **CI is the acceptance gate** (`.github/workflows/build.yml`, windows-latest):
   build, unit tests, the evening, snapshots (artifact), self-contained publish,
-  and a smoke test of the published exe. Prefer pushing and reading the run
-  over re-running the whole suite locally.
+  and a smoke test of the published exe (`scripts/smoke-test-exe.sh`). Prefer
+  pushing and reading the run over re-running the whole suite locally.
+- **Releases** (`.github/workflows/release.yml`): Run workflow (today's date)
+  or push a `vYYYY.MM.DD[.N]` tag. The tag is the only place the version lives;
+  it's stamped into the exe with `-p:Version`, and local builds say `dev`. The
+  workflow re-runs every test, refuses data files in the build, checks the exe
+  reports the version, smoke-tests it, then attaches the exe and its SHA-256.
+  Don't run `smoke-test-exe.sh` on the owner's desktop: it opens the window.
 
 ## The golden rules
 
