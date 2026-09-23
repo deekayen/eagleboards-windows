@@ -388,7 +388,10 @@ public sealed class BoardService
             return ActionResult.Error("ERROR: Invalid Status '" + scout.Status + "', expected 'Registered'");
         }
 
-        if (scout.Room != "" && scout.Room != room.Room)
+        // "N/A" is what Complete leaves in a scout's Room. A Registered scout
+        // holding it had a result recorded against them by mistake and was set
+        // back to Registered on the Admin window; they must be seatable.
+        if (scout.Room != "" && scout.Room != AdultRoom.Disabled && scout.Room != room.Room)
         {
             return ActionResult.Error("ERROR: Scout Already Assigned Room: " + scout.Room);
         }
@@ -559,7 +562,9 @@ public sealed class BoardService
 
     private ActionResult CompleteBoardLocked(string? scoutId, string? result, string? notes, string? cost, string? bsaHours, string? otherHours)
     {
-        if (result == null || result.Length < 5)
+        // Exactly the board's three decisions. This used to accept any string of
+        // five or more characters, so "Maybe" or a typo went into the record.
+        if (result == null || !BoardResults.All.Contains(result))
         {
             return ActionResult.Error("Invalid Result '" + result + "', expected Approved, Adjourned or NotApproved");
         }
@@ -591,19 +596,21 @@ public sealed class BoardService
             return ActionResult.Error("Invalid Scout Status '" + scout.Status + "' expected 'InProgress'");
         }
 
-        var room = Rooms.Records.FirstOrDefault(r => r.Room == scout.Room);
-        if (room == null)
-        {
-            return ActionResult.Error("No room " + scout.Room + " not found.");
-        }
-
-        ReleaseAdults(room.Room);
+        // The review happened even if its room was renamed or deleted on the
+        // Admin window meanwhile, so the result is recorded and the adults are
+        // released by the room name the scout holds. Refusing here used to lose
+        // the result and leave every member committed to a vanished room.
+        var room = FindBoardRoom(scout);
+        ReleaseAdults(scout.Room);
         scout.Status = BoardStatus.Completed;
         scout.Room = AdultRoom.Disabled;
         scout.Notes = notes;
         scout.Result = result;
-        room.Scout = "";
-        room.Leaders = "";
+        if (room != null)
+        {
+            room.Scout = "";
+            room.Leaders = "";
+        }
         scout.UpdateFields(true);
         Scouts.Store();
         Rooms.Store();
@@ -660,10 +667,12 @@ public sealed class BoardService
             }
             else
             {
-                var room = Rooms.Records.FirstOrDefault(r => r.Room == scout.Room);
+                // Released by the scout's room name, as in Complete: a room renamed
+                // or deleted under the board must not strand its members.
+                var room = FindBoardRoom(scout);
+                ReleaseAdults(scout.Room);
                 if (room != null)
                 {
-                    ReleaseAdults(room.Room);
                     room.Scout = "";
                     room.Leaders = "";
                 }
@@ -690,8 +699,22 @@ public sealed class BoardService
         return result;
     }
 
+    /// <summary>
+    /// The room a board sits in: by name, or, for a room renamed under the
+    /// board, the one whose card still names the scout.
+    /// </summary>
+    private RoomRecord? FindBoardRoom(ScoutRecord scout) =>
+        Rooms.Records.FirstOrDefault(r => r.Room == scout.Room)
+        ?? Rooms.Records.FirstOrDefault(r => r.Scout.Length > 0 && r.Scout == scout.FullName);
+
     private void ReleaseAdults(string room)
     {
+        // "" and "N/A" are never a board's room ("N/A" marks adults gone home).
+        if (room.Length == 0 || room == AdultRoom.Disabled)
+        {
+            return;
+        }
+
         foreach (var adult in Adults.Records)
         {
             if (adult.Room == room)

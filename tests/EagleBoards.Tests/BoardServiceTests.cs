@@ -198,4 +198,100 @@ public class BoardServiceTests
         var scout = Assert.Single(scheduled.Records);
         Assert.Equal(("SCOUT:Aldridge:Alex:1001", BoardTypes.Final, "Sam Smith"), (scout.Id, scout.BoardType, scout.Leader));
     }
+
+    private static (BoardService Service, string Scout, string Chair, string M1, string M2) UnderReview(Sandbox box)
+    {
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.True(s.StartReview(scout).Ok);
+        return (s, scout, chair, m1, m2);
+    }
+
+    [Theory]
+    [InlineData("Maybe")]
+    [InlineData("Approvd")]
+    [InlineData("approved")]
+    [InlineData("")]
+    [InlineData("Postponed")] // a scout sent away before any board; never a board's decision
+    public void OnlyTheBoardsThreeDecisionsAreResults(string result)
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, _, _) = UnderReview(box);
+        Assert.False(s.CompleteBoard(scout, result, "").Ok);
+        Assert.Equal(BoardStatus.InProgress, Status(s, scout));
+        Assert.Equal("101", AdultRow(s, chair)["Room"]);
+    }
+
+    [Theory]
+    [InlineData(BoardResults.Approved)]
+    [InlineData(BoardResults.Adjourned)]
+    [InlineData(BoardResults.NotApproved)]
+    public void EachOfTheBoardsDecisionsIsRecorded(string result)
+    {
+        using var box = new Sandbox();
+        var (s, scout, _, _, _) = UnderReview(box);
+        Assert.True(s.CompleteBoard(scout, result, "").Ok);
+        Assert.Equal(result, s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Result"]);
+    }
+
+    [Fact]
+    public void ABoardWhoseRoomWasRenamedStillCompletesAndFreesTheRoom()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = UnderReview(box);
+        s.SaveRow(DataTable.Rooms, "updated", "ROOM:101", new Dictionary<string, string> { ["Room"] = "101 Annex" });
+        Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+        Assert.Equal("", s.Snapshot(DataTable.Rooms).Single(r => r["ID"] == "ROOM:101")["Scout"]);
+    }
+
+    [Fact]
+    public void ABoardWhoseRoomWasDeletedStillCompletes()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = UnderReview(box);
+        s.SaveRow(DataTable.Rooms, "deleted", "ROOM:101", new Dictionary<string, string>());
+        Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+    }
+
+    [Fact]
+    public void ResettingABoardWhoseRoomWasDeletedFreesItsAdults()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = UnderReview(box);
+        s.SaveRow(DataTable.Rooms, "deleted", "ROOM:101", new Dictionary<string, string>());
+        Assert.True(s.ResetBoard(scout).Ok);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+    }
+
+    [Fact]
+    public void AResultOnTheWrongScoutCanBeUndoneOnTheAdminWindow()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = UnderReview(box);
+        Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
+
+        // What the Admin window writes: one field per edit.
+        foreach (var (field, value) in new[] { ("Status", BoardStatus.Registered), ("Result", ""), ("BoardChair", ""), ("BoardMembers", "") })
+        {
+            Assert.Equal("updated", s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { [field] = value }));
+        }
+
+        // Complete left Room "N/A"; that must not keep them from their real board.
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.Equal(BoardStatus.Seated, Status(s, scout));
+    }
+
+    [Fact]
+    public void AnAdultWithACommaInTheirNameCanBeSeated()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, _) = SeatableEvening(box);
+        s.RegisterAdult(Seed.Adult("Whitmore, Jr.", "Lysander", "2031", "Member", "Member"));
+        var junior = "ADULT:Whitmore~ Jr.:Lysander:2031";
+        Assert.Equal("Lysander", AdultRow(s, junior)["First"]);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{junior}").Ok);
+        Assert.Equal("101", AdultRow(s, junior)["Room"]);
+    }
 }

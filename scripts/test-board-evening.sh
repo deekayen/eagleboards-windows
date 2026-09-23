@@ -32,6 +32,13 @@
 #
 # So the evening is capped at five concurrent boards no matter how many rooms
 # are free -- which is the constraint the scheduler actually has to survive.
+#
+# Sections 9-18 then work through what goes wrong on the night: malformed
+# and replayed requests, every out-of-order step, adults and scouts signing
+# in twice, boards moved between rooms, a room renamed or deleted under a
+# board, a name with a comma in it, two operators seating the same chair at
+# once, the server restarting mid-evening, a room switched between
+# Project and Final, and a recorded result corrected on the Admin page.
 # ------------------------------------------------------------------------
 
 set -u
@@ -483,6 +490,450 @@ done <<EOF
 $(awk -F, 'NR>1 && $18=="Completed" {print $2"|"$12}' "$SCOUTS")
 EOF
 chk "every completed board was chaired by a qualified chair" "$bad_chairs" "0"
+
+# ===================================================================
+# The rest is what goes wrong on the night: late arrivals, a button
+# pressed twice, a room that turns out to be locked, the laptop that
+# reboots. Every section starts and ends with nobody committed, so a
+# failure points at the section that caused it.
+# ===================================================================
+
+# xscout <last> <first> <unit> <board-type> -> echoes the record id
+xscout() {
+    post --data "Last=$1&First=$2&Email=x$3@example.org&UnitType=Troop&Unit=$3&UnitName=Troop$3&BoardType=$4" \
+        "$B/register-youth" || echo "seed failed: scout $1" >&2
+    echo "SCOUT:$1:$2:$3"
+}
+
+# resign_adult <id> -- the same adult taps through the sign-in page again,
+# which is what happens when someone isn't sure the first one took. They
+# pick the same roles as before; the form has no way to know they are seated.
+resign_adult() {
+    _rest=${1#ADULT:}
+    _l=${_rest%%:*};  _rest=${_rest#*:}
+    _f=${_rest%%:*};  _u=${_rest#*:}
+    _pr=$(awk -F, -v i="$1" 'NR>1 && $2==i {print $10}' "$ADULTS")
+    _fb=$(awk -F, -v i="$1" 'NR>1 && $2==i {print $11}' "$ADULTS")
+    post --data "Last=$_l&First=$_f&Email=again@example.org&UnitType=Troop&Unit=$_u&ProjectReview=$_pr&FinalBoard=$_fb" \
+        "$B/register-adult"
+}
+
+start()    { act /inprogress-board --data-urlencode "ScoutID=$1"; }
+complete() { act /complete-board --data-urlencode "ScoutID=$1" --data-urlencode "Result=$2"; }
+reset()    { act /reset-board --data-urlencode "ScoutID=$1"; }
+postpone() { act /postpone-board --data-urlencode "ScoutID=$1"; }
+room_scout() { awk -F, -v r="$1" 'NR>1 && $2==r {print $5}' "$ROOMS"; }
+
+LATE1=$(xscout Okonkwo Barnaby 3101 Final)
+LATE2=$(xscout Pellegrino Casimir 3102 Final)
+LATE3=$(xscout Quarshie Dmitri 3103 Project)
+LATE4=$(xscout Rourke Eamon 3104 Final)
+LATE5=$(xscout Sandoval Florian 3105 Final)
+LATE6=$(xscout Trevelyan Gustav 3106 Final)
+LATE7=$(xscout Umarov Hamish 3107 Final)
+LATE8=$(xscout Valdivia Ignatius 3108 Final)
+LATE9=$(xscout Wojcik Jericho 3109 Final)
+LATE10=$(xscout Yamamoto Kasimir 3110 Final)
+LATE11=$(xscout Zabala Leander 3111 Final)
+
+# --------------------------------------------- 9. malformed and replayed
+echo
+echo "== 9. requests the UI would never send =="
+
+# A bookmark, a stale tab, a replay -- each must be a refusal the operator
+# can read, never a 500 and never a silent OK.
+for ep in /seat-board /inprogress-board /complete-board /postpone-board /reset-board /room-change; do
+    refused "$ep with no parameters at all" "$(act "$ep")"
+done
+refused "an unknown scout cannot be started" "$(start SCOUT:Nobody:Here:0)"
+refused "an unknown scout cannot be completed" "$(complete SCOUT:Nobody:Here:0 Approved)"
+refused "an unknown room is refused" "$(seat 999 "$LATE1" "$FC1" "$M1" "$M2")"
+refused "an unknown member id is refused" "$(seat 101 "$LATE1" "$FC1" "$M1" ADULT:Nobody:Here:0)"
+
+# The size rules count entries, so without a duplicate check the same person
+# twice made two people into a legal board of three.
+refused "one adult listed twice cannot make up a Final board's numbers" \
+    "$(seat 101 "$LATE1" "$FC1" "$M1" "$M1")"
+refused "the chair listed twice cannot make up a project review's numbers" \
+    "$(seat 200A "$LATE3" "$PC1" "$PC1")"
+chk "none of that seated anyone" "$(n_status Seated)" "0"
+chk "or committed anyone"        "$(busy_adults)" "0"
+
+accepted "a real board seats in room 101" "$(seat 101 "$LATE1" "$FC1" "$M1" "$M2")"
+refused  "and nobody else can be seated in room 101" "$(seat 101 "$LATE2" "$FC2" "$M3" "$M4")"
+refused  "the same scout cannot be seated twice" "$(seat 102 "$LATE1" "$FC2" "$M3" "$M4")"
+chk "the second scout is still waiting" "$(status_of "$LATE2")" "Registered"
+
+# ------------------------------------------------- 10. every wrong step
+echo
+echo "== 10. each step only from the status before it =="
+
+refused "a Completed scout cannot be seated again"  "$(seat 102 "$SF1" "$FC2" "$M3" "$M4")"
+refused "a Postponed scout cannot be seated"        "$(seat 102 "$SF9" "$FC2" "$M3" "$M4")"
+refused "a waiting scout cannot be started"         "$(start "$LATE2")"
+refused "a Completed scout cannot be started"       "$(start "$SF1")"
+refused "a waiting scout cannot be completed"       "$(complete "$LATE2" Approved)"
+refused "a Completed scout cannot be completed again" "$(complete "$SF1" NotApproved)"
+refused "a waiting scout has nothing to reset"      "$(reset "$LATE2")"
+refused "a Completed scout cannot be reset"         "$(reset "$SF1")"
+refused "a Postponed scout cannot be reset"         "$(reset "$SF9")"
+refused "a Completed scout cannot be postponed"     "$(postpone "$SF1")"
+chk "scout 1's result survived all of that" \
+    "$(awk -F, -v i="$SF1" 'NR>1 && $2==i {print $18}' "$SCOUTS")" "Completed"
+
+accepted "Start Review" "$(start "$LATE1")"
+refused  "pressing Start Review twice is refused" "$(start "$LATE1")"
+refused  "a review under way cannot be postponed" "$(postpone "$LATE1")"
+
+# The dialog offers exactly three results; anything else is not a result.
+refused "a made-up result is refused"         "$(complete "$LATE1" Maybe)"
+refused "a misspelled result is refused"      "$(complete "$LATE1" Approvd)"
+refused "a result in the wrong case is refused" "$(complete "$LATE1" approved)"
+refused "an empty result is refused"          "$(complete "$LATE1" "")"
+# Postponed is decided before any board meets the scout (the Postpone
+# button); once a board has met them, its decision is one of the three.
+refused "Postponed is not a board result"     "$(complete "$LATE1" Postponed)"
+chk "and the review is still running" "$(status_of "$LATE1")" "InProgress"
+chk "with its board still in the room" "$(adult_room "$FC1")" "101"
+
+accepted "Adjourned is a result" "$(complete "$LATE1" Adjourned)"
+chk "and is what was recorded" \
+    "$(awk -F, -v i="$LATE1" 'NR>1 && $2==i {print $19}' "$SCOUTS")" "Adjourned"
+
+seat 200A "$LATE3" "$PC1" "$M7" >/dev/null
+start "$LATE3" >/dev/null
+accepted "NotApproved is a result" "$(complete "$LATE3" NotApproved)"
+chk "nobody committed after section 10" "$(busy_adults)" "0"
+
+# ----------------------------------------------- 11. signing in twice
+echo
+echo "== 11. signing in again mid-board changes nothing =="
+
+seat 102 "$LATE2" "$FC2" "$M3" "$M4" >/dev/null
+start "$LATE2" >/dev/null
+resign_adult "$M3"
+resign_adult "$FC2"
+chk "a member who signs in again stays in their room" "$(adult_room "$M3")" "102"
+chk "so does the chair"                               "$(adult_room "$FC2")" "102"
+chk "and the chair is still qualified to chair" \
+    "$(awk -F, -v i="$FC2" 'NR>1 && $2==i {print $11}' "$ADULTS")" "Chair"
+post --data "Last=Pellegrino&First=Casimir&Email=again@example.org&UnitType=Troop&Unit=3102&BoardType=Final" \
+    "$B/register-youth"
+chk "a scout who signs in again is still under review" "$(status_of "$LATE2")" "InProgress"
+chk "in the same room"                                "$(room_of "$LATE2")" "102"
+chk "and is still one scout, not two" \
+    "$(awk -F, -v i="$LATE2" 'NR>1 && $2==i {n++} END {print n+0}' "$SCOUTS")" "1"
+accepted "their board still completes" "$(complete "$LATE2" Approved)"
+chk "and releases the re-signed member" "$(adult_room "$M3")" ""
+chk "nobody committed after section 11" "$(busy_adults)" "0"
+
+# ----------------------------------------------------- 12. moving rooms
+echo
+echo "== 12. a board moves to another room =="
+
+seat 103 "$LATE4" "$FC3" "$M5" "$M6" >/dev/null
+accepted "swap an occupied room with an empty one" \
+    "$(act /room-change --data-urlencode "RmID1=ROOM:103" --data-urlencode "RmID2=ROOM:106")"
+chk "the scout moved"       "$(room_of "$LATE4")" "106"
+chk "the chair moved"       "$(adult_room "$FC3")" "106"
+chk "the members moved"     "$(adult_room "$M5")$(adult_room "$M6")" "106106"
+chk "the old room is free"  "$(room_scout ROOM:103)" ""
+chk "the new room names the scout" "$(room_scout ROOM:106)" "Eamon Rourke"
+
+accepted "the old room takes the next board" "$(seat 103 "$LATE5" "$FC1" "$M1" "$M2")"
+accepted "swap two occupied rooms" \
+    "$(act /room-change --data-urlencode "RmID1=ROOM:103" --data-urlencode "RmID2=ROOM:106")"
+chk "each scout took the other's room" "$(room_of "$LATE4") $(room_of "$LATE5")" "103 106"
+chk "and each chair went with their own board" "$(adult_room "$FC3") $(adult_room "$FC1")" "103 106"
+refused "swapping with a room that does not exist is refused" \
+    "$(act /room-change --data-urlencode "RmID1=ROOM:103" --data-urlencode "RmID2=ROOM:nope")"
+chk "and moved nobody" "$(adult_room "$FC3")" "103"
+
+start "$LATE4" >/dev/null
+accepted "a moved board completes in its new room" "$(complete "$LATE4" Approved)"
+chk "releasing only its own adults" "$(adult_room "$FC3") $(adult_room "$FC1")" " 106"
+start "$LATE5" >/dev/null; complete "$LATE5" Approved >/dev/null
+chk "nobody committed after section 12" "$(busy_adults)" "0"
+
+# -------------------------------------- 13. the room changes under a board
+echo
+echo "== 13. a room renamed or deleted on the Admin page mid-board =="
+
+# The Admin page can edit rooms at any time. The review still happened, so
+# its result must be recordable and its adults must come back.
+seat 104 "$LATE6" "$FC1" "$M1" "$M2" >/dev/null
+start "$LATE6" >/dev/null
+post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=ROOM:104" \
+     --data-urlencode "Room=104 Annex" "$B/room-update"
+accepted "a board whose room was renamed still completes" "$(complete "$LATE6" Approved)"
+chk "its adults are released" "$(adult_room "$FC1")$(adult_room "$M1")$(adult_room "$M2")" ""
+chk "and the renamed room is free again" "$(room_scout ROOM:104)" ""
+accepted "and takes the next board" "$(seat 104 "$LATE7" "$FC1" "$M1" "$M2")"
+reset "$LATE7" >/dev/null
+
+seat 105 "$LATE8" "$FC2" "$M3" "$M4" >/dev/null
+start "$LATE8" >/dev/null
+post --data-urlencode "!nativeeditor_status=deleted" --data-urlencode "gr_id=ROOM:105" "$B/room-update"
+accepted "a board whose room was deleted still completes" "$(complete "$LATE8" Approved)"
+chk "its adults are released" "$(adult_room "$FC2")$(adult_room "$M3")$(adult_room "$M4")" ""
+
+seat 107 "$LATE9" "$FC3" "$M5" "$M6" >/dev/null
+post --data-urlencode "!nativeeditor_status=deleted" --data-urlencode "gr_id=ROOM:107" "$B/room-update"
+accepted "a board whose room was deleted can be reset" "$(reset "$LATE9")"
+chk "and its adults are not left committed to a room that is gone" \
+    "$(adult_room "$FC3")$(adult_room "$M5")$(adult_room "$M6")" ""
+chk "nobody committed after section 13" "$(busy_adults)" "0"
+
+# ------------------------------------------------ 14. names with commas
+echo
+echo "== 14. a name with a comma in it =="
+
+# MemberIDs is a comma-separated list, so an id with a comma in it split in
+# two and that adult could never be seated.
+post --data "Last=Whitmore%2C+Jr.&First=Lysander&Email=a31@example.org&UnitType=Troop&Unit=2031&ProjectReview=Member&FinalBoard=Member" \
+    "$B/register-adult"
+JR=$(awk -F, 'NR>1 && $4=="Lysander" {print $2}' "$ADULTS")
+chk "their id carries no comma" "$JR" "ADULT:Whitmore~ Jr.:Lysander:2031"
+accepted "and they can be seated" "$(seat 101 "$LATE7" "$FC1" "$M1" "$JR")"
+chk "in room 101" "$(adult_room "$JR")" "101"
+start "$LATE7" >/dev/null
+accepted "and released" "$(complete "$LATE7" Approved)"
+chk "nobody committed after section 14" "$(busy_adults)" "0"
+
+# ------------------------------------------- 15. two operators at once
+echo
+echo "== 15. two laptops seat the same chair at the same moment =="
+
+seat 101 "$LATE9"  "$FC1" "$M1" "$M2" > "$WORK/race1" &
+r1=$!
+seat 102 "$LATE10" "$FC1" "$M3" "$M4" > "$WORK/race2" &
+r2=$!
+wait "$r1" "$r2"
+chk "exactly one of them was accepted" \
+    "$(cat "$WORK/race1" "$WORK/race2" | grep -c '|OK')" "1"
+chk "exactly one board convened"     "$(n_status Seated)" "1"
+chk "the chair is committed once"    "$(busy_adults)" "3"
+reset "$LATE9" >/dev/null; reset "$LATE10" >/dev/null
+chk "nobody committed after section 15" "$(busy_adults)" "0"
+
+# ----------------------------------------------- 16. the laptop restarts
+echo
+echo "== 16. the server restarts in the middle of the evening =="
+
+# A laptop that sleeps, a Pi that loses power, a window closed by mistake:
+# boards convening and running when it goes down must still be there -- and
+# still finishable -- when it comes back.
+seat 101 "$LATE9"  "$FC1" "$M1" "$M2" >/dev/null
+start "$LATE9" >/dev/null
+seat 102 "$LATE10" "$FC2" "$M3" "$M4" >/dev/null
+scouts_before=$(awk 'NR>1' "$SCOUTS" | wc -l | tr -d ' ')
+adults_before=$(awk 'NR>1' "$ADULTS" | wc -l | tr -d ' ')
+
+kill "$SRV" 2>/dev/null
+wait "$SRV" 2>/dev/null
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    curl -s -o /dev/null "$B/index.html" || break
+    sleep 1
+done
+# shellcheck disable=SC2086
+( cd "$WORK" && exec $LAUNCH "$TARGET" \
+    -a AdultHistory.csv -c config.properties -port "$PORT" -d run -bind 127.0.0.1 ) >> "$WORK/server.log" 2>&1 &
+SRV=$!
+if curl -sf --retry 40 --retry-delay 1 --retry-connrefused --retry-all-errors \
+     -o /dev/null "$B/index.html"; then
+    ok "the server came back on the same data"
+else
+    bad "the server never came back on port $PORT"
+fi
+
+chk "no scout was lost or duplicated" "$(awk 'NR>1' "$SCOUTS" | wc -l | tr -d ' ')" "$scouts_before"
+chk "no adult was lost or duplicated" "$(awk 'NR>1' "$ADULTS" | wc -l | tr -d ' ')" "$adults_before"
+chk "the running review is still running"   "$(status_of "$LATE9")"  "InProgress"
+chk "the convening board is still convening" "$(status_of "$LATE10")" "Seated"
+chk "both boards' adults are still committed" "$(busy_adults)" "6"
+refused "a committed chair still cannot be double-booked" \
+    "$(seat 103 "$LATE11" "$FC1" "$M5" "$M6")"
+accepted "the running review completes after the restart" "$(complete "$LATE9" Approved)"
+accepted "the convening board starts after the restart"   "$(start "$LATE10")"
+accepted "and completes"                                   "$(complete "$LATE10" Approved)"
+accepted "the comma-named adult is still seatable after the restart" \
+    "$(seat 101 "$LATE11" "$FC1" "$M1" "$JR")"
+reset "$LATE11" >/dev/null
+
+# ------------------------------------------- 17. a room changes board type
+echo
+echo "== 17. a room switched between Project and Final on the Admin page =="
+
+# When the evening's mix turns out different from the plan, rooms get
+# switched on the Admin page. A room's type is only where the UI suggests a
+# board should go (process_seat.js asks before crossing it); the size and
+# chair rules, and the room-card timers, all follow the SCOUT's board type.
+# Switching a room must never loosen a rule or disturb a board already in it.
+room_type() { awk -F, -v r="$1" 'NR>1 && $2==r {print $4}' "$ROOMS"; }
+set_room_type() {
+    post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=ROOM:$1" \
+         --data-urlencode "BoardType=$2" "$B/room-update"
+}
+
+TYPE1=$(xscout Achterberg Maximilian 3201 Final)
+TYPE2=$(xscout Brannigan Nikolai 3202 Project)
+TYPE3=$(xscout Castellanos Octavian 3203 Final)
+
+set_room_type 201A Final
+chk "project room 201A is now a Final room" "$(room_type ROOM:201A)" "Final"
+refused "a Final board of 2 is still refused there" "$(seat 201A "$TYPE1" "$FC1" "$M1")"
+accepted "a Final board of 3 seats there" "$(seat 201A "$TYPE1" "$FC1" "$M1" "$M2")"
+
+set_room_type 106 Project
+chk "final room 106 is now a Project room" "$(room_type ROOM:106)" "Project"
+refused "a Member still cannot chair a project review there" "$(seat 106 "$TYPE2" "$M3" "$M4")"
+refused "nor can a Final-only chair" "$(seat 106 "$TYPE2" "$FC2" "$M3")"
+accepted "a project review of 2 seats there" "$(seat 106 "$TYPE2" "$PC1" "$M3")"
+
+# A room whose type does not match the scout is the UI's confirm, not a
+# refusal: the operator may knowingly put a board in the "wrong" kind of room.
+set_room_type 102 Project
+accepted "a Final board may still go in a Project room" "$(seat 102 "$TYPE3" "$FC2" "$M5" "$M6")"
+
+# Switch rooms back while the boards are sitting in them.
+start "$TYPE1" >/dev/null
+set_room_type 201A Project
+set_room_type 106 Final
+set_room_type 102 Final
+chk "switching a room keeps the board in it" "$(room_scout ROOM:201A)" "Maximilian Achterberg"
+chk "and its adults"                          "$(adult_room "$FC1")" "201A"
+chk "and the review still under way"          "$(status_of "$TYPE1")" "InProgress"
+chk "the scout's own board type is untouched" \
+    "$(awk -F, -v i="$TYPE1" 'NR>1 && $2==i {print $12}' "$SCOUTS")" "Final"
+refused "the switched room cannot be double-booked" "$(seat 201A "$LATE11" "$FC3" "$M7" "$M8")"
+
+accepted "the Final board completes in what is now a Project room" "$(complete "$TYPE1" Approved)"
+start "$TYPE2" >/dev/null
+accepted "the project review completes in what is now a Final room" "$(complete "$TYPE2" Approved)"
+start "$TYPE3" >/dev/null
+accepted "and the third board completes too" "$(complete "$TYPE3" Approved)"
+chk "every board kept the chair it was seated with" \
+    "$(chair_of "$TYPE1") $(chair_of "$TYPE2") $(chair_of "$TYPE3")" "$FC1 $PC1 $FC2"
+chk "the switched rooms are free again" \
+    "$(room_scout ROOM:201A)$(room_scout ROOM:106)$(room_scout ROOM:102)" ""
+chk "nobody committed after section 17" "$(busy_adults)" "0"
+
+# ---------------------------------------- 18. correcting a recorded result
+echo
+echo "== 18. a result corrected on the Admin page =="
+
+# Two mistakes the record has to survive: the wrong result clicked, and the
+# right result recorded against the wrong scout. The Admin page's Boards tab
+# is the path for both. admin_edit posts exactly what its grid posts when a
+# cell is edited -- one field per request -- and checks the grid would call
+# it saved.
+admin_edit() { # <scout-id> <field> <value>
+    _r=$(curl -s -X POST --data-urlencode "!nativeeditor_status=updated" \
+        --data-urlencode "gr_id=$1" --data-urlencode "$2=$3" "$B/youth-update")
+    case "$_r" in
+        *'type="updated"'*) ;;
+        *) bad "admin edit of $2 on $1 was not saved: $_r" ;;
+    esac
+}
+result_of() { awk -F, -v i="$1" 'NR>1 && $2==i {print $19}' "$SCOUTS"; }
+
+# The Admin window's choice lists must match what the app acts on. It is a
+# WPF window with no endpoint to ask, so this reads how AdminWindow.xaml.cs
+# builds each list and what the vocabulary it builds them from contains.
+ADMIN_SRC="$ROOT/src/EagleBoards.App/AdminWindow.xaml.cs"
+VOCAB_SRC="$ROOT/src/EagleBoards.Core/Records/Vocabulary.cs"
+vocab_list() { # <class> -> the identifiers in that class's "All = [...]"
+    awk -v c="class $1" '$0 ~ c {f=1} f && /All = \[/ {print; exit}' "$VOCAB_SRC" \
+        | awk -F'[][]' '{print $2}' | tr -d ' ' | tr , ' '
+}
+
+# Every status offered must be one the app acts on. The Java version once
+# offered "Waiting", which nothing recognised, so choosing it -- the obvious
+# way to send a scout back to the queue -- left them where nothing could seat
+# them.
+case "$(grep 'StatusChoices =' "$ADMIN_SRC")" in
+    *'BoardStatus.All'*) ok "the Admin window's statuses are the app's own statuses" ;;
+    *) bad "the Admin window builds its Status list from something other than BoardStatus.All" ;;
+esac
+case " $(vocab_list BoardStatus) " in
+    *" Registered "*) ok "and include Registered, to undo a result on the wrong scout" ;;
+    *) bad "the Admin window cannot set a scout back to Registered" ;;
+esac
+
+# And every Result offered must be a board's decision -- one /complete-board
+# would record. It once offered "Postponed", which is the Status of a scout
+# sent away before any board met them, not something a board decides.
+case "$(grep 'ResultChoices =' "$ADMIN_SRC")" in
+    *'BoardResults.All'*) ok "the Admin window's results are the board's decisions" ;;
+    *) bad "the Admin window builds its Result list from something other than BoardResults.All" ;;
+esac
+chk "which are exactly Approved, Adjourned and NotApproved" \
+    "$(vocab_list BoardResults)" "Approved Adjourned NotApproved"
+
+FIX1=$(xscout Dunleavy Peregrine 3301 Final)
+SENT=$(xscout Fairweather Rupert 3304 Final)
+RIGHT=$(xscout Esterhazy Quentin 3302 Final)
+WRONG=$(xscout Esterbrook Quentin 3303 Final)
+
+# The wrong result clicked.
+seat 101 "$FIX1" "$FC1" "$M1" "$M2" >/dev/null
+start "$FIX1" >/dev/null
+complete "$FIX1" Approved >/dev/null
+admin_edit "$FIX1" Result NotApproved
+chk "a mis-clicked result can be corrected"   "$(result_of "$FIX1")" "NotApproved"
+chk "without reopening the board"             "$(status_of "$FIX1")" "Completed"
+chk "or losing who sat on it"                 "$(chair_of "$FIX1")" "$FC1"
+chk "or committing its adults again"          "$(busy_adults)" "0"
+
+# The right result on the wrong scout: two scouts with the same first name,
+# and the operator picked the one still waiting outside.
+seat 102 "$WRONG" "$FC2" "$M3" "$M4" >/dev/null
+start "$WRONG" >/dev/null
+complete "$WRONG" Approved >/dev/null
+board_chair=$(awk -F, -v i="$WRONG" 'NR>1 && $2==i {print $20}' "$SCOUTS")
+board_members=$(awk -F, -v i="$WRONG" 'NR>1 && $2==i {print $22}' "$SCOUTS")
+
+admin_edit "$RIGHT" Status Completed
+admin_edit "$RIGHT" Result Approved
+admin_edit "$RIGHT" BoardChair "$board_chair"
+admin_edit "$RIGHT" BoardMembers "$board_members"
+admin_edit "$WRONG" Status Registered
+admin_edit "$WRONG" Result ""
+admin_edit "$WRONG" BoardChair ""
+admin_edit "$WRONG" BoardMembers ""
+
+chk "the scout who was reviewed now holds the result" \
+    "$(status_of "$RIGHT") $(result_of "$RIGHT")" "Completed Approved"
+chk "with the board that reviewed them" \
+    "$(awk -F, -v i="$RIGHT" 'NR>1 && $2==i {print $20}' "$SCOUTS")" "$board_chair"
+chk "the other is back in the queue with no result" \
+    "$(status_of "$WRONG")|$(result_of "$WRONG")" "Registered|"
+refused "the reviewed scout cannot be seated again" "$(seat 103 "$RIGHT" "$FC3" "$M5" "$M6")"
+accepted "the other can be seated for their real board" \
+    "$(seat 103 "$WRONG" "$FC3" "$M5" "$M6")"
+start "$WRONG" >/dev/null
+accepted "and it completes"                  "$(complete "$WRONG" NotApproved)"
+chk "recording their own result"             "$(result_of "$WRONG")" "NotApproved"
+chk "and their own chair"                    "$(chair_of "$WRONG")" "$FC3"
+chk "while the first scout's result stands"  "$(result_of "$RIGHT")" "Approved"
+
+# Completed by mistake, when the scout had in fact been sent away unprepared
+# and never saw a board: they become Postponed, which carries no result.
+seat 104 "$SENT" "$FC1" "$M1" "$M2" >/dev/null
+start "$SENT" >/dev/null
+complete "$SENT" NotApproved >/dev/null
+admin_edit "$SENT" Status Postponed
+admin_edit "$SENT" Result ""
+chk "a scout sent away is recorded as Postponed, with no result" \
+    "$(status_of "$SENT")|$(result_of "$SENT")" "Postponed|"
+refused "and cannot be seated again that night" "$(seat 104 "$SENT" "$FC1" "$M1" "$M2")"
+chk "nobody committed after section 18"      "$(busy_adults)" "0"
+
+echo
+echo "== the evening ends clean =="
+chk "no board left convening"  "$(n_status Seated)" "0"
+chk "no review left running"   "$(n_status InProgress)" "0"
+chk "every adult released"     "$(busy_adults)" "0"
 
 # ------------------------------------------------------------------- verdict
 echo

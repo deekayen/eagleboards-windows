@@ -59,7 +59,10 @@ public abstract class PersonRecord : DataRecord
         var id = Id;
         if (id.Length == 0 || !id.StartsWith(Type, StringComparison.Ordinal) || id == Type + ":::")
         {
-            Put(IdField, Type + ":" + Last + ":" + First + ":" + Unit);
+            // No commas in an ID: MemberIDs travels as a comma-separated list, so
+            // "Smith, Jr." split into two unknown ids and could never be seated,
+            // and the CSV writer turns ',' into '~' at the next load anyway.
+            Put(IdField, (Type + ":" + Last + ":" + First + ":" + Unit).Replace(',', '~'));
         }
     }
 

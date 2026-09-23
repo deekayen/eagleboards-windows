@@ -29,7 +29,10 @@ runs a native WPF app instead of the Java app's browser pages.
   case from the Java `test-seat-conflicts.js`), storage format, lifecycle,
   auto-select, and each deliberate divergence from Java.
 - `bash scripts/test-board-evening.sh`: the Java project's end-to-end HTTP
-  evening, unchanged except for the launch line. `EB_JAR=<jar>` runs it against
+  evening, unchanged except for the launch lines and section 18's check of
+  the Admin window's choice lists (Java reads admin.html; this reads
+  `AdminWindow.xaml.cs`). New scenarios added in the Java repo are copied here
+  and into the Mac version. `EB_JAR=<jar>` runs it against
   the Java server; it passes against both. `EB_KEEP=1` keeps the data files so
   two builds' output can be diffed.
 - `dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- <dir>`:

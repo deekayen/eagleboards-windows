@@ -77,7 +77,9 @@ public partial class AdminWindow : Window
     private static readonly KeyValuePair<string, string>[] BoardTypeChoices = [new("", ""), new(BoardTypes.Final, "Final Board"), new(BoardTypes.Project, "Proposal Review")];
     private static readonly KeyValuePair<string, string>[] UnitTypeChoices = Same(["", .. UnitTypes.All]);
     private static readonly KeyValuePair<string, string>[] StatusChoices = Same(["", .. BoardStatus.All]);
-    private static readonly KeyValuePair<string, string>[] ResultChoices = Same("", BoardResults.Approved, BoardResults.Adjourned, BoardResults.NotApproved, "Postponed");
+    // A board's three decisions only. Not "Postponed": that is the Status of a
+    // scout sent away unprepared before any board met them, who has no Result.
+    private static readonly KeyValuePair<string, string>[] ResultChoices = Same(["", .. BoardResults.All]);
     private static readonly KeyValuePair<string, string>[] RoleChoices = Same(["", .. BoardRoles.All]);
 
     private static readonly TabSpec[] Specs =
