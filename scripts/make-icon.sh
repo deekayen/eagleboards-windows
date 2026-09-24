@@ -7,6 +7,9 @@
 # tools. Run this after editing the SVG. Needs rsvg-convert (librsvg) and
 # python3. Each size is a PNG entry, which Windows has read since Vista.
 #
+# The Mac version (deekayen/eagleboards-macos) draws its icon from a copy of
+# the same SVG, Artwork/EagleBoards.svg; keep the two in step.
+#
 # Fine engraving turns to noise below 256 px, so smaller sizes are drawn
 # from a plainer cut of the same SVG, chosen by a stylesheet added to it:
 #   40-64 px  bold feather splits and B S A, no fine texture
