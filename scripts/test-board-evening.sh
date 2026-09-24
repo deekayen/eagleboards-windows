@@ -33,12 +33,13 @@
 # So the evening is capped at five concurrent boards no matter how many rooms
 # are free -- which is the constraint the scheduler actually has to survive.
 #
-# Sections 9-18 then work through what goes wrong on the night: malformed
+# Sections 9-19 then work through what goes wrong on the night: malformed
 # and replayed requests, every out-of-order step, adults and scouts signing
 # in twice, boards moved between rooms, a room renamed or deleted under a
 # board, a name with a comma in it, two operators seating the same chair at
 # once, the server restarting mid-evening, a room switched between
-# Project and Final, and a recorded result corrected on the Admin page.
+# Project and Final, a recorded result corrected on the Admin page, and
+# what an adult says at sign-in (Wood Badge, "no thanks", whom they support).
 # ------------------------------------------------------------------------
 
 set -u
@@ -928,6 +929,48 @@ chk "a scout sent away is recorded as Postponed, with no result" \
     "$(status_of "$SENT")|$(result_of "$SENT")" "Postponed|"
 refused "and cannot be seated again that night" "$(seat 104 "$SENT" "$FC1" "$M1" "$M2")"
 chk "nobody committed after section 18"      "$(busy_adults)" "0"
+
+# ------------------------------------ 19. what an adult says at sign-in
+echo
+echo "== 19. Wood Badge, 'no thanks', and the scout an adult came to support =="
+
+# adults.csv and the adult history both end with 17 WoodBadge, 18 Supporting.
+adult_col() { awk -F, -v i="$1" -v c="$2" 'NR>1 && $2==i {print $c}' "$ADULTS"; }
+history_col() { awk -F, -v i="$1" -v c="$2" 'NR>1 && $2==i {print $c}' "$WORK/AdultHistory.csv"; }
+
+RSVP=$(xscout Galloway Tobias 3401 Final)
+post --data "Last=Hargrove&First=Ines&Email=a41@example.org&UnitType=Troop&Unit=3401&ProjectReview=Member&FinalBoard=Member&WoodBadge=Y&Supporting=$RSVP|SCOUT:Nobody:Here:0" \
+    "$B/register-adult"
+LEADER="ADULT:Hargrove:Ines:3401"
+chk "Wood Badge is recorded"           "$(adult_col "$LEADER" 17)" "Y"
+chk "and the scouts they came to support" "$(adult_col "$LEADER" 18)" "$RSVP|SCOUT:Nobody:Here:0"
+chk "neither is kept in the history for next month" \
+    "$(history_col "$LEADER" 17)|$(history_col "$LEADER" 18)" "|"
+
+post --data "Last=Hargrove&First=Ines&Email=a41@example.org&UnitType=Troop&Unit=3401&ProjectReview=Member&FinalBoard=Member&WoodBadge=yes&Supporting=" \
+    "$B/register-adult"
+chk "signing in again says what is true now" "$(adult_col "$LEADER" 18)" ""
+chk "and Wood Badge is Y or nothing, never free text" "$(adult_col "$LEADER" 17)" ""
+
+# "No thanks" is stored as Unavailable for that kind of board; the server
+# refuses to seat them on one even when the request skips the scheduler.
+post --data "Last=Ibarra&First=Juno&Email=a42@example.org&UnitType=Troop&Unit=3402&ProjectReview=Unavailable&FinalBoard=Member" \
+    "$B/register-adult"
+NOPROJ="ADULT:Ibarra:Juno:3402"
+chk "'no thanks' to proposal reviews is recorded" "$(adult_col "$NOPROJ" 10)" "Unavailable"
+PROJ=$(xscout Jaramillo Kai 3403 Project)
+refused "they are not seated on a proposal review" "$(seat 200A "$PROJ" "$PC1" "$NOPROJ")"
+chk "and nobody was committed" "$(busy_adults)" "0"
+accepted "but they can sit on a Final board" "$(seat 101 "$RSVP" "$FC1" "$M1" "$NOPROJ")"
+reset "$RSVP" >/dev/null
+
+# The sign-in page lists RSVP'd scouts from this endpoint; keep it serving them.
+post --data-urlencode "!nativeeditor_status=inserted" --data-urlencode "gr_id=SCOUT:Rsvp:Only:3999" \
+     --data "Last=Rsvp&First=Only&UnitType=Troop&Unit=3999&BoardType=Final" "$B/youth-scheduled-update"
+chk "an RSVP not yet signed in can be chosen at the door" \
+    "$(curl -s "$B/youth-scheduled-cells?cols=First,Last,UnitName" | grep -c 'SCOUT:Rsvp:Only:3999')" "1"
+chk "nobody committed after section 19" "$(busy_adults)" "0"
+
 
 echo
 echo "== the evening ends clean =="

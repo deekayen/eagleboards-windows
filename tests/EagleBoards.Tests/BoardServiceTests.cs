@@ -294,4 +294,40 @@ public class BoardServiceTests
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{junior}").Ok);
         Assert.Equal("101", AdultRow(s, junior)["Room"]);
     }
+
+    private static Dictionary<string, string> HistoryRow(BoardService s, string id) =>
+        s.Snapshot(DataTable.AdultHistory).Single(r => r["ID"] == id);
+
+    [Fact]
+    public void WoodBadgeAndWhomTheyCameToSupportAreForTonightOnly()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        var form = Seed.Adult("Hargrove", "Ines", "3401", "Member", "Member");
+        form["WoodBadge"] = "Y";
+        form["Supporting"] = "SCOUT:Galloway:Tobias:3401|SCOUT:Other:Oli:3402";
+        s.RegisterAdult(form);
+        var id = Seed.AdultId("Hargrove", "Ines", "3401");
+        Assert.Equal("Y", AdultRow(s, id)["WoodBadge"]);
+        Assert.Equal("SCOUT:Galloway:Tobias:3401|SCOUT:Other:Oli:3402", AdultRow(s, id)["Supporting"]);
+        Assert.Equal(("", ""), (HistoryRow(s, id)["WoodBadge"], HistoryRow(s, id)["Supporting"]));
+
+        form["WoodBadge"] = "yes";   // anything but Y is no
+        form["Supporting"] = "";
+        s.RegisterAdult(form);
+        Assert.Equal(("", ""), (AdultRow(s, id)["WoodBadge"], AdultRow(s, id)["Supporting"]));
+    }
+
+    [Fact]
+    public void ScoutChoicesAreRsvpsAndWalkInsWhoseEveningIsNotOver()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Rsvp:Only:3999",
+            new Dictionary<string, string> { ["Last"] = "Rsvp", ["First"] = "Only", ["UnitType"] = "Troop", ["Unit"] = "3999" });
+        s.RegisterScout(Seed.Scout("Bram", "Beau", "1002", BoardTypes.Final));
+        s.RegisterScout(Seed.Scout("Carrington", "Cormac", "1003", BoardTypes.Final));
+        Assert.True(s.PostponeBoard(Seed.ScoutId("Carrington", "Cormac", "1003")).Ok);
+        Assert.Equal(["SCOUT:Bram:Beau:1002", "SCOUT:Rsvp:Only:3999"], s.ScoutChoices().Select(c => c.Id));
+    }
 }

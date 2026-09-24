@@ -336,4 +336,61 @@ public class SchedulerLogicTests
         ]);
         Assert.Equal(["M1", "M2"], pick.MemberIds);
     }
+
+    // ------------------------------------------------------------------
+    // Volunteers who came for any board go before a scout's own leaders.
+    // The same cases are in the Java and Mac versions.
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void AnUnattachedVolunteerIsProposedBeforeAScoutsLeaderWhoHasWaitedLonger()
+    {
+        var pick = Propose(Queue("S", "Troop1001", BoardTypes.Final),
+        [
+            Pool("FC", "Troop9001", "Chair", "Member"),
+            Pool("LEAD", "Troop9002", "Member", "Member") with { Supporting = "SCOUT:Other:Oli:3001", FreeSince = "2026-09-24_18:00-0400" },
+            Pool("V1", "Troop9003", "Member", "Member") with { FreeSince = "2026-09-24_19:30-0400" },
+            Pool("V2", "Troop9004", "Member", "Member") with { FreeSince = "2026-09-24_19:40-0400" },
+        ]);
+        Assert.Equal(["V1", "V2"], pick.MemberIds);
+    }
+
+    [Fact]
+    public void AWoodBadgeVolunteerCountsAsHereForAnyBoard()
+    {
+        var pick = Propose(Queue("S", "Troop1001", BoardTypes.Final),
+        [
+            Pool("FC", "Troop9001", "Chair", "Member"),
+            Pool("LEAD", "Troop9002", "Member", "Member") with { Supporting = "SCOUT:Other:Oli:3001", FreeSince = "2026-09-24_18:00-0400" },
+            Pool("WB", "Troop9003", "Member", "Member") with { Supporting = "SCOUT:Other:Oli:3001", WoodBadge = "Y", FreeSince = "2026-09-24_19:00-0400" },
+            Pool("V", "Troop9004", "Member", "Member") with { FreeSince = "2026-09-24_19:30-0400" },
+        ]);
+        Assert.Equal(["WB", "V"], pick.MemberIds);
+    }
+
+    [Fact]
+    public void ComingForAnyBoardDoesNotOutrankKeepingAChairFree()
+    {
+        var pick = Propose(Queue("S", "Troop1001", BoardTypes.Final),
+        [
+            Pool("FC", "Troop9001", "Chair", "Member"),
+            Pool("PC", "Troop9002", "Member", "Chair"),
+            Pool("L1", "Troop9003", "Member", "Member") with { Supporting = "SCOUT:A:A:1" },
+            Pool("L2", "Troop9004", "Member", "Member") with { Supporting = "SCOUT:B:B:2" },
+        ]);
+        Assert.Equal(["L1", "L2"], pick.MemberIds);
+    }
+
+    [Fact]
+    public void LocateNamesTheAdultsWhoCameToSupportTheScoutFirst()
+    {
+        var adults = new[]
+        {
+            new AdultInfo("L", "Smith", "Sam", "Troop1001", "", "Member", "Member"),
+            new AdultInfo("SM", "Jones", "Jo", "Troop1001", "104", "Member", "Member", Supporting: "SCOUT:X|S1"),
+        };
+        var found = SchedulerLogic.Locate(FinalScout, adults, includeParents: true);
+        Assert.Equal([("SM", true), ("L", false)], found.Select(f => (f.Adult.Id, f.IsSupporting)));
+        Assert.Equal(["SM"], SchedulerLogic.SupportingAdults("S1", adults).Select(a => a.Id));
+    }
 }

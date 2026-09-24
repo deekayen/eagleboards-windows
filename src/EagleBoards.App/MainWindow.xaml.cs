@@ -717,8 +717,20 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Whoever came to support this youth -- often their Scoutmaster, who
+        // may be on another board right now -- introduces them. Name the room
+        // so someone can step in and fetch them for a moment.
+        var fetch = new StringBuilder();
+        foreach (var a in SchedulerLogic.SupportingAdults(scout.Id, _adults.Select(row => row.Info)))
+        {
+            fetch.Append(fetch.Length == 0 ? "\n\nBring out to introduce them:" : "")
+                .Append($"\n    {a.First} {a.Last} — ")
+                .Append(a.IsFree ? "main room" : a.Room == AdultRoom.Disabled ? "marked as gone home" : $"on the board in room {a.Room}");
+        }
+
         if (!Ask.Confirm(this, "Start Review", $"Bring {name} in to room {scout.Room} and start the review?\n\n"
-                + "Do this once the board members have finished reading the application, references and project workbook."))
+                + "Do this once the board members have finished reading the application, references and project workbook."
+                + fetch))
         {
             return;
         }
@@ -836,7 +848,8 @@ public partial class MainWindow : Window
         foreach (var f in found)
         {
             var where = f.Adult.Room.Length == 0 ? "Main" : f.Adult.Room;
-            text.Append($"\n{(f.IsLeader ? "Leader" : "Parent")}: **{f.Adult.First} {f.Adult.Last}** [{where}]");
+            var kind = f.IsSupporting ? "Supporting" : f.IsLeader ? "Leader" : "Parent";
+            text.Append($"\n{kind}: **{f.Adult.First} {f.Adult.Last}** [{where}]");
         }
 
         Notify("Located", text.ToString(), ToastKind.Info, 60000);

@@ -5,14 +5,27 @@ namespace EagleBoards.Core;
 /// <summary>
 /// What the scheduler needs to know about an adult to pick or locate them.
 /// FreeSince is when they last became free to volunteer (see
-/// <see cref="SchedulerLogic.FreeSinceTimes"/>); blank sorts first.
+/// <see cref="SchedulerLogic.FreeSinceTimes"/>); blank sorts first. WoodBadge
+/// is "Y" or blank, and Supporting the "|"-separated IDs of the scouts they
+/// came to support, as said at sign-in.
 /// </summary>
-public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview, string FreeSince = "")
+public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview,
+    string FreeSince = "", string WoodBadge = "", string Supporting = "")
 {
     public string RoleFor(string boardType) => boardType == BoardTypes.Project ? ProjectReview : FinalBoard;
 
     /// <summary>Not on a board and not stood down for the night.</summary>
     public bool IsFree => Room is "" or "-";
+
+    /// <summary>Said at sign-in they came to support this scout.</summary>
+    public bool Supports(string scoutId) => Supporting.Split('|').Contains(scoutId);
+
+    /// <summary>
+    /// Came to serve on any board: not here for a particular scout, or
+    /// counting tonight toward a Wood Badge ticket item (who is then a
+    /// volunteer first, whoever else they came with).
+    /// </summary>
+    public bool CameForAnyBoard => WoodBadge == "Y" || Supporting.Length == 0;
 }
 
 public sealed record ScoutInfo(string Id, string Last, string First, string UnitName, string BoardType, string Room, string Status, string Leader);
@@ -25,7 +38,12 @@ public sealed record AutoSelection(IReadOnlyList<string> ChairIds, IReadOnlyList
     public IEnumerable<string> AllAdultIds => ChairIds.Concat(MemberIds);
 }
 
-public sealed record LocatedAdult(AdultInfo Adult, bool IsLeader);
+/// <summary>
+/// An adult found for a scout: one who said at sign-in they came to support
+/// them (<paramref name="IsSupporting"/>), else a leader guessed from the
+/// scout's Leader field, else a parent.
+/// </summary>
+public sealed record LocatedAdult(AdultInfo Adult, bool IsLeader, bool IsSupporting = false);
 
 /// <summary>Toolbar actions on the Youth panel.</summary>
 [Flags]
@@ -82,8 +100,10 @@ public static class SchedulerLogic
     /// then the one using up the fewest chair qualifications, so member-only
     /// adults fill member seats and a single-type chair is used before one who
     /// can chair either; then the one whose adults could serve the fewest
-    /// other waiting scouts; then the adults who have waited longest to volunteer
-    /// since they were last free, and sign-in order within a minute. With no full board to be had
+    /// other waiting scouts; then volunteers who came for any board (not linked
+    /// to a scout, or Wood Badge), so they are not the ones left idle; then the
+    /// adults who have waited longest to volunteer since they were last free,
+    /// and sign-in order within a minute. With no full board to be had
     /// it proposes what it can, in the same preference order, and says what
     /// is short.
     ///
@@ -100,7 +120,8 @@ public static class SchedulerLogic
         var pool = adults
             .Select((a, order) => new Candidate(a, ChairQualifications(a), queue.Count(w => CanSitFor(a, w)), a.FreeSince, order))
             .Where(c => c.Adult.IsFree)
-            .OrderBy(c => c.Chairs).ThenBy(c => c.Useful).ThenBy(c => c.Since, StringComparer.Ordinal).ThenBy(c => c.Order)
+            .OrderBy(c => c.Chairs).ThenBy(c => c.Useful).ThenBy(c => c.Adult.CameForAnyBoard ? 0 : 1)
+            .ThenBy(c => c.Since, StringComparer.Ordinal).ThenBy(c => c.Order)
             .ToList();
         var chairs = pool.Where(c => CanChairFor(c.Adult, scout)).ToList();
         var sitters = pool.Where(c => CanSitFor(c.Adult, scout)).ToList();
@@ -322,10 +343,22 @@ public static class SchedulerLogic
             parents.Clear();
         }
 
-        return leaders.Select(a => new LocatedAdult(a, true))
-            .Concat(parents.Where(p => !leaders.Contains(p)).Select(a => new LocatedAdult(a, false)))
+        // Those who linked themselves to this scout at sign-in come first and
+        // are not guessed at again.
+        var supporting = SupportingAdults(scout.Id, adults);
+        return supporting.Select(a => new LocatedAdult(a, true, IsSupporting: true))
+            .Concat(leaders.Where(l => !supporting.Contains(l)).Select(a => new LocatedAdult(a, true)))
+            .Concat(parents.Where(p => !leaders.Contains(p) && !supporting.Contains(p)).Select(a => new LocatedAdult(a, false)))
             .ToList();
     }
+
+    /// <summary>
+    /// The adults who said at sign-in that they came to support this scout --
+    /// often their Scoutmaster, who may be on another board and has to be
+    /// fetched to introduce them when their review starts.
+    /// </summary>
+    public static List<AdultInfo> SupportingAdults(string scoutId, IEnumerable<AdultInfo> adults) =>
+        adults.Where(a => a.Supports(scoutId)).ToList();
 
     /// <summary>
     /// Room-card timer state for an active board, from the minutes since its

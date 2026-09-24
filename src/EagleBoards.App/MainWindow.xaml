@@ -261,6 +261,8 @@
                   <DataGridTextColumn Header="RM#" Binding="{Binding Room}" Width="52" IsReadOnly="True" />
                   <DataGridTextColumn Header="Final" Binding="{Binding FinalBoard}" Width="84" IsReadOnly="True" />
                   <DataGridTextColumn Header="Project" Binding="{Binding ProjectReview}" Width="*" IsReadOnly="True" />
+                  <!-- Volunteering toward a Wood Badge ticket item. -->
+                  <DataGridTextColumn Header="WB" Binding="{Binding WoodBadgeMark}" SortMemberPath="WoodBadge" Width="36" IsReadOnly="True" />
                 </DataGrid.Columns>
               </DataGrid>
             </DockPanel>

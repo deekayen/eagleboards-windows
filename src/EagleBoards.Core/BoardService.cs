@@ -301,10 +301,15 @@ public sealed class BoardService
         lock (_lock)
         {
             var incoming = new AdultRecord(fields) { Room = "" };
+            incoming.WoodBadge = incoming.WoodBadge == "Y" ? "Y" : "";
+            incoming.Supporting = incoming.Supporting.Trim();
             var adult = Adults.Get(incoming.Id);
             if (adult != null)
             {
                 adult.UpdateFrom(incoming, AdultRegFields);
+                // Tonight-only answers: the latest sign-in says what is true now.
+                adult.WoodBadge = incoming.WoodBadge;
+                adult.Supporting = incoming.Supporting;
                 adult.UpdateFields(false);
             }
             else
@@ -318,6 +323,12 @@ public sealed class BoardService
             if (history == null)
             {
                 history = adult.Clone();
+
+                // The history pre-fills next month's form; whom someone came to
+                // support, and whether it counted toward Wood Badge, are for
+                // tonight only.
+                history.WoodBadge = "";
+                history.Supporting = "";
                 Trace("Adding new Adult History Record: " + history);
                 AdultHistory.Add(history, false);
                 adult.Flags = "W";
@@ -335,6 +346,31 @@ public sealed class BoardService
         }
 
         OnChanged(DataTable.Adults, DataTable.AdultHistory);
+    }
+
+    /// <summary>
+    /// The scouts an adult may say at sign-in they came to support: everyone
+    /// who RSVP'd, plus tonight's walk-ins, leaving out anyone whose evening
+    /// is over (Completed or Postponed). Names and units only -- this is read
+    /// by the check-in stations, which see nothing more.
+    /// </summary>
+    public List<(string Id, string First, string Last, string UnitName)> ScoutChoices()
+    {
+        lock (_lock)
+        {
+            var done = Scouts.Records
+                .Where(s => s.Status is BoardStatus.Completed or BoardStatus.Postponed)
+                .Select(s => s.Id)
+                .ToHashSet();
+            return ScoutsScheduled.Records.Concat(Scouts.Records)
+                .Where(s => s.Last.Length > 0 && !done.Contains(s.Id))
+                .GroupBy(s => s.Id)
+                .Select(g => g.Last())
+                .OrderBy(s => s.Last, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(s => s.First, StringComparer.CurrentCultureIgnoreCase)
+                .Select(s => (s.Id, s.First, s.Last, s.UnitName))
+                .ToList();
+        }
     }
 
     // ------------------------------------------------------------------

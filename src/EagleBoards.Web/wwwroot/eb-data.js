@@ -12,6 +12,13 @@
 //   GET  <entity>-autofill?<Field>=<v>    -> <data><Col>value</Col>...</data>
 // ------------------------------------------------------------------------
 
+// Text typed at the sign-in door, made safe to put inside a message's HTML.
+function ebEscapeHtml(text) {
+   return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function ebParseXML(text) {
    return new DOMParser().parseFromString(text, "text/xml");
 }

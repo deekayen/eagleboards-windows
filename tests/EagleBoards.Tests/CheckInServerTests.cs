@@ -115,4 +115,19 @@ public class CheckInServerTests
         Assert.Equal(409, status);
         Assert.StartsWith("ERROR: Invalid Scout ID", body, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task AStationListsTheScoutsAnAdultMaySupportByNameAndUnitOnly()
+    {
+        using var box = new Sandbox();
+        var server = Server(box);
+        await Send(server, Station, "POST", "/register-youth",
+            "Last=Aldridge&First=Alex&UnitType=Troop&Unit=1001&BoardType=Final&Email=alex@example.org&Phone=5551234567");
+        var (status, body) = await Send(server, Station, "GET", "/scout-choices");
+        Assert.Equal(200, status);
+        Assert.Contains("<row id=\"SCOUT:Aldridge:Alex:1001\"><cell>Alex</cell><cell>Aldridge</cell><cell>Troop1001</cell></row>",
+            body, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("5551234567", body, StringComparison.Ordinal);
+    }
 }
