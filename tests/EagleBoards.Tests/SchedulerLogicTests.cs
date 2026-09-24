@@ -278,4 +278,62 @@ public class SchedulerLogicTests
 
         Assert.Equal((3, 2), (boards[BoardTypes.Final], boards[BoardTypes.Project]));
     }
+
+    // ------------------------------------------------------------------
+    // The adults who have waited longest to volunteer go first. The same
+    // cases are in the Java and Mac versions.
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void FreeSinceIsSignInOrWhenTheirLastBoardCompleted()
+    {
+        var since = SchedulerLogic.FreeSinceTimes(
+        [
+            ("ADULT:Able:Ann:1", "2026-09-24_19:00-0400"),
+            ("ADULT:Baker:Bo:2", "2026-09-24_19:10-0400"),
+            ("ADULT:Cole:Cy:3", "2026-09-24_19:05-0400"),
+            ("ADULT:Whitmore~ Jr.:Lysander:4", "2026-09-24_19:00-0400"),
+            ("ADULT:Lee:Al:1", "2026-09-24_19:00-0400"),
+        ],
+        [
+            (BoardStatus.Completed, "ADULT:Able:Ann:1,ADULT:Other:Oz:9", "2026-09-24_19:40-0400"),
+            // As it reads back after a restart: the CSV stored the commas as '~'.
+            (BoardStatus.Completed, "ADULT:X:X:9~ADULT:Whitmore~ Jr.:Lysander:4~ADULT:Lee:Al:12", "2026-09-24_19:50-0400"),
+            (BoardStatus.Registered, "", "2026-09-24_20:00-0400"),   // a reset board
+            (BoardStatus.Seated, "ADULT:Cole:Cy:3", "2026-09-24_20:05-0400"),
+        ]);
+        Assert.Equal("2026-09-24_19:40-0400", since["ADULT:Able:Ann:1"]);   // came off a completed board
+        Assert.Equal("2026-09-24_19:10-0400", since["ADULT:Baker:Bo:2"]);   // has not sat
+        Assert.Equal("2026-09-24_19:05-0400", since["ADULT:Cole:Cy:3"]);    // a running board does not count
+        Assert.Equal("2026-09-24_19:50-0400", since["ADULT:Whitmore~ Jr.:Lysander:4"]);
+        Assert.Equal("2026-09-24_19:00-0400", since["ADULT:Lee:Al:1"]);     // not mistaken for ADULT:Lee:Al:12
+    }
+
+    private static AdultInfo Waited(AdultInfo adult, string freeSince) => adult with { FreeSince = freeSince };
+
+    [Fact]
+    public void AmongEqualsThoseWhoHaveWaitedLongestAreProposed()
+    {
+        var pick = Propose(Queue("S", "Troop1001", BoardTypes.Final),
+        [
+            Waited(Pool("FC", "Troop9001", "Chair", "Member"), "2026-09-24_19:00-0400"),
+            Waited(Pool("M1", "Troop9002", "Member", "Member"), "2026-09-24_19:40-0400"),
+            Waited(Pool("M2", "Troop9003", "Member", "Member"), "2026-09-24_19:10-0400"),
+            Waited(Pool("M3", "Troop9004", "Member", "Member"), "2026-09-24_19:20-0400"),
+        ]);
+        Assert.Equal(["M2", "M3"], pick.MemberIds);
+    }
+
+    [Fact]
+    public void WaitingLongestDoesNotOutrankKeepingAChairFree()
+    {
+        var pick = Propose(Queue("S", "Troop1001", BoardTypes.Final),
+        [
+            Waited(Pool("FC", "Troop9001", "Chair", "Member"), "2026-09-24_19:00-0400"),
+            Waited(Pool("PC", "Troop9002", "Member", "Chair"), "2026-09-24_18:30-0400"),
+            Waited(Pool("M1", "Troop9003", "Member", "Member"), "2026-09-24_19:30-0400"),
+            Waited(Pool("M2", "Troop9004", "Member", "Member"), "2026-09-24_19:35-0400"),
+        ]);
+        Assert.Equal(["M1", "M2"], pick.MemberIds);
+    }
 }

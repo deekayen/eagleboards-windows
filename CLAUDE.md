@@ -82,7 +82,8 @@ runs a native WPF app instead of the Java app's browser pages.
   line: of every legal board it takes the one leaving the most other waiting
   youth able to get a full board at once, then the one using up the fewest
   chair qualifications, then the one keeping the most flexible adults, then
-  sign-in order. The same algorithm and test cases are in the Java
+  the adults who have waited longest to volunteer since last free
+  (`FreeSinceTimes`). The same algorithm and test cases are in the Java
   (`proposeBoard`) and Mac (`BoardSuggestion`) versions; change all three
   together.
 - **Board lifecycle:** Registered → Seated → InProgress → Completed, or

@@ -2,8 +2,12 @@ using EagleBoards.Core.Records;
 
 namespace EagleBoards.Core;
 
-/// <summary>What the scheduler needs to know about an adult to pick or locate them.</summary>
-public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview)
+/// <summary>
+/// What the scheduler needs to know about an adult to pick or locate them.
+/// FreeSince is when they last became free to volunteer (see
+/// <see cref="SchedulerLogic.FreeSinceTimes"/>); blank sorts first.
+/// </summary>
+public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview, string FreeSince = "")
 {
     public string RoleFor(string boardType) => boardType == BoardTypes.Project ? ProjectReview : FinalBoard;
 
@@ -78,7 +82,8 @@ public static class SchedulerLogic
     /// then the one using up the fewest chair qualifications, so member-only
     /// adults fill member seats and a single-type chair is used before one who
     /// can chair either; then the one whose adults could serve the fewest
-    /// other waiting scouts; then sign-in order. With no full board to be had
+    /// other waiting scouts; then the adults who have waited longest to volunteer
+    /// since they were last free, and sign-in order within a minute. With no full board to be had
     /// it proposes what it can, in the same preference order, and says what
     /// is short.
     ///
@@ -93,9 +98,9 @@ public static class SchedulerLogic
         var need = MembersBesideChair(scout.BoardType);
 
         var pool = adults
-            .Select((a, order) => new Candidate(a, ChairQualifications(a), queue.Count(w => CanSitFor(a, w)), order))
+            .Select((a, order) => new Candidate(a, ChairQualifications(a), queue.Count(w => CanSitFor(a, w)), a.FreeSince, order))
             .Where(c => c.Adult.IsFree)
-            .OrderBy(c => c.Chairs).ThenBy(c => c.Useful).ThenBy(c => c.Order)
+            .OrderBy(c => c.Chairs).ThenBy(c => c.Useful).ThenBy(c => c.Since, StringComparer.Ordinal).ThenBy(c => c.Order)
             .ToList();
         var chairs = pool.Where(c => CanChairFor(c.Adult, scout)).ToList();
         var sitters = pool.Where(c => CanSitFor(c.Adult, scout)).ToList();
@@ -183,7 +188,50 @@ public static class SchedulerLogic
         return new AutoSelection(chairIds, memberIds, room?.Id, problems);
     }
 
-    private sealed record Candidate(AdultInfo Adult, int Chairs, int Useful, int Order);
+    /// <summary>
+    /// When each adult last became free to volunteer, for the waited-longest
+    /// tie-break: when they signed in, or when the last board they sat on was
+    /// completed, whichever is later. Nothing stores the second, so it is read
+    /// from the Completed scouts, whose LastUpdateTime is when the result was
+    /// recorded and whose member list names who sat. A reset board never
+    /// happened and keeps no member list, so the adult's earlier wait stands.
+    /// </summary>
+    /// <remarks>
+    /// Times are the records' <c>yyyy-MM-dd_HH:mm±hhmm</c> stamps, which sort
+    /// ordinally within one event night. The member list is comma-joined and
+    /// read back from the CSV with '~'; an ID whose name had a comma also holds
+    /// a '~', so each whole ID is looked for between separators rather than
+    /// splitting the list. The same helper is freeSinceTimes in the Java
+    /// version and BoardSuggestion.freeSinceTimes on the Mac.
+    /// </remarks>
+    public static Dictionary<string, string> FreeSinceTimes(
+        IEnumerable<(string Id, string RegTime)> adults,
+        IEnumerable<(string Status, string MemberIds, string LastUpdate)> scouts)
+    {
+        var boards = scouts
+            .Where(s => s.Status == BoardStatus.Completed && s.MemberIds.Length > 0 && s.LastUpdate.Length > 0)
+            .Select(s => (List: "~" + s.MemberIds.Replace(',', '~') + "~", s.LastUpdate))
+            .ToList();
+        var since = new Dictionary<string, string>();
+        foreach (var (id, regTime) in adults)
+        {
+            var latest = regTime;
+            var needle = "~" + id + "~";
+            foreach (var (list, lastUpdate) in boards)
+            {
+                if (list.Contains(needle, StringComparison.Ordinal) && string.CompareOrdinal(lastUpdate, latest) > 0)
+                {
+                    latest = lastUpdate;
+                }
+            }
+
+            since[id] = latest;
+        }
+
+        return since;
+    }
+
+    private sealed record Candidate(AdultInfo Adult, int Chairs, int Useful, string Since, int Order);
 
     private static string Profile(AdultInfo a) => a.UnitName + "|" + a.FinalBoard + "|" + a.ProjectReview;
 

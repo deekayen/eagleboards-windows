@@ -343,7 +343,14 @@ public partial class MainWindow : Window
                 .OrderBy(s => s.RegNumSort, StringComparer.Ordinal)
                 .Select(s => s.Info)
                 .ToList();
-            var pick = SchedulerLogic.AutoSelect(scout.Info, _adults.Select(a => a.Info).ToList(), _rooms.Select(r => r.Info), waiting);
+            // How long each adult has waited to volunteer: since sign-in, or
+            // since the last board they sat on was completed.
+            var since = SchedulerLogic.FreeSinceTimes(
+                _svc.Snapshot(DataTable.Adults).Select(r => (r.GetValueOrDefault("ID", ""), r.GetValueOrDefault("RegTime", ""))),
+                _svc.Snapshot(DataTable.Scouts).Select(r => (r.GetValueOrDefault("Status", ""),
+                    r.GetValueOrDefault("BoardMembersIDs", ""), r.GetValueOrDefault("LastUpdateTime", ""))));
+            var adults = _adults.Select(a => a.Info with { FreeSince = since.GetValueOrDefault(a.Id, "") }).ToList();
+            var pick = SchedulerLogic.AutoSelect(scout.Info, adults, _rooms.Select(r => r.Info), waiting);
             foreach (var id in pick.AllAdultIds)
             {
                 if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
