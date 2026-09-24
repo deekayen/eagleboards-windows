@@ -1,66 +1,349 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- The app icon: an Eagle rank patch. An original drawing in the patch's
-       red, white and blue, not the official artwork. scripts/make-icon.sh
-       renders this into EagleBoards.ico. -->
+  <!-- The app icon: the cast eagle that hangs from the Eagle Scout medal.
+       An original drawing, not the official artwork. Drawn as a height map
+       (lighter is higher) and turned to metal by the "cast" filter.
+
+       scripts/make-icon.sh builds EagleBoards.ico from this file. Up to
+       64 px it drops the "fine" texture, shows the "bold" feather
+       splits and uses the "cast-small" filter; up to 32 px it also drops
+       the "letters". -->
   <defs>
+    <!-- Cast metal: the relief's lightness is its height. Blur it into a
+         surface, light it from the top left, darken the recesses the way an
+         antique finish does, and edge it dark so it holds on any background. -->
+    <filter id="cast" filterUnits="userSpaceOnUse" x="0" y="0" width="256" height="256" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="height"/>
+      <feGaussianBlur in="height" stdDeviation="0.7" result="bump"/>
+      <feColorMatrix in="bump" type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 0 1" result="level"/>
+      <feComponentTransfer in="level" result="albedo">
+        <feFuncR type="table" tableValues="0.09 0.15 0.23 0.35 0.50 0.64 0.77 0.90"/>
+        <feFuncG type="table" tableValues="0.09 0.145 0.22 0.34 0.49 0.625 0.755 0.88"/>
+        <feFuncB type="table" tableValues="0.08 0.13 0.20 0.31 0.45 0.58 0.71 0.84"/>
+      </feComponentTransfer>
+      <feDiffuseLighting in="bump" surfaceScale="3.2" diffuseConstant="1.18" result="diffuse">
+        <feDistantLight azimuth="225" elevation="52"/>
+      </feDiffuseLighting>
+      <feBlend in="albedo" in2="diffuse" mode="multiply" result="shaded"/>
+      <feSpecularLighting in="bump" surfaceScale="3.2" specularConstant="0.9" specularExponent="22" result="spec">
+        <feDistantLight azimuth="225" elevation="38"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="shaded" operator="arithmetic" k2="0.7" k3="1" result="lit"/>
+      <feComposite in="lit" in2="SourceAlpha" operator="in" result="metal"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.5" result="grown"/>
+      <feFlood flood-color="#262523"/>
+      <feComposite in2="grown" operator="in" result="edge"/>
+      <feMerge><feMergeNode in="edge"/><feMergeNode in="metal"/></feMerge>
+    </filter>
+    <!-- The same finish for 64 px and below, where only the big shapes
+         survive: a broader bevel and a heavier edge. -->
+    <filter id="cast-small" filterUnits="userSpaceOnUse" x="0" y="0" width="256" height="256" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="height"/>
+      <feGaussianBlur in="height" stdDeviation="3" result="bump"/>
+      <feColorMatrix in="bump" type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 0 1" result="level"/>
+      <feComponentTransfer in="level" result="albedo">
+        <feFuncR type="table" tableValues="0.09 0.15 0.23 0.35 0.50 0.64 0.77 0.90"/>
+        <feFuncG type="table" tableValues="0.09 0.145 0.22 0.34 0.49 0.625 0.755 0.88"/>
+        <feFuncB type="table" tableValues="0.08 0.13 0.20 0.31 0.45 0.58 0.71 0.84"/>
+      </feComponentTransfer>
+      <feDiffuseLighting in="bump" surfaceScale="3" diffuseConstant="1.18" result="diffuse">
+        <feDistantLight azimuth="225" elevation="52"/>
+      </feDiffuseLighting>
+      <feBlend in="albedo" in2="diffuse" mode="multiply" result="shaded"/>
+      <feSpecularLighting in="bump" surfaceScale="3" specularConstant="0.9" specularExponent="22" result="spec">
+        <feDistantLight azimuth="225" elevation="38"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="shaded" operator="arithmetic" k2="0.7" k3="1" result="lit"/>
+      <feComposite in="lit" in2="SourceAlpha" operator="in" result="metal"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="5" result="grown"/>
+      <feFlood flood-color="#262523"/>
+      <feComposite in2="grown" operator="in" result="edge"/>
+      <feMerge><feMergeNode in="edge"/><feMergeNode in="metal"/></feMerge>
+    </filter>
+    <clipPath id="wing-clip"><path d="M 8 12 C 30 21, 60 36, 81 46 Q 88 49.5, 88 58 C 88 72, 91 86, 100 98 L 113 112 L 116 194 L 97 191 Q 93.1 188.5 90.5 181.6 Q 82.7 181.9 79.3 179.5 Q 75.5 176.8 73.4 169.7 Q 65.8 169.3 62.6 166.6 Q 59.2 163.3 58.5 156 Q 51 154.3 48.3 151 Q 45.5 147.3 45.7 140 Q 38.5 137.2 36.3 133.6 Q 33.9 129.6 35 122.3 Q 28.2 118.8 26.4 115 Q 24.4 110.8 26.3 103.6 Q 19.8 99.4 18.4 95.4 Q 16.9 91 19.5 84.1 Q 13.6 79.2 12.7 75.1 Q 11.9 70.5 15.5 64.1 Q 10.2 58.4 9.7 54.2 Q 9.1 49.6 13.1 43.3 Q 8.2 37.4 8 33.1 Q 7.9 28.5 10.9 22.6 Q 7.9 16.2 8 12 Z"/></clipPath>
+    <clipPath id="body-clip"><path d="M 100 92 C 98 116, 100 136, 108 158 L 148 158 C 156 136, 158 116, 156 92 Z"/></clipPath>
+    <clipPath id="head-clip"><path d="M 103 100 C 103 92, 107 85, 112 80 C 110 79, 107 78, 105 76.5 C 103 75, 101.5 75, 100.5 77.5 C 98.5 70, 100 61, 107 55.5 C 111 52.5, 115 51.5, 119 51 C 124 46.5, 133 45, 143 46 C 153 47, 159 53, 160 62 C 161 73, 161 86, 165 98 L 158 108 L 104 108 Z"/></clipPath>
+    <clipPath id="thigh-clip"><path d="M 121 145 C 103 154, 88 178, 91 209 L 127.6 209 C 127.6 186, 126.4 163, 121 145 Z"/></clipPath>
+    <clipPath id="letter-clip"><rect x="0" y="111" width="256" height="40"/></clipPath>
+    <clipPath id="letter-edge-clip"><rect x="0" y="109.3" width="256" height="43.4"/></clipPath>
+    <!-- Left wing: flight feathers, coverts at the shoulder, the rim along the top. -->
     <g id="wing">
-      <!-- Left wing, raised; the right is this mirrored. -->
-      <path d="M116 112 C98 96 72 78 30 44 C34 62 40 72 48 80 C40 80 34 78 26 74
-               C32 90 40 98 52 104 C44 106 38 104 30 102 C38 116 50 122 64 124
-               C58 128 50 128 44 128 C56 140 76 142 96 138 C104 136 112 130 116 124 Z"
-            fill="#0F2A5C"/>
-      <path d="M112 116 C96 104 74 90 46 66 M104 124 C88 116 70 106 52 96 M96 132 C82 128 68 122 58 116"
-            fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+      <path d="M 8 12 C 30 21, 60 36, 81 46 Q 88 49.5, 88 58 C 88 72, 91 86, 100 98 L 113 112 L 116 194 L 97 191 Q 93.1 188.5 90.5 181.6 Q 82.7 181.9 79.3 179.5 Q 75.5 176.8 73.4 169.7 Q 65.8 169.3 62.6 166.6 Q 59.2 163.3 58.5 156 Q 51 154.3 48.3 151 Q 45.5 147.3 45.7 140 Q 38.5 137.2 36.3 133.6 Q 33.9 129.6 35 122.3 Q 28.2 118.8 26.4 115 Q 24.4 110.8 26.3 103.6 Q 19.8 99.4 18.4 95.4 Q 16.9 91 19.5 84.1 Q 13.6 79.2 12.7 75.1 Q 11.9 70.5 15.5 64.1 Q 10.2 58.4 9.7 54.2 Q 9.1 49.6 13.1 43.3 Q 8.2 37.4 8 33.1 Q 7.9 28.5 10.9 22.6 Q 7.9 16.2 8 12 Z" fill="#999999"/>
+      <g class="bold" display="none" clip-path="url(#wing-clip)" fill="none" stroke="#4c4c4c" stroke-width="7" stroke-linecap="round">
+        <path d="M 94.2 137.7 L 73.4 169.7"/>
+        <path d="M 80.7 116.6 L 45.7 140"/>
+        <path d="M 67.9 95 L 26.3 103.6"/>
+        <path d="M 58.9 71.6 L 15.5 64.1"/>
+      </g>
+      <g class="fine" clip-path="url(#wing-clip)" fill="none" stroke-linecap="round">
+        <g stroke="#808080" stroke-width="7.5" stroke-dasharray="1.3 2.1">
+          <path d="M 104 150 L 97.4 188.5"/>
+          <path d="M 99.1 139.4 L 80.5 177.1"/>
+          <path d="M 93.9 128.9 L 64.5 164.3"/>
+          <path d="M 87.8 119 L 50.7 149.1"/>
+          <path d="M 81.5 109.1 L 39 132.2"/>
+          <path d="M 75.2 99.2 L 29.3 114"/>
+          <path d="M 69.8 88.9 L 21.5 95"/>
+          <path d="M 65.3 78.1 L 15.9 75.3"/>
+          <path d="M 62.2 66.8 L 12.8 54.9"/>
+          <path d="M 59.5 55.4 L 11.1 34.5"/>
+          <path d="M 57 44 L 10.9 13.9"/>
+        </g>
+        <g stroke="#b2b2b2" stroke-width="1.3">
+          <path d="M 104 150 L 97.7 186.9"/>
+          <path d="M 99.1 139.4 L 81.3 175.5"/>
+          <path d="M 93.9 128.9 L 65.7 162.8"/>
+          <path d="M 87.8 119 L 52.3 147.8"/>
+          <path d="M 81.5 109.1 L 40.8 131.2"/>
+          <path d="M 75.2 99.2 L 31.2 113.4"/>
+          <path d="M 69.8 88.9 L 23.5 94.8"/>
+          <path d="M 65.3 78.1 L 18 75.4"/>
+          <path d="M 62.2 66.8 L 14.9 55.5"/>
+          <path d="M 59.5 55.4 L 13.1 35.4"/>
+          <path d="M 57 44 L 12.9 15.2"/>
+        </g>
+        <g stroke="#4c4c4c" stroke-width="1.9">
+          <path d="M 103.2 139.1 L 90.5 181.6"/>
+          <path d="M 100 128.8 L 73.4 169.7"/>
+          <path d="M 95.7 119.1 L 58.5 156"/>
+          <path d="M 90.5 110.1 L 45.7 140"/>
+          <path d="M 84.9 101.4 L 35 122.3"/>
+          <path d="M 79.5 92.6 L 26.3 103.6"/>
+          <path d="M 74.8 83.4 L 19.5 84.1"/>
+          <path d="M 71 73.7 L 15.5 64.1"/>
+          <path d="M 68 63.8 L 13.1 43.3"/>
+          <path d="M 65.3 53.8 L 10.9 22.6"/>
+        </g>
+      </g>
+      <g class="fine" clip-path="url(#wing-clip)" fill="#b2b2b2" stroke="#4c4c4c" stroke-width="1.3">
+        <circle cx="34.5" cy="55.3" r="5.8"/>
+        <circle cx="43" cy="59.4" r="5.8"/>
+        <circle cx="51.5" cy="63.4" r="5.8"/>
+        <circle cx="60.1" cy="67.1" r="5.8"/>
+        <circle cx="68.7" cy="70.9" r="5.8"/>
+        <circle cx="65.2" cy="67.5" r="5.8"/>
+        <circle cx="60.9" cy="59.3" r="5.8"/>
+        <circle cx="61.3" cy="68" r="5.8"/>
+        <circle cx="61.8" cy="77.4" r="5.8"/>
+        <circle cx="63.2" cy="86.7" r="5.8"/>
+        <circle cx="65.7" cy="95.7" r="5.8"/>
+        <circle cx="69.6" cy="104.3" r="5.8"/>
+        <circle cx="74.8" cy="112.1" r="5.8"/>
+        <circle cx="79.6" cy="120.1" r="5.8"/>
+        <circle cx="42.3" cy="49.9" r="5.8"/>
+        <circle cx="50.7" cy="54" r="5.8"/>
+        <circle cx="59.3" cy="57.9" r="5.8"/>
+        <circle cx="68" cy="61.5" r="5.8"/>
+        <circle cx="72.6" cy="63.2" r="5.8"/>
+        <circle cx="69.2" cy="60.2" r="5.8"/>
+        <circle cx="69.5" cy="69.6" r="5.8"/>
+        <circle cx="70.3" cy="78.9" r="5.8"/>
+        <circle cx="72" cy="88.2" r="5.8"/>
+        <circle cx="75.1" cy="97" r="5.8"/>
+        <circle cx="79.9" cy="105.1" r="5.8"/>
+        <circle cx="85" cy="113" r="5.8"/>
+        <circle cx="89.7" cy="121.1" r="5.8"/>
+        <circle cx="41.5" cy="40.5" r="5.8"/>
+        <circle cx="50" cy="44.5" r="5.8"/>
+        <circle cx="58.5" cy="48.5" r="5.8"/>
+        <circle cx="67.1" cy="52.3" r="5.8"/>
+        <circle cx="75.7" cy="56.1" r="5.8"/>
+        <circle cx="77.4" cy="60" r="5.8"/>
+        <circle cx="77.7" cy="69.4" r="5.8"/>
+        <circle cx="78.5" cy="78.7" r="5.8"/>
+        <circle cx="80.4" cy="88" r="5.8"/>
+        <circle cx="84.1" cy="96.6" r="5.8"/>
+        <circle cx="89.3" cy="104.4" r="5.8"/>
+        <circle cx="94.1" cy="112.4" r="5.8"/>
+      </g>
+      <g clip-path="url(#wing-clip)" fill="none" stroke-linecap="round">
+        <path d="M 8 12 C 30 21, 60 36, 81 46 Q 88 49.5, 88 58 C 88 72, 91 86, 100 98" stroke="#4c4c4c" stroke-width="18"/>
+        <path d="M 8 12 C 30 21, 60 36, 81 46 Q 88 49.5, 88 58 C 88 72, 91 86, 100 98" stroke="#ebebeb" stroke-width="14.5"/>
+      </g>
+    </g>
+    <g id="thigh">
+      <path d="M 121 145 C 103 154, 88 178, 91 209 L 127.6 209 C 127.6 186, 126.4 163, 121 145 Z" fill="#c7c7c7" stroke="#4c4c4c" stroke-width="1.4" stroke-linejoin="round"/>
+      <g class="fine" clip-path="url(#thigh-clip)" fill="none" stroke="#666666" stroke-width="1.2">
+        <path d="M 119 151 C 112 170, 109 188, 109 209"/>
+        <path d="M 117.2 155.6 l -12 8.5 M 117.2 155.6 l 11 7.5"/>
+        <path d="M 115.3 160.2 l -12 8.5 M 115.3 160.2 l 11 7.5"/>
+        <path d="M 113.6 164.9 l -12 8.5 M 113.6 164.9 l 11 7.5"/>
+        <path d="M 112.1 169.6 l -12 8.5 M 112.1 169.6 l 11 7.5"/>
+        <path d="M 111 174.4 l -12 8.5 M 111 174.4 l 11 7.5"/>
+        <path d="M 110.2 179.3 l -12 8.5 M 110.2 179.3 l 11 7.5"/>
+        <path d="M 109.5 184.2 l -12 8.5 M 109.5 184.2 l 11 7.5"/>
+        <path d="M 109.1 189.2 l -12 8.5 M 109.1 189.2 l 11 7.5"/>
+        <path d="M 108.8 194.1 l -12 8.5 M 108.8 194.1 l 11 7.5"/>
+        <path d="M 108.8 199.1 l -12 8.5 M 108.8 199.1 l 11 7.5"/>
+        <path d="M 108.9 204 l -12 8.5 M 108.9 204 l 11 7.5"/>
+      </g>
     </g>
   </defs>
-
-  <!-- Embroidered border and field. -->
-  <ellipse cx="128" cy="128" rx="124" ry="124" fill="#0F2A5C"/>
-  <ellipse cx="128" cy="128" rx="112" ry="112" fill="#FFFFFF"/>
-  <ellipse cx="128" cy="128" rx="118" ry="118" fill="none" stroke="#FFFFFF" stroke-width="3"
-           stroke-dasharray="7 5"/>
-
-  <!-- Wings. -->
-  <use href="#wing"/>
-  <use href="#wing" transform="translate(256 0) scale(-1 1)"/>
-
-  <!-- Tail. -->
-  <path d="M112 160 L104 186 L118 180 L128 190 L138 180 L152 186 L144 160 Z" fill="#0F2A5C"/>
-
-  <!-- Head: white with a gold beak. -->
-  <path d="M112 104 C110 84 120 70 134 68 C146 67 154 74 156 82 L150 92 L146 104 Z" fill="#FFFFFF"
-        stroke="#0F2A5C" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M152 76 C161 76 169 81 169 89 C169 93 166 96 162 96 C163 92 160 90 156 91 L150 92 Z"
-        fill="#E8A317" stroke="#0F2A5C" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M130 77 L149 78" stroke="#0F2A5C" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="142" cy="82" r="3" fill="#0F2A5C"/>
-
-  <!-- Shield on the breast: blue chief over red and white stripes. -->
-  <path d="M104 100 H152 V134 C152 150 142 160 128 166 C114 160 104 150 104 134 Z" fill="#FFFFFF"
-        stroke="#0F2A5C" stroke-width="5" stroke-linejoin="round"/>
-  <clipPath id="shield">
-    <path d="M104 100 H152 V134 C152 150 142 160 128 166 C114 160 104 150 104 134 Z"/>
-  </clipPath>
-  <g clip-path="url(#shield)">
-    <rect x="104" y="100" width="48" height="18" fill="#0F2A5C"/>
-    <rect x="106" y="118" width="7" height="50" fill="#CE1126"/>
-    <rect x="120" y="118" width="8" height="50" fill="#CE1126"/>
-    <rect x="135" y="118" width="7" height="50" fill="#CE1126"/>
-    <rect x="148" y="118" width="6" height="50" fill="#CE1126"/>
+  <g class="relief" filter="url(#cast)">
+    <use href="#wing"/>
+    <use href="#wing" transform="translate(256 0) scale(-1 1)"/>
+    <!-- Breast -->
+    <path d="M 100 92 C 98 116, 100 136, 108 158 L 148 158 C 156 136, 158 116, 156 92 Z" fill="#b8b8b8"/>
+    <g class="fine" clip-path="url(#body-clip)" fill="#b8b8b8" stroke="#595959" stroke-width="1.2" stroke-linejoin="round">
+      <path d="M 85.8 146 C 85.8 155.6, 89.5 159.6, 92 162 C 94.5 159.6, 98.2 155.6, 98.2 146 Z M 92 154.8 L 92 159.8"/>
+      <path d="M 98.2 146 C 98.2 155.6, 102 159.6, 104.5 162 C 107 159.6, 110.8 155.6, 110.8 146 Z M 104.5 154.8 L 104.5 159.8"/>
+      <path d="M 110.8 146 C 110.8 155.6, 114.5 159.6, 117 162 C 119.5 159.6, 123.2 155.6, 123.2 146 Z M 117 154.8 L 117 159.8"/>
+      <path d="M 123.2 146 C 123.2 155.6, 127 159.6, 129.5 162 C 132 159.6, 135.8 155.6, 135.8 146 Z M 129.5 154.8 L 129.5 159.8"/>
+      <path d="M 135.8 146 C 135.8 155.6, 139.5 159.6, 142 162 C 144.5 159.6, 148.2 155.6, 148.2 146 Z M 142 154.8 L 142 159.8"/>
+      <path d="M 148.2 146 C 148.2 155.6, 152 159.6, 154.5 162 C 157 159.6, 160.8 155.6, 160.8 146 Z M 154.5 154.8 L 154.5 159.8"/>
+      <path d="M 92 137.6 C 92 147.2, 95.8 151.2, 98.2 153.6 C 100.8 151.2, 104.5 147.2, 104.5 137.6 Z M 98.2 146.4 L 98.2 151.4"/>
+      <path d="M 104.5 137.6 C 104.5 147.2, 108.2 151.2, 110.8 153.6 C 113.2 151.2, 117 147.2, 117 137.6 Z M 110.8 146.4 L 110.8 151.4"/>
+      <path d="M 117 137.6 C 117 147.2, 120.8 151.2, 123.2 153.6 C 125.8 151.2, 129.5 147.2, 129.5 137.6 Z M 123.2 146.4 L 123.2 151.4"/>
+      <path d="M 129.5 137.6 C 129.5 147.2, 133.2 151.2, 135.8 153.6 C 138.2 151.2, 142 147.2, 142 137.6 Z M 135.8 146.4 L 135.8 151.4"/>
+      <path d="M 142 137.6 C 142 147.2, 145.8 151.2, 148.2 153.6 C 150.8 151.2, 154.5 147.2, 154.5 137.6 Z M 148.2 146.4 L 148.2 151.4"/>
+      <path d="M 154.5 137.6 C 154.5 147.2, 158.2 151.2, 160.8 153.6 C 163.2 151.2, 167 147.2, 167 137.6 Z M 160.8 146.4 L 160.8 151.4"/>
+      <path d="M 85.8 129.2 C 85.8 138.8, 89.5 142.8, 92 145.2 C 94.5 142.8, 98.2 138.8, 98.2 129.2 Z M 92 138 L 92 143"/>
+      <path d="M 98.2 129.2 C 98.2 138.8, 102 142.8, 104.5 145.2 C 107 142.8, 110.8 138.8, 110.8 129.2 Z M 104.5 138 L 104.5 143"/>
+      <path d="M 110.8 129.2 C 110.8 138.8, 114.5 142.8, 117 145.2 C 119.5 142.8, 123.2 138.8, 123.2 129.2 Z M 117 138 L 117 143"/>
+      <path d="M 123.2 129.2 C 123.2 138.8, 127 142.8, 129.5 145.2 C 132 142.8, 135.8 138.8, 135.8 129.2 Z M 129.5 138 L 129.5 143"/>
+      <path d="M 135.8 129.2 C 135.8 138.8, 139.5 142.8, 142 145.2 C 144.5 142.8, 148.2 138.8, 148.2 129.2 Z M 142 138 L 142 143"/>
+      <path d="M 148.2 129.2 C 148.2 138.8, 152 142.8, 154.5 145.2 C 157 142.8, 160.8 138.8, 160.8 129.2 Z M 154.5 138 L 154.5 143"/>
+      <path d="M 92 120.8 C 92 130.4, 95.8 134.4, 98.2 136.8 C 100.8 134.4, 104.5 130.4, 104.5 120.8 Z M 98.2 129.6 L 98.2 134.6"/>
+      <path d="M 104.5 120.8 C 104.5 130.4, 108.2 134.4, 110.8 136.8 C 113.2 134.4, 117 130.4, 117 120.8 Z M 110.8 129.6 L 110.8 134.6"/>
+      <path d="M 117 120.8 C 117 130.4, 120.8 134.4, 123.2 136.8 C 125.8 134.4, 129.5 130.4, 129.5 120.8 Z M 123.2 129.6 L 123.2 134.6"/>
+      <path d="M 129.5 120.8 C 129.5 130.4, 133.2 134.4, 135.8 136.8 C 138.2 134.4, 142 130.4, 142 120.8 Z M 135.8 129.6 L 135.8 134.6"/>
+      <path d="M 142 120.8 C 142 130.4, 145.8 134.4, 148.2 136.8 C 150.8 134.4, 154.5 130.4, 154.5 120.8 Z M 148.2 129.6 L 148.2 134.6"/>
+      <path d="M 154.5 120.8 C 154.5 130.4, 158.2 134.4, 160.8 136.8 C 163.2 134.4, 167 130.4, 167 120.8 Z M 160.8 129.6 L 160.8 134.6"/>
+      <path d="M 85.8 112.4 C 85.8 122, 89.5 126, 92 128.4 C 94.5 126, 98.2 122, 98.2 112.4 Z M 92 121.2 L 92 126.2"/>
+      <path d="M 98.2 112.4 C 98.2 122, 102 126, 104.5 128.4 C 107 126, 110.8 122, 110.8 112.4 Z M 104.5 121.2 L 104.5 126.2"/>
+      <path d="M 110.8 112.4 C 110.8 122, 114.5 126, 117 128.4 C 119.5 126, 123.2 122, 123.2 112.4 Z M 117 121.2 L 117 126.2"/>
+      <path d="M 123.2 112.4 C 123.2 122, 127 126, 129.5 128.4 C 132 126, 135.8 122, 135.8 112.4 Z M 129.5 121.2 L 129.5 126.2"/>
+      <path d="M 135.8 112.4 C 135.8 122, 139.5 126, 142 128.4 C 144.5 126, 148.2 122, 148.2 112.4 Z M 142 121.2 L 142 126.2"/>
+      <path d="M 148.2 112.4 C 148.2 122, 152 126, 154.5 128.4 C 157 126, 160.8 122, 160.8 112.4 Z M 154.5 121.2 L 154.5 126.2"/>
+      <path d="M 92 104 C 92 113.6, 95.8 117.6, 98.2 120 C 100.8 117.6, 104.5 113.6, 104.5 104 Z M 98.2 112.8 L 98.2 117.8"/>
+      <path d="M 104.5 104 C 104.5 113.6, 108.2 117.6, 110.8 120 C 113.2 117.6, 117 113.6, 117 104 Z M 110.8 112.8 L 110.8 117.8"/>
+      <path d="M 117 104 C 117 113.6, 120.8 117.6, 123.2 120 C 125.8 117.6, 129.5 113.6, 129.5 104 Z M 123.2 112.8 L 123.2 117.8"/>
+      <path d="M 129.5 104 C 129.5 113.6, 133.2 117.6, 135.8 120 C 138.2 117.6, 142 113.6, 142 104 Z M 135.8 112.8 L 135.8 117.8"/>
+      <path d="M 142 104 C 142 113.6, 145.8 117.6, 148.2 120 C 150.8 117.6, 154.5 113.6, 154.5 104 Z M 148.2 112.8 L 148.2 117.8"/>
+      <path d="M 154.5 104 C 154.5 113.6, 158.2 117.6, 160.8 120 C 163.2 117.6, 167 113.6, 167 104 Z M 160.8 112.8 L 160.8 117.8"/>
+      <path d="M 85.8 95.6 C 85.8 105.2, 89.5 109.2, 92 111.6 C 94.5 109.2, 98.2 105.2, 98.2 95.6 Z M 92 104.4 L 92 109.4"/>
+      <path d="M 98.2 95.6 C 98.2 105.2, 102 109.2, 104.5 111.6 C 107 109.2, 110.8 105.2, 110.8 95.6 Z M 104.5 104.4 L 104.5 109.4"/>
+      <path d="M 110.8 95.6 C 110.8 105.2, 114.5 109.2, 117 111.6 C 119.5 109.2, 123.2 105.2, 123.2 95.6 Z M 117 104.4 L 117 109.4"/>
+      <path d="M 123.2 95.6 C 123.2 105.2, 127 109.2, 129.5 111.6 C 132 109.2, 135.8 105.2, 135.8 95.6 Z M 129.5 104.4 L 129.5 109.4"/>
+      <path d="M 135.8 95.6 C 135.8 105.2, 139.5 109.2, 142 111.6 C 144.5 109.2, 148.2 105.2, 148.2 95.6 Z M 142 104.4 L 142 109.4"/>
+      <path d="M 148.2 95.6 C 148.2 105.2, 152 109.2, 154.5 111.6 C 157 109.2, 160.8 105.2, 160.8 95.6 Z M 154.5 104.4 L 154.5 109.4"/>
+      <path d="M 92 87.2 C 92 96.8, 95.8 100.8, 98.2 103.2 C 100.8 100.8, 104.5 96.8, 104.5 87.2 Z M 98.2 96 L 98.2 101"/>
+      <path d="M 104.5 87.2 C 104.5 96.8, 108.2 100.8, 110.8 103.2 C 113.2 100.8, 117 96.8, 117 87.2 Z M 110.8 96 L 110.8 101"/>
+      <path d="M 117 87.2 C 117 96.8, 120.8 100.8, 123.2 103.2 C 125.8 100.8, 129.5 96.8, 129.5 87.2 Z M 123.2 96 L 123.2 101"/>
+      <path d="M 129.5 87.2 C 129.5 96.8, 133.2 100.8, 135.8 103.2 C 138.2 100.8, 142 96.8, 142 87.2 Z M 135.8 96 L 135.8 101"/>
+      <path d="M 142 87.2 C 142 96.8, 145.8 100.8, 148.2 103.2 C 150.8 100.8, 154.5 96.8, 154.5 87.2 Z M 148.2 96 L 148.2 101"/>
+      <path d="M 154.5 87.2 C 154.5 96.8, 158.2 100.8, 160.8 103.2 C 163.2 100.8, 167 96.8, 167 87.2 Z M 160.8 96 L 160.8 101"/>
+    </g>
+    <!-- Head -->
+    <path d="M 103 100 C 103 92, 107 85, 112 80 C 110 79, 107 78, 105 76.5 C 103 75, 101.5 75, 100.5 77.5 C 98.5 70, 100 61, 107 55.5 C 111 52.5, 115 51.5, 119 51 C 124 46.5, 133 45, 143 46 C 153 47, 159 53, 160 62 C 161 73, 161 86, 165 98 L 158 108 L 104 108 Z" fill="#d6d6d6"/>
+    <g class="fine" clip-path="url(#head-clip)" fill="#d6d6d6" stroke="#666666" stroke-width="1.1" stroke-linejoin="round">
+      <path d="M 102.2 101 C 102.2 107, 104.5 109.5, 106 111 C 107.5 109.5, 109.8 107, 109.8 101 Z"/>
+      <path d="M 109.8 101 C 109.8 107, 112.1 109.5, 113.6 111 C 115.1 109.5, 117.4 107, 117.4 101 Z"/>
+      <path d="M 117.4 101 C 117.4 107, 119.7 109.5, 121.2 111 C 122.7 109.5, 125 107, 125 101 Z"/>
+      <path d="M 125 101 C 125 107, 127.3 109.5, 128.8 111 C 130.3 109.5, 132.6 107, 132.6 101 Z"/>
+      <path d="M 132.6 101 C 132.6 107, 134.9 109.5, 136.4 111 C 137.9 109.5, 140.2 107, 140.2 101 Z"/>
+      <path d="M 140.2 101 C 140.2 107, 142.5 109.5, 144 111 C 145.5 109.5, 147.8 107, 147.8 101 Z"/>
+      <path d="M 147.8 101 C 147.8 107, 150.1 109.5, 151.6 111 C 153.1 109.5, 155.4 107, 155.4 101 Z"/>
+      <path d="M 155.4 101 C 155.4 107, 157.7 109.5, 159.2 111 C 160.7 109.5, 163 107, 163 101 Z"/>
+      <path d="M 163 101 C 163 107, 165.3 109.5, 166.8 111 C 168.3 109.5, 170.6 107, 170.6 101 Z"/>
+      <path d="M 106 95.6 C 106 101.6, 108.3 104.1, 109.8 105.6 C 111.3 104.1, 113.6 101.6, 113.6 95.6 Z"/>
+      <path d="M 113.6 95.6 C 113.6 101.6, 115.9 104.1, 117.4 105.6 C 118.9 104.1, 121.2 101.6, 121.2 95.6 Z"/>
+      <path d="M 121.2 95.6 C 121.2 101.6, 123.5 104.1, 125 105.6 C 126.5 104.1, 128.8 101.6, 128.8 95.6 Z"/>
+      <path d="M 128.8 95.6 C 128.8 101.6, 131.1 104.1, 132.6 105.6 C 134.1 104.1, 136.4 101.6, 136.4 95.6 Z"/>
+      <path d="M 136.4 95.6 C 136.4 101.6, 138.7 104.1, 140.2 105.6 C 141.7 104.1, 144 101.6, 144 95.6 Z"/>
+      <path d="M 144 95.6 C 144 101.6, 146.3 104.1, 147.8 105.6 C 149.3 104.1, 151.6 101.6, 151.6 95.6 Z"/>
+      <path d="M 151.6 95.6 C 151.6 101.6, 153.9 104.1, 155.4 105.6 C 156.9 104.1, 159.2 101.6, 159.2 95.6 Z"/>
+      <path d="M 159.2 95.6 C 159.2 101.6, 161.5 104.1, 163 105.6 C 164.5 104.1, 166.8 101.6, 166.8 95.6 Z"/>
+      <path d="M 102.2 90.2 C 102.2 96.2, 104.5 98.7, 106 100.2 C 107.5 98.7, 109.8 96.2, 109.8 90.2 Z"/>
+      <path d="M 109.8 90.2 C 109.8 96.2, 112.1 98.7, 113.6 100.2 C 115.1 98.7, 117.4 96.2, 117.4 90.2 Z"/>
+      <path d="M 117.4 90.2 C 117.4 96.2, 119.7 98.7, 121.2 100.2 C 122.7 98.7, 125 96.2, 125 90.2 Z"/>
+      <path d="M 125 90.2 C 125 96.2, 127.3 98.7, 128.8 100.2 C 130.3 98.7, 132.6 96.2, 132.6 90.2 Z"/>
+      <path d="M 132.6 90.2 C 132.6 96.2, 134.9 98.7, 136.4 100.2 C 137.9 98.7, 140.2 96.2, 140.2 90.2 Z"/>
+      <path d="M 140.2 90.2 C 140.2 96.2, 142.5 98.7, 144 100.2 C 145.5 98.7, 147.8 96.2, 147.8 90.2 Z"/>
+      <path d="M 147.8 90.2 C 147.8 96.2, 150.1 98.7, 151.6 100.2 C 153.1 98.7, 155.4 96.2, 155.4 90.2 Z"/>
+      <path d="M 155.4 90.2 C 155.4 96.2, 157.7 98.7, 159.2 100.2 C 160.7 98.7, 163 96.2, 163 90.2 Z"/>
+      <path d="M 163 90.2 C 163 96.2, 165.3 98.7, 166.8 100.2 C 168.3 98.7, 170.6 96.2, 170.6 90.2 Z"/>
+      <path d="M 106 84.8 C 106 90.8, 108.3 93.3, 109.8 94.8 C 111.3 93.3, 113.6 90.8, 113.6 84.8 Z"/>
+      <path d="M 113.6 84.8 C 113.6 90.8, 115.9 93.3, 117.4 94.8 C 118.9 93.3, 121.2 90.8, 121.2 84.8 Z"/>
+      <path d="M 121.2 84.8 C 121.2 90.8, 123.5 93.3, 125 94.8 C 126.5 93.3, 128.8 90.8, 128.8 84.8 Z"/>
+      <path d="M 128.8 84.8 C 128.8 90.8, 131.1 93.3, 132.6 94.8 C 134.1 93.3, 136.4 90.8, 136.4 84.8 Z"/>
+      <path d="M 136.4 84.8 C 136.4 90.8, 138.7 93.3, 140.2 94.8 C 141.7 93.3, 144 90.8, 144 84.8 Z"/>
+      <path d="M 144 84.8 C 144 90.8, 146.3 93.3, 147.8 94.8 C 149.3 93.3, 151.6 90.8, 151.6 84.8 Z"/>
+      <path d="M 151.6 84.8 C 151.6 90.8, 153.9 93.3, 155.4 94.8 C 156.9 93.3, 159.2 90.8, 159.2 84.8 Z"/>
+      <path d="M 159.2 84.8 C 159.2 90.8, 161.5 93.3, 163 94.8 C 164.5 93.3, 166.8 90.8, 166.8 84.8 Z"/>
+      <path d="M 102.2 79.4 C 102.2 85.4, 104.5 87.9, 106 89.4 C 107.5 87.9, 109.8 85.4, 109.8 79.4 Z"/>
+      <path d="M 109.8 79.4 C 109.8 85.4, 112.1 87.9, 113.6 89.4 C 115.1 87.9, 117.4 85.4, 117.4 79.4 Z"/>
+      <path d="M 117.4 79.4 C 117.4 85.4, 119.7 87.9, 121.2 89.4 C 122.7 87.9, 125 85.4, 125 79.4 Z"/>
+      <path d="M 125 79.4 C 125 85.4, 127.3 87.9, 128.8 89.4 C 130.3 87.9, 132.6 85.4, 132.6 79.4 Z"/>
+      <path d="M 132.6 79.4 C 132.6 85.4, 134.9 87.9, 136.4 89.4 C 137.9 87.9, 140.2 85.4, 140.2 79.4 Z"/>
+      <path d="M 140.2 79.4 C 140.2 85.4, 142.5 87.9, 144 89.4 C 145.5 87.9, 147.8 85.4, 147.8 79.4 Z"/>
+      <path d="M 147.8 79.4 C 147.8 85.4, 150.1 87.9, 151.6 89.4 C 153.1 87.9, 155.4 85.4, 155.4 79.4 Z"/>
+      <path d="M 155.4 79.4 C 155.4 85.4, 157.7 87.9, 159.2 89.4 C 160.7 87.9, 163 85.4, 163 79.4 Z"/>
+      <path d="M 163 79.4 C 163 85.4, 165.3 87.9, 166.8 89.4 C 168.3 87.9, 170.6 85.4, 170.6 79.4 Z"/>
+      <path d="M 106 74 C 106 80, 108.3 82.5, 109.8 84 C 111.3 82.5, 113.6 80, 113.6 74 Z"/>
+      <path d="M 113.6 74 C 113.6 80, 115.9 82.5, 117.4 84 C 118.9 82.5, 121.2 80, 121.2 74 Z"/>
+      <path d="M 121.2 74 C 121.2 80, 123.5 82.5, 125 84 C 126.5 82.5, 128.8 80, 128.8 74 Z"/>
+      <path d="M 128.8 74 C 128.8 80, 131.1 82.5, 132.6 84 C 134.1 82.5, 136.4 80, 136.4 74 Z"/>
+      <path d="M 136.4 74 C 136.4 80, 138.7 82.5, 140.2 84 C 141.7 82.5, 144 80, 144 74 Z"/>
+      <path d="M 144 74 C 144 80, 146.3 82.5, 147.8 84 C 149.3 82.5, 151.6 80, 151.6 74 Z"/>
+      <path d="M 151.6 74 C 151.6 80, 153.9 82.5, 155.4 84 C 156.9 82.5, 159.2 80, 159.2 74 Z"/>
+      <path d="M 159.2 74 C 159.2 80, 161.5 82.5, 163 84 C 164.5 82.5, 166.8 80, 166.8 74 Z"/>
+    </g>
+    <g class="fine" clip-path="url(#head-clip)" fill="none" stroke="#a3a3a3" stroke-width="0.9" stroke-linecap="round">
+      <path d="M 137 50.5 C 145 51.5, 152 55.5, 157 62.5"/>
+      <path d="M 139 53.5 C 146 55.5, 153 59.5, 157.5 67.5"/>
+      <path d="M 141 62.5 C 147 65.5, 154 69.5, 158 78.5"/>
+      <path d="M 143 66.5 C 148 70.5, 155 74.5, 158.5 84.5"/>
+    </g>
+    <path class="head-edge" d="M 104 104 C 103 92, 107 85, 112 80 M 119 51 C 124 46.5, 133 45, 143 46 C 153 47, 159 53, 160 62 C 161 73, 161 86, 165 98" fill="none" stroke="#4c4c4c" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M 119 51 C 115 51.5, 111 52.5, 107 55.5 C 100 61, 98.5 70, 100.5 77.5 C 101.5 75, 103 75, 105 76.5 C 110 74, 116 72.5, 122 70.5 C 119 64, 117 58, 119 51 Z" fill="#e6e6e6" stroke="#4c4c4c" stroke-width="1.4" stroke-linejoin="round"/>
+    <g class="fine" fill="none" stroke-linecap="round">
+      <path d="M 103.5 75.2 C 110 73.2, 117 71.6, 125 70" stroke="#404040" stroke-width="1.8"/>
+      <path d="M 110 60.5 C 112 59.5, 114 60, 115 61.5" stroke="#4c4c4c" stroke-width="1.4"/>
+      <path d="M 134 61 C 140 63, 146 64, 153 63" stroke="#737373" stroke-width="1"/>
+    </g>
+    <ellipse cx="128.5" cy="58.2" rx="4.4" ry="3.6" fill="#595959"/>
+    <circle cx="128" cy="58.4" r="2.2" fill="#d6d6d6"/>
+    <path d="M 119 54.8 C 124 52.2, 131 51.8, 137 53.8" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <path class="fine" d="M 120 56.8 C 125 54.8, 131 54.6, 136.5 56.2" fill="none" stroke="#666666" stroke-width="0.9" stroke-linecap="round"/>
+    <!-- Tail, legs, the bar they grip, talons -->
+    <path d="M 86 229 H 170 C 168 242, 151 250.5, 128 250.5 C 105 250.5, 88 242, 86 229 Z" fill="#949494" stroke="#4c4c4c" stroke-width="1.4"/>
+    <g class="fine" stroke="#4c4c4c" stroke-width="1.3">
+      <path d="M 111 230 L 97 239.7"/>
+      <path d="M 116.7 230 L 107.5 244.9"/>
+      <path d="M 122.4 230 L 117.8 248"/>
+      <path d="M 128 230 L 128 249"/>
+      <path d="M 133.6 230 L 138.2 248"/>
+      <path d="M 139.3 230 L 148.5 244.9"/>
+      <path d="M 145.1 230 L 159 239.7"/>
+    </g>
+    <use href="#thigh"/>
+    <use href="#thigh" transform="translate(256 0) scale(-1 1)"/>
+    <rect x="70" y="207.5" width="116" height="25" rx="7" fill="#b2b2b2" stroke="#4c4c4c" stroke-width="1.4"/>
+    <g class="fine" stroke="#595959" stroke-width="1.3">
+      <path d="M 73 213.8 H 183"/>
+      <path d="M 73 220 H 183"/>
+      <path d="M 73 226.2 H 183"/>
+      <path d="M 78 209 V 231"/>
+      <path d="M 178 209 V 231"/>
+    </g>
+    <g class="fine" fill="#e6e6e6" stroke="#4c4c4c" stroke-width="1.3">
+      <rect x="95.4" y="202" width="9.2" height="33" rx="4.6"/>
+      <path d="M 96.4 212.5 H 103.6 M 96.4 223 H 103.6" stroke="#666666" stroke-width="1.1"/>
+      <rect x="105.8" y="202" width="9.2" height="33" rx="4.6"/>
+      <path d="M 106.8 212.5 H 114 M 106.8 223 H 114" stroke="#666666" stroke-width="1.1"/>
+      <rect x="116.2" y="202" width="9.2" height="33" rx="4.6"/>
+      <path d="M 117.2 212.5 H 124.4 M 117.2 223 H 124.4" stroke="#666666" stroke-width="1.1"/>
+      <rect x="130.6" y="202" width="9.2" height="33" rx="4.6"/>
+      <path d="M 131.6 212.5 H 138.8 M 131.6 223 H 138.8" stroke="#666666" stroke-width="1.1"/>
+      <rect x="141" y="202" width="9.2" height="33" rx="4.6"/>
+      <path d="M 142 212.5 H 149.2 M 142 223 H 149.2" stroke="#666666" stroke-width="1.1"/>
+      <rect x="151.4" y="202" width="9.2" height="33" rx="4.6"/>
+      <path d="M 152.4 212.5 H 159.6 M 152.4 223 H 159.6" stroke="#666666" stroke-width="1.1"/>
+    </g>
+    <!-- B S A -->
+    <g class="letters" fill="none" stroke-linejoin="miter" stroke-miterlimit="4">
+      <path clip-path="url(#letter-edge-clip)" d="M 75.5 147.5 H 60.5 V 114.5 H 73.5 A 8.25 8.25 0 0 1 73.5 131 H 60.5 M 60.5 131 H 75.5 A 8.25 8.25 0 0 1 75.5 147.5 M 136 117.7 A 10.2 8.2 0 1 0 128 131 A 11.2 8.2 0 1 1 119.2 144.3 M 170.8 156 L 184 106 L 197.2 156 M 175.5 139 H 192.5" stroke="#666666" stroke-width="9.6"/>
+      <path clip-path="url(#letter-clip)" d="M 75.5 147.5 H 60.5 V 114.5 H 73.5 A 8.25 8.25 0 0 1 73.5 131 H 60.5 M 60.5 131 H 75.5 A 8.25 8.25 0 0 1 75.5 147.5 M 136 117.7 A 10.2 8.2 0 1 0 128 131 A 11.2 8.2 0 1 1 119.2 144.3 M 170.8 156 L 184 106 L 197.2 156 M 175.5 139 H 192.5" stroke="#ffffff" stroke-width="6.3"/>
+    </g>
   </g>
-  <circle cx="116" cy="109" r="2.2" fill="#FFFFFF"/>
-  <circle cx="128" cy="109" r="2.2" fill="#FFFFFF"/>
-  <circle cx="140" cy="109" r="2.2" fill="#FFFFFF"/>
-
-  <!-- Scroll. -->
-  <path d="M40 188 L62 180 L62 214 L40 222 L50 205 Z" fill="#9E0C1D"/>
-  <path d="M216 188 L194 180 L194 214 L216 222 L206 205 Z" fill="#9E0C1D"/>
-  <path d="M58 180 C90 192 166 192 198 180 L198 210 C166 222 90 222 58 210 Z" fill="#CE1126"
-        stroke="#0F2A5C" stroke-width="3" stroke-linejoin="round"/>
-  <text x="128" y="206" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-        font-weight="bold" font-size="19" fill="#FFFFFF" letter-spacing="1">BE PREPARED</text>
-
-  <!-- EAGLE across the top of the field. -->
-  <text x="128" y="50" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-        font-weight="bold" font-size="24" fill="#CE1126" letter-spacing="3">EAGLE</text>
 </svg>
