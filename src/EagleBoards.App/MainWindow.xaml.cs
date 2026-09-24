@@ -336,7 +336,14 @@ public partial class MainWindow : Window
         }
         else if (BoardStatus.IsWaiting(scout.Status))
         {
-            var pick = SchedulerLogic.AutoSelect(scout.Info, _adults.Select(a => a.Info).ToList(), _rooms.Select(r => r.Info));
+            // The other waiting youth in queue order (pre-registered first), so
+            // the proposal keeps chairs and adults free for the boards to come.
+            var waiting = _scouts
+                .Where(s => s.Id != scout.Id && BoardStatus.IsWaiting(s.Status))
+                .OrderBy(s => s.RegNumSort, StringComparer.Ordinal)
+                .Select(s => s.Info)
+                .ToList();
+            var pick = SchedulerLogic.AutoSelect(scout.Info, _adults.Select(a => a.Info).ToList(), _rooms.Select(r => r.Info), waiting);
             foreach (var id in pick.AllAdultIds)
             {
                 if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
