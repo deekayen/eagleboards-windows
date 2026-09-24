@@ -1,7 +1,8 @@
 <Window x:Class="EagleBoards.App.HelpWindow"
+        Icon="/Assets/EagleBoards.ico"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Help - Review Board Scheduler" Width="820" Height="760" WindowStartupLocation="CenterOwner">
+        Title="Help - Eagle Board Scheduler" Width="820" Height="760" WindowStartupLocation="CenterOwner">
   <FlowDocumentScrollViewer VerticalScrollBarVisibility="Auto">
     <FlowDocument FontFamily="Segoe UI" FontSize="14" PagePadding="28,20" ColumnWidth="10000">
       <FlowDocument.Resources>
@@ -15,7 +16,7 @@
         </Style>
       </FlowDocument.Resources>
 
-      <Paragraph FontSize="24" FontWeight="SemiBold" Margin="0,0,0,4">Review Board Scheduler</Paragraph>
+      <Paragraph FontSize="24" FontWeight="SemiBold" Margin="0,0,0,4">Eagle Board Scheduler</Paragraph>
       <Paragraph Foreground="#555">Youth and adults sign in on the check-in website. Everything else happens in this window.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Setting up the evening</Paragraph>
@@ -50,7 +51,7 @@
       <Paragraph Style="{StaticResource H}">Who may sit on a board</Paragraph>
       <List>
         <ListItem><Paragraph>A board of review has three to six members (Guide to Advancement 8.0.0.3). Fewer is refused; four to six asks you to confirm; seven is refused. A project proposal review is not a board of review; this district runs it with two, up to six.</Paragraph></ListItem>
-        <ListItem><Paragraph>The chair must be someone whose role for that board type is <Bold>Chair</Bold>, and must sit on the board. If the qualified chairs are all busy, promote someone on the <Bold>Admin tables</Bold> (Adults tab), rather than seating a Member as chair.</Paragraph></ListItem>
+        <ListItem><Paragraph>The chair must be someone whose role for that board type is <Bold>Chair</Bold>, and must sit on the board. If the qualified chairs are all busy, promote someone on the <Bold>Admin Tables</Bold> (Adults tab), rather than seating a Member as chair.</Paragraph></ListItem>
         <ListItem><Paragraph>Adults from the youth's own unit get a warning naming every one of them. This council doesn't permit them; you may override down to the national rule (GTA 8.0.3.0 #2), which still needs one member from outside the unit. A board made entirely of the youth's unit is refused.</Paragraph></ListItem>
         <ListItem><Paragraph>An adult already on a board, disabled for the night, or Unavailable for that board type can't be seated.</Paragraph></ListItem>
       </List>
@@ -61,11 +62,11 @@
 
       <Paragraph Style="{StaticResource H}">Board timers</Paragraph>
       <Paragraph>Each room holding a board shows how long it has been in its current phase. A seated board turns red when it has been convening longer than <Italic>Convene Red</Italic> (30 minutes by default); a review in progress turns orange, then red, at the Final or Project thresholds.
-        Change them in <Bold>Settings</Bold>. They are prompts, not limits.</Paragraph>
+        Change them in <Bold>Tools &gt; Settings</Bold>. They are prompts, not limits.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Admin tables and reports</Paragraph>
-      <Paragraph><Bold>Admin tables</Bold> lists every record: tonight's youth and adults, the pre-registered youth, the cumulative adult history, and rooms. Double-click a cell to edit it. Each tab can be exported to CSV.
-        <Bold>Report</Bold> saves tonight's board results as a CSV file for Excel.</Paragraph>
+      <Paragraph><Bold>View &gt; Admin Tables</Bold> lists every record: tonight's youth and adults, the pre-registered youth, the cumulative adult history, and rooms. Double-click a cell to edit it. Each tab can be exported to CSV.
+        <Bold>File &gt; Save Report</Bold> saves tonight's board results as a CSV file for Excel.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Where the data is</Paragraph>
       <Paragraph>Each event night has its own folder named by date inside the data folder, holding scouts.csv, adults.csv, rooms.csv and scouts_scheduled.csv. The adult history accumulates across every night.

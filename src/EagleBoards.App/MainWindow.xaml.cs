@@ -53,7 +53,7 @@ public partial class MainWindow : Window
         _session = session;
         _svc = session.Service;
         InitializeComponent();
-        Title = "Review Board Scheduler " + AppVersion.Text;
+        Title = "Eagle Board Scheduler " + AppVersion.Text;
 
         _scoutView = new ListCollectionView(_scouts) { Filter = o => ScoutVisible((ScoutRow)o), IsLiveFiltering = true, IsLiveSorting = true };
         _scoutView.LiveFilteringProperties.Add(nameof(ScoutRow.Status));
@@ -100,6 +100,7 @@ public partial class MainWindow : Window
         _poll.Tick += (_, _) => RefreshAll();
 
         InputBindings.Add(new KeyBinding(new RelayCommand(RefreshAll), Key.F5, ModifierKeys.None));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => OnHelp(this, new RoutedEventArgs())), Key.F1, ModifierKeys.None));
         Closing += OnClosing;
 
         RefreshAll();
@@ -939,7 +940,7 @@ public partial class MainWindow : Window
     }
 
     // ------------------------------------------------------------------
-    // Toolbar
+    // Menus and toolbar
     // ------------------------------------------------------------------
 
     private void OnRefresh(object sender, RoutedEventArgs e) => RefreshAll();
@@ -993,6 +994,8 @@ public partial class MainWindow : Window
     private void OnOpenCheckIn(object sender, RoutedEventArgs e) => OpenUrl(_session.LocalUrl);
 
     private void OnHelp(object sender, RoutedEventArgs e) => new HelpWindow { Owner = this }.Show();
+
+    private void OnExit(object sender, RoutedEventArgs e) => Close();
 
     private void OnUrlClicked(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {

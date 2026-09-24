@@ -4,7 +4,7 @@ namespace EagleBoards.App;
 internal static class DefaultConfig
 {
     public const string Text = """
-        # Review Board Scheduler configuration
+        # Eagle Board Scheduler configuration
         # Edit the values after each '='. Lines starting with # are comments.
         # The Settings window edits these too (and rewrites the file without comments).
 

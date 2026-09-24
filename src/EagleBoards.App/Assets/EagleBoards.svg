@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- The app icon: an Eagle rank patch. An original drawing in the patch's
+       red, white and blue, not the official artwork. scripts/make-icon.sh
+       renders this into EagleBoards.ico. -->
+  <defs>
+    <g id="wing">
+      <!-- Left wing, raised; the right is this mirrored. -->
+      <path d="M116 112 C98 96 72 78 30 44 C34 62 40 72 48 80 C40 80 34 78 26 74
+               C32 90 40 98 52 104 C44 106 38 104 30 102 C38 116 50 122 64 124
+               C58 128 50 128 44 128 C56 140 76 142 96 138 C104 136 112 130 116 124 Z"
+            fill="#0F2A5C"/>
+      <path d="M112 116 C96 104 74 90 46 66 M104 124 C88 116 70 106 52 96 M96 132 C82 128 68 122 58 116"
+            fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+    </g>
+  </defs>
+
+  <!-- Embroidered border and field. -->
+  <ellipse cx="128" cy="128" rx="124" ry="124" fill="#0F2A5C"/>
+  <ellipse cx="128" cy="128" rx="112" ry="112" fill="#FFFFFF"/>
+  <ellipse cx="128" cy="128" rx="118" ry="118" fill="none" stroke="#FFFFFF" stroke-width="3"
+           stroke-dasharray="7 5"/>
+
+  <!-- Wings. -->
+  <use href="#wing"/>
+  <use href="#wing" transform="translate(256 0) scale(-1 1)"/>
+
+  <!-- Tail. -->
+  <path d="M112 160 L104 186 L118 180 L128 190 L138 180 L152 186 L144 160 Z" fill="#0F2A5C"/>
+
+  <!-- Head: white with a gold beak. -->
+  <path d="M112 104 C110 84 120 70 134 68 C146 67 154 74 156 82 L150 92 L146 104 Z" fill="#FFFFFF"
+        stroke="#0F2A5C" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M152 76 C161 76 169 81 169 89 C169 93 166 96 162 96 C163 92 160 90 156 91 L150 92 Z"
+        fill="#E8A317" stroke="#0F2A5C" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M130 77 L149 78" stroke="#0F2A5C" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="142" cy="82" r="3" fill="#0F2A5C"/>
+
+  <!-- Shield on the breast: blue chief over red and white stripes. -->
+  <path d="M104 100 H152 V134 C152 150 142 160 128 166 C114 160 104 150 104 134 Z" fill="#FFFFFF"
+        stroke="#0F2A5C" stroke-width="5" stroke-linejoin="round"/>
+  <clipPath id="shield">
+    <path d="M104 100 H152 V134 C152 150 142 160 128 166 C114 160 104 150 104 134 Z"/>
+  </clipPath>
+  <g clip-path="url(#shield)">
+    <rect x="104" y="100" width="48" height="18" fill="#0F2A5C"/>
+    <rect x="106" y="118" width="7" height="50" fill="#CE1126"/>
+    <rect x="120" y="118" width="8" height="50" fill="#CE1126"/>
+    <rect x="135" y="118" width="7" height="50" fill="#CE1126"/>
+    <rect x="148" y="118" width="6" height="50" fill="#CE1126"/>
+  </g>
+  <circle cx="116" cy="109" r="2.2" fill="#FFFFFF"/>
+  <circle cx="128" cy="109" r="2.2" fill="#FFFFFF"/>
+  <circle cx="140" cy="109" r="2.2" fill="#FFFFFF"/>
+
+  <!-- Scroll. -->
+  <path d="M40 188 L62 180 L62 214 L40 222 L50 205 Z" fill="#9E0C1D"/>
+  <path d="M216 188 L194 180 L194 214 L216 222 L206 205 Z" fill="#9E0C1D"/>
+  <path d="M58 180 C90 192 166 192 198 180 L198 210 C166 222 90 222 58 210 Z" fill="#CE1126"
+        stroke="#0F2A5C" stroke-width="3" stroke-linejoin="round"/>
+  <text x="128" y="206" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+        font-weight="bold" font-size="19" fill="#FFFFFF" letter-spacing="1">BE PREPARED</text>
+
+  <!-- EAGLE across the top of the field. -->
+  <text x="128" y="50" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+        font-weight="bold" font-size="24" fill="#CE1126" letter-spacing="3">EAGLE</text>
+</svg>

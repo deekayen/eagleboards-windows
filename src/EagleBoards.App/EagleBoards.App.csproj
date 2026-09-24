@@ -9,6 +9,8 @@
     <RootNamespace>EagleBoards.App</RootNamespace>
     <AssemblyName>EagleBoards</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Eagle rank patch; drawn in Assets/EagleBoards.svg, packed by scripts/make-icon.sh. -->
+    <ApplicationIcon>Assets\EagleBoards.ico</ApplicationIcon>
     <!-- WFO0003 wants WinForms DPI configured in code; this is a WPF app, where
          per-monitor DPI awareness belongs in the manifest. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -33,6 +35,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EagleBoards.Web\EagleBoards.Web.csproj" />
+  </ItemGroup>
+
+  <!-- Also a WPF resource, so every window's title bar and taskbar button show it. -->
+  <ItemGroup>
+    <Resource Include="Assets\EagleBoards.ico" />
   </ItemGroup>
 
   <ItemGroup>

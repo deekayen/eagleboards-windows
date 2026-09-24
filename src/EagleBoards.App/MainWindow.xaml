@@ -1,8 +1,9 @@
 <Window x:Class="EagleBoards.App.MainWindow"
+        Icon="/Assets/EagleBoards.ico"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:EagleBoards.App"
-        Title="Review Board Scheduler" Width="1400" Height="900" MinWidth="900" MinHeight="600"
+        Title="Eagle Board Scheduler" Width="1400" Height="900" MinWidth="900" MinHeight="600"
         WindowState="Maximized" FontSize="13" Background="#F4F3EF">
 
   <Window.Resources>
@@ -73,18 +74,36 @@
   <Grid>
     <DockPanel>
 
-      <!-- Main toolbar -->
-      <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="{StaticResource PanelBorder}" BorderThickness="0,0,0,1" Background="#FBFAF7">
+      <Menu DockPanel.Dock="Top" Padding="2" Background="#FBFAF7">
+        <MenuItem Header="_File">
+          <MenuItem Header="Save _Report..." ToolTip="Save the evening's board results as a CSV file" Click="OnReport" />
+          <MenuItem Header="Open _Check-in Page" ToolTip="Open the sign-in website in a browser on this computer" Click="OnOpenCheckIn" />
+          <Separator />
+          <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="OnExit" />
+        </MenuItem>
+        <MenuItem Header="_View">
+          <MenuItem Header="_Refresh" InputGestureText="F5" Click="OnRefresh" />
+          <MenuItem Header="_Admin Tables..." ToolTip="View and edit every record: youth, adults, adult history, rooms" Click="OnAdmin" />
+        </MenuItem>
+        <MenuItem Header="R_ooms">
+          <MenuItem Header="_Add Room..." Click="OnAddRoom" />
+          <MenuItem Header="_Remove Room" ToolTip="Remove the selected room" Click="OnRemoveRoom" />
+          <MenuItem Header="_Change Room..." ToolTip="Move or swap the selected room's board with another room" Click="OnChangeRoom" />
+        </MenuItem>
+        <MenuItem Header="_Tools">
+          <MenuItem Header="_Settings..." ToolTip="Timers and status colors" Click="OnSettings" />
+        </MenuItem>
+        <MenuItem Header="_Help">
+          <MenuItem Header="Scheduler _Help" InputGestureText="F1" Click="OnHelp" />
+        </MenuItem>
+      </Menu>
+
+      <!-- Toolbar: the things used all evening -->
+      <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="{StaticResource PanelBorder}" BorderThickness="0,1,0,1" Background="#FBFAF7">
         <DockPanel>
-          <TextBlock DockPanel.Dock="Right" Text="Review Board Scheduler" FontSize="17" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,4,0" />
+          <TextBlock DockPanel.Dock="Right" Text="Eagle Board Scheduler" FontSize="17" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,4,0" />
           <WrapPanel>
-            <Button Style="{StaticResource ToolButton}" Content="_Refresh" ToolTip="Reload everything now (F5)" Click="OnRefresh" />
-            <Border Style="{StaticResource Sep}" />
-            <Button Style="{StaticResource ToolButton}" Content="Se_ttings" ToolTip="Timers and status colors" Click="OnSettings" />
-            <Button Style="{StaticResource ToolButton}" Content="Re_port..." ToolTip="Save the evening's board results as a CSV file" Click="OnReport" />
-            <Button Style="{StaticResource ToolButton}" Content="_Admin tables" ToolTip="View and edit every record: youth, adults, adult history, rooms" Click="OnAdmin" />
-            <Button Style="{StaticResource ToolButton}" Content="Check-_in page" ToolTip="Open the sign-in website in a browser on this computer" Click="OnOpenCheckIn" />
-            <Button Style="{StaticResource ToolButton}" Content="_Help" Click="OnHelp" />
+            <Button Style="{StaticResource ToolButton}" Content="Refresh" ToolTip="Reload everything now (F5)" Click="OnRefresh" />
             <Border Style="{StaticResource Sep}" />
             <Button Style="{StaticResource ToolButton}" Content="+ Room" ToolTip="Add a room" Click="OnAddRoom" />
             <Button Style="{StaticResource ToolButton}" Content="- Room" ToolTip="Remove the selected room" Click="OnRemoveRoom" />

@@ -29,7 +29,7 @@ public partial class App : Application
         }
         catch (ArgumentException ex)
         {
-            MessageBox.Show("Invalid command line: " + ex.Message + "\n" + CommandLine.Usage, "Review Board Scheduler",
+            MessageBox.Show("Invalid command line: " + ex.Message + "\n" + CommandLine.Usage, "Eagle Board Scheduler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
             return;
@@ -37,7 +37,7 @@ public partial class App : Application
 
         if (cmd.Help)
         {
-            MessageBox.Show(CommandLine.Usage, "Review Board Scheduler");
+            MessageBox.Show(CommandLine.Usage, "Eagle Board Scheduler");
             Shutdown(0);
             return;
         }
@@ -94,7 +94,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException
             or InvalidOperationException)
         {
-            MessageBox.Show("The scheduler could not start:\n\n" + ex.Message, "Review Board Scheduler",
+            MessageBox.Show("The scheduler could not start:\n\n" + ex.Message, "Eagle Board Scheduler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return null;
         }
@@ -121,7 +121,7 @@ public partial class App : Application
         var message = e.Exception is IOException
             ? "A data file could not be saved. If it is open in Excel, close it and try again.\n\n" + e.Exception.Message
             : "Something went wrong:\n\n" + e.Exception.Message + "\n\nThe check-in website is still running.";
-        MessageBox.Show(message, "Review Board Scheduler", MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageBox.Show(message, "Eagle Board Scheduler", MessageBoxButton.OK, MessageBoxImage.Warning);
         e.Handled = true;
     }
 }

@@ -94,7 +94,7 @@ public sealed class DataRecordFile<T> : IDataRecordFile
         var sb = new StringBuilder();
         if (IsProperties)
         {
-            sb.Append("# Review Board Scheduler configuration\n");
+            sb.Append("# Eagle Board Scheduler configuration\n");
             sb.Append("# Edit the values after each '='. Lines starting with # are comments.\n\n");
             foreach (var record in _records)
             {

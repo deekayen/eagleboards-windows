@@ -26,7 +26,7 @@ public partial class StartupWindow : Window
     {
         _settings = settings;
         InitializeComponent();
-        Title = $"Review Board Scheduler {AppVersion.Text} - Start an event night";
+        Title = $"Eagle Board Scheduler {AppVersion.Text} - Start an event night";
         DataFolderBox.Text = _settings.DataFolder.Length > 0 ? _settings.DataFolder : SuggestDataFolder();
         HistoryBox.Text = _settings.AdultHistoryFile;
         PortBox.Text = _settings.Port.ToString(CultureInfo.InvariantCulture);
