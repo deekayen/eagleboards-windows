@@ -41,7 +41,7 @@
 
       <Paragraph Style="{StaticResource H}">Running a board</Paragraph>
       <Paragraph><Bold>Paperwork.</Bold> Check each youth's paperwork as they arrive. If it isn't in order, select them and press <Bold>Postpone</Bold>.</Paragraph>
-      <Paragraph><Bold>Seat.</Bold> Click a waiting youth. The scheduler proposes a board: a qualified Chair, members from other units (two for a Final board, one for a project review) and a free room of the right type.
+      <Paragraph><Bold>Seat.</Bold> Click a waiting youth. The scheduler proposes a board: a qualified Chair, members from other units (two for a Final board, one for a project review) and a free room of the right type. It picks with the whole waiting line in mind: it keeps adults who can chair free for the boards still to come, and uses adults whose troop rules them out for youth still waiting. If there aren't enough adults to do that it still proposes the best board it can.
         Change the picks with the checkboxes in the Adult Board Members list and click a different room card if you like, then press <Bold>Seat Board</Bold> and confirm the chair.
         Picks you've made are kept while you click around; <Bold>Clear picks</Bold> starts over.</Paragraph>
       <Paragraph><Bold>Start.</Bold> When the members have finished reading, fetch the youth (and their Scoutmaster or Life-to-Eagle coach to introduce them; <Bold>Locate</Bold> shows where they are) and press <Bold>Start Review</Bold>.</Paragraph>
