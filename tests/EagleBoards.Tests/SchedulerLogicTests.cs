@@ -393,4 +393,14 @@ public class SchedulerLogicTests
         Assert.Equal([("SM", true), ("L", false)], found.Select(f => (f.Adult.Id, f.IsSupporting)));
         Assert.Equal(["SM"], SchedulerLogic.SupportingAdults("S1", adults).Select(a => a.Id));
     }
+
+    [Theory]
+    [InlineData("", "SCOUT:A:A:1", true, "SCOUT:A:A:1")]
+    [InlineData("SCOUT:A:A:1", "SCOUT:B:B:2", true, "SCOUT:A:A:1|SCOUT:B:B:2")]
+    [InlineData("SCOUT:A:A:1|SCOUT:B:B:2", "SCOUT:A:A:1", true, "SCOUT:B:B:2|SCOUT:A:A:1")]
+    [InlineData("SCOUT:A:A:1|SCOUT:B:B:2", "SCOUT:A:A:1", false, "SCOUT:B:B:2")]
+    [InlineData("SCOUT:A:A:1", "SCOUT:A:A:1", false, "")]
+    [InlineData("SCOUT:Doe~ Jr.:Jan:1", "SCOUT:B:B:2", true, "SCOUT:Doe~ Jr.:Jan:1|SCOUT:B:B:2")]
+    public void LinkingAnAdultToAScoutEditsTheirSupportingList(string supporting, string scoutId, bool linked, string expected) =>
+        Assert.Equal(expected, SchedulerLogic.WithSupportLink(supporting, scoutId, linked));
 }

@@ -241,6 +241,7 @@
                 <Border Style="{StaticResource Sep}" />
                 <Button x:Name="EnableButton" Style="{StaticResource ToolButton}" Content="Enable" Click="OnEnableAdult" ToolTip="The selected adult is back and available" />
                 <Button x:Name="DisableButton" Style="{StaticResource ToolButton}" Content="Disable" Click="OnDisableAdult" ToolTip="The selected adult has gone home for tonight" />
+                <Button x:Name="LinkButton" Style="{StaticResource ToolButton}" Content="Link" Click="OnLinkAdult" ToolTip="Link the selected adult to the selected youth as someone who came to support them, or unlink them" />
                 <TextBlock x:Name="PickCount" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#555" />
               </WrapPanel>
               <DataGrid x:Name="AdultGrid" CellStyle="{StaticResource PlainCell}" RowStyle="{StaticResource AdultRowStyle}"

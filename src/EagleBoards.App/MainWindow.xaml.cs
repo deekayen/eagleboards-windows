@@ -177,6 +177,7 @@ public partial class MainWindow : Window
         var adult = AdultGrid.SelectedItem as AdultRow;
         EnableButton.IsEnabled = adult is { IsDisabled: true };
         DisableButton.IsEnabled = adult is { Room: "" };
+        LinkButton.IsEnabled = adult != null;
     }
 
     private void UpdatePickCount()
@@ -500,6 +501,41 @@ public partial class MainWindow : Window
 
             _svc.SaveRow(DataTable.Adults, "updated", a.Id, new Dictionary<string, string> { ["Room"] = AdultRoom.Disabled });
         }
+    }
+
+    /// <summary>
+    /// Link the selected adult to the selected youth as someone who came to
+    /// support them, or unlink them -- for the adult who did not check the
+    /// youth at sign-in. Start Review and Locate name them from then on.
+    /// Works for an adult on a board too: a Scoutmaster often is by then.
+    /// </summary>
+    private void OnLinkAdult(object sender, RoutedEventArgs e)
+    {
+        if (AdultGrid.SelectedItem is not AdultRow a)
+        {
+            return;
+        }
+
+        if (SelectedScout is not { } scout)
+        {
+            Notify("Link", "Select the youth first, then the adult, and press Link.", ToastKind.Error);
+            return;
+        }
+
+        var youth = $"{scout.First} {scout.Last}";
+        var linked = a.Info.Supports(scout.Id);
+        var question = linked
+            ? $"{a.FullName} is linked as supporting {youth}. Unlink them?"
+            : $"Link {a.FullName} as supporting {youth}?\n\nStart Review will then say where to find them.";
+        if (!Ask.Confirm(this, linked ? "Unlink" : "Link", question))
+        {
+            return;
+        }
+
+        var result = _svc.SetSupporting(a.Id, scout.Id, !linked);
+        Notify(linked ? "Unlinked" : "Linked",
+            result.Ok ? $"{a.FullName} {(linked ? "is no longer linked to" : "is linked to")} {youth}." : result.Message,
+            result.Ok ? ToastKind.Ok : ToastKind.Error);
     }
 
     private void OnEnableAdult(object sender, RoutedEventArgs e)

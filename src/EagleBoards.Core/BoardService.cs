@@ -349,6 +349,41 @@ public sealed class BoardService
     }
 
     /// <summary>
+    /// Link an adult to a scout as someone who came to support them, or
+    /// unlink them: the scheduler's Link button, for the adult who did not
+    /// check the scout at sign-in. Writes the same Supporting column.
+    /// </summary>
+    public ActionResult SetSupporting(string adultId, string scoutId, bool linked)
+    {
+        ActionResult result;
+        lock (_lock)
+        {
+            var adult = Adults.Get(adultId);
+            if (adult == null)
+            {
+                result = ActionResult.Error("There is no adult " + adultId);
+            }
+            else if (linked && Scouts.Get(scoutId) == null && ScoutsScheduled.Get(scoutId) == null)
+            {
+                result = ActionResult.Error("There is no youth " + scoutId);
+            }
+            else
+            {
+                adult.Supporting = SchedulerLogic.WithSupportLink(adult.Supporting, scoutId, linked);
+                Adults.Store();
+                result = ActionResult.Success;
+            }
+        }
+
+        if (result.Ok)
+        {
+            OnChanged(DataTable.Adults);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// The scouts an adult may say at sign-in they came to support: everyone
     /// who RSVP'd, plus tonight's walk-ins, leaving out anyone whose evening
     /// is over (Completed or Postponed). Names and units only -- this is read

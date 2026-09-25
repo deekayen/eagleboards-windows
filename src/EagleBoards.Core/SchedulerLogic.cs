@@ -361,6 +361,22 @@ public static class SchedulerLogic
         adults.Where(a => a.Supports(scoutId)).ToList();
 
     /// <summary>
+    /// An adult's Supporting list ("|"-separated scout IDs) with one scout
+    /// linked or unlinked. Order is kept and a scout is never listed twice.
+    /// The same as withSupportLink in the Java version's process_seat.js.
+    /// </summary>
+    public static string WithSupportLink(string supporting, string scoutId, bool linked)
+    {
+        var ids = supporting.Split('|').Where(id => id.Length > 0 && id != scoutId).ToList();
+        if (linked)
+        {
+            ids.Add(scoutId);
+        }
+
+        return string.Join('|', ids);
+    }
+
+    /// <summary>
     /// Room-card timer state for an active board, from the minutes since its
     /// last status change. Seated (convening) has one cap and goes straight
     /// to red; InProgress has board-type specific yellow and red.

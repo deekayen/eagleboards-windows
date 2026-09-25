@@ -969,6 +969,19 @@ post --data-urlencode "!nativeeditor_status=inserted" --data-urlencode "gr_id=SC
      --data "Last=Rsvp&First=Only&UnitType=Troop&Unit=3999&BoardType=Final" "$B/youth-scheduled-update"
 chk "an RSVP not yet signed in can be chosen at the door" \
     "$(curl -s "$B/youth-scheduled-cells?cols=First,Last,UnitName" | grep -c 'SCOUT:Rsvp:Only:3999')" "1"
+# Linking after both have signed in: the scheduler's Link button writes the
+# same column through /adult-update, and nothing in running a board may
+# lose it.
+post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=$NOPROJ" \
+     --data-urlencode "Supporting=$RSVP" "$B/adult-update"
+chk "an operator can link an adult to a scout after both signed in" "$(adult_col "$NOPROJ" 18)" "$RSVP"
+seat 101 "$RSVP" "$FC1" "$M1" "$M2" >/dev/null
+start "$RSVP" >/dev/null
+complete "$RSVP" Approved >/dev/null
+chk "and the link survives the scout's board" "$(adult_col "$NOPROJ" 18)" "$RSVP"
+post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=$NOPROJ" \
+     --data-urlencode "Supporting=" "$B/adult-update"
+chk "and can be undone" "$(adult_col "$NOPROJ" 18)" ""
 chk "nobody committed after section 19" "$(busy_adults)" "0"
 
 

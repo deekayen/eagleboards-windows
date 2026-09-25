@@ -330,4 +330,21 @@ public class BoardServiceTests
         Assert.True(s.PostponeBoard(Seed.ScoutId("Carrington", "Cormac", "1003")).Ok);
         Assert.Equal(["SCOUT:Bram:Beau:1002", "SCOUT:Rsvp:Only:3999"], s.ScoutChoices().Select(c => c.Id));
     }
+
+    [Fact]
+    public void AnOperatorLinksAnAdultToAScoutAfterBothSignedIn()
+    {
+        using var box = new Sandbox();
+        var (s, scout, _, m1, _) = SeatableEvening(box);
+        Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
+        Assert.Equal(scout, AdultRow(s, m1)["Supporting"]);
+        Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);   // pressing it twice links once
+        Assert.Equal(scout, AdultRow(s, m1)["Supporting"]);
+        Assert.True(s.SetSupporting(m1, scout, linked: false).Ok);
+        Assert.Equal("", AdultRow(s, m1)["Supporting"]);
+
+        Assert.False(s.SetSupporting("ADULT:Nobody:Here:0", scout, linked: true).Ok);
+        Assert.False(s.SetSupporting(m1, "SCOUT:Nobody:Here:0", linked: true).Ok);
+        Assert.True(s.SetSupporting(m1, "SCOUT:Nobody:Here:0", linked: false).Ok);   // clearing a stale link is fine
+    }
 }
