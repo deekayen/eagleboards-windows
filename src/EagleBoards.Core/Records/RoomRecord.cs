@@ -28,7 +28,12 @@ public sealed class RoomRecord : DataRecord
         set => Put("Room", value);
     }
 
-    public string BoardType => GetValue("BoardType");
+    /// <summary>What the room is set up for: <see cref="BoardTypes.Final"/> or <see cref="BoardTypes.Project"/>.</summary>
+    public string BoardType
+    {
+        get => GetValue("BoardType");
+        set => Put("BoardType", value);
+    }
 
     /// <summary>Full name of the scout whose board holds the room, or "".</summary>
     public string Scout

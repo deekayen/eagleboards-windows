@@ -494,6 +494,47 @@ public class BoardServiceTests
         Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
     }
 
+    [Fact]
+    public void SwitchingRoomTypeDoesNotDisturbABoardAlreadyThere()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+
+        Assert.True(s.SetRoomType("ROOM:101", BoardTypes.Project).Ok);
+        var room = s.Snapshot(DataTable.Rooms).Single();
+        Assert.Equal(BoardTypes.Project, room["BoardType"]);
+        Assert.Equal("Alex Aldridge", room["Scout"]);
+        Assert.Equal("101", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
+    }
+
+    [Fact]
+    public void SwitchingRoomTypeRefusesAnInvalidTypeOrRoom()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+
+        Assert.Contains("Board type", s.SetRoomType("ROOM:101", "Something else").Message);
+        Assert.False(s.SetRoomType("ROOM:404", BoardTypes.Project).Ok);
+
+        // Switching a room to the type it already has is a harmless no-op.
+        Assert.True(s.SetRoomType("ROOM:101", BoardTypes.Final).Ok);
+        Assert.Equal(BoardTypes.Final, s.Snapshot(DataTable.Rooms).Single()["BoardType"]);
+    }
+
+    [Fact]
+    public void UndoReversesSwitchingRoomType()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+        Assert.True(s.SetRoomType("ROOM:101", BoardTypes.Project).Ok);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(BoardTypes.Final, s.Snapshot(DataTable.Rooms).Single()["BoardType"]);
+    }
+
     // ------------------------------------------------------------------
     // Undo (O-2)
     // ------------------------------------------------------------------

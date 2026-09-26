@@ -1361,6 +1361,54 @@ public sealed class BoardService
         return ActionResult.Success;
     }
 
+    /// <summary>
+    /// Switch a room between final boards and project reviews, on the room
+    /// card itself rather than only the Admin tables. A board already seated
+    /// there isn't disturbed (GTA 8.0.5.3): a final board may sit in a
+    /// project-review room and back, as section 17 of the evening test
+    /// covers.
+    /// </summary>
+    public ActionResult SetRoomType(string? roomId, string? boardType)
+    {
+        ActionResult result;
+        lock (_lock)
+        {
+            var room = Rooms.Get(roomId);
+            if (room == null)
+            {
+                result = ActionResult.Error("ERROR: No Such Room" + roomId);
+            }
+            else if (boardType is not (BoardTypes.Final or BoardTypes.Project))
+            {
+                result = ActionResult.Error("ERROR: Board type must be Final or Project.");
+            }
+            else if (boardType == room.BoardType)
+            {
+                result = ActionResult.Success;
+            }
+            else
+            {
+                var roomSnap = Snap(room);
+                var label = boardType == BoardTypes.Project ? "project reviews" : "final boards";
+                room.BoardType = boardType;
+                Rooms.Store();
+                PushUndo($"switching room {room.Room} to {label}", [DataTable.Rooms], () =>
+                {
+                    Restore(room, roomSnap);
+                    Rooms.Store();
+                });
+                result = ActionResult.Success;
+            }
+        }
+
+        if (result.Ok)
+        {
+            OnChanged(DataTable.Rooms);
+        }
+
+        return result;
+    }
+
     // ------------------------------------------------------------------
     // Generic record edits (the Admin tables) and settings
     // ------------------------------------------------------------------

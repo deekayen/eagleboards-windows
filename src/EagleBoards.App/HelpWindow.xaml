@@ -30,7 +30,8 @@
           The first time, Windows may ask whether to allow the scheduler on the network: allow it on private networks, or the check-in stations can't connect.</Paragraph></ListItem>
         <ListItem><Paragraph>Point each check-in station's browser at the check-in address at the bottom of the window (for example http://192.168.1.23:8080).
           Right-click the address to copy it.</Paragraph></ListItem>
-        <ListItem><Paragraph>Add rooms with <Bold>Add room</Bold>. Each room is for final boards or project reviews. For several project reviews in one room, add one entry per table, like 200A and 200B.</Paragraph></ListItem>
+        <ListItem><Paragraph>Add rooms with <Bold>Add room</Bold>. Each room is for final boards or project reviews. For several project reviews in one room, add one entry per table, like 200A and 200B.
+          Select a room to rename it or switch it between final boards and project reviews; a board already there isn't disturbed.</Paragraph></ListItem>
       </List>
 
       <Paragraph Style="{StaticResource H}">The Event page</Paragraph>

@@ -385,8 +385,13 @@
                     <Button Style="{StaticResource CommandButton}" Click="OnChangeRoom" ToolTip="Move the selected room's board to another room, or swap two boards">
                       <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8AB;" Margin="0,0,8,0" /><TextBlock Text="Move" /></StackPanel>
                     </Button>
-                    <Button Style="{StaticResource CommandButton}" Click="OnRenameRoom" ToolTip="Rename the selected room">
-                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8AC;" Margin="0,0,8,0" /><TextBlock Text="Rename" /></StackPanel>
+                    <Button Style="{StaticResource CommandButton}" Click="OnRenameRoom" ToolTip="Rename the selected room"
+                            AutomationProperties.Name="Rename room">
+                      <TextBlock Style="{StaticResource Glyph}" Text="&#xE8AC;" />
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Click="OnSwitchRoomType" ToolTip="Switch the selected room between final boards and project reviews"
+                            AutomationProperties.Name="Switch room type">
+                      <TextBlock Style="{StaticResource Glyph}" Text="&#xE72C;" />
                     </Button>
                     <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnRemoveRoom" ToolTip="Remove the selected room"
                             AutomationProperties.Name="Remove room">
@@ -405,6 +410,7 @@
                     <ContextMenu>
                       <MenuItem Header="_Move or swap board..." Click="OnChangeRoom" />
                       <MenuItem Header="_Rename..." Click="OnRenameRoom" />
+                      <MenuItem Header="S_witch type" Click="OnSwitchRoomType" />
                       <MenuItem Header="_Remove room" Click="OnRemoveRoom" />
                     </ContextMenu>
                   </ListBox.ContextMenu>

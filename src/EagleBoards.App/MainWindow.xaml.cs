@@ -1104,6 +1104,25 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Switch the selected room between final boards and project reviews. No confirmation: switching back is as easy.</summary>
+    private void OnSwitchRoomType(object sender, RoutedEventArgs e)
+    {
+        if (SelectedRoom is not { } room)
+        {
+            Notice.Show(Severity.Informational, "Select a room first", "Click the room to switch, then Switch type.");
+            return;
+        }
+
+        var newType = room.BoardType == BoardTypes.Project ? BoardTypes.Final : BoardTypes.Project;
+        var result = _svc.SetRoomType(room.Id, newType);
+        if (!result.Ok)
+        {
+            Notice.Show(Severity.Error, "Couldn't switch the room", Plain(result.Message));
+        }
+
+        RefreshAll();
+    }
+
     /// <summary>Move the selected room's board to another room, or swap two boards.</summary>
     private void OnChangeRoom(object sender, RoutedEventArgs e)
     {
