@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private ConfigRecord _config = new();
     private bool _quiet;
     private AdminWindow? _admin;
+    private QrWindow? _qr;
 
     /// <summary>
     /// The youth the details pane shows. Chosen by the operator; kept when the
@@ -1206,6 +1207,26 @@ public partial class MainWindow : Window
         _admin.Show();
     }
 
+    /// <summary>The check-in addresses as QR codes, for a tablet's camera instead of typing one in by hand.</summary>
+    private void OnShowQr(object sender, RoutedEventArgs e)
+    {
+        if (_qr is { IsLoaded: true })
+        {
+            _qr.Activate();
+            return;
+        }
+
+        if (_session.CheckInUrls.Count == 0)
+        {
+            Notice.Show(Severity.Informational, "No check-in address yet",
+                "Connect to the venue Wi-Fi, then close the scheduler and start it again.");
+            return;
+        }
+
+        _qr = new QrWindow(_session.CheckInUrls) { Owner = this };
+        _qr.Show();
+    }
+
     private void OnHelp(object sender, RoutedEventArgs e) => new HelpWindow { Owner = this }.Show();
 
     private void OnUrlClicked(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
@@ -1247,6 +1268,7 @@ public partial class MainWindow : Window
 
         _minute.Stop();
         _admin?.Close();
+        _qr?.Close();
     }
 }
 

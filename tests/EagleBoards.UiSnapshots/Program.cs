@@ -79,6 +79,7 @@ internal static class Program
             Snap(new StartupWindow(new AppSettings { DataFolder = root, AdultHistoryFile = "AdultHistory.csv", Port = plan.Port }),
                 outDir, "8-startup.png");
             Snap(new HelpWindow(), outDir, "9-help.png");
+            Snap(new QrWindow(["http://192.168.1.23:8080/", "http://10.0.0.5:8080/"]), outDir, "12-qr.png");
 
             // The dialogs, built the way the window builds them.
             var owner = new Window { Left = -32000, Width = 200, Height = 200, ShowInTaskbar = false, ShowActivated = false };
