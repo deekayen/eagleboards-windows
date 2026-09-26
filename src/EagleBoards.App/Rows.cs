@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using System.Windows.Media;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;
 
@@ -34,7 +33,7 @@ public abstract class Row : INotifyPropertyChanged
 /// <summary>
 /// Refresh a bound collection in place: update rows that are still there,
 /// add new ones, drop gone ones. Replacing the collection would lose the
-/// grid's selection, scroll position and sort every RefreshTimeSecs.
+/// grid's selection, scroll position and sort on every change.
 /// </summary>
 public static class RowSync
 {
@@ -75,10 +74,8 @@ public static class RowSync
 public sealed class ScoutRow : Row
 {
     private string _regNum = "", _last = "", _first = "", _unitName = "", _boardType = "", _room = "", _status = "", _leader = "";
-    private string _result = "", _chair = "", _members = "", _notes = "";
+    private string _result = "", _chair = "", _members = "", _notes = "", _lastUpdate = "";
     private int? _mins;
-    private Brush _background = Brushes.White;
-    private Brush _selectedBackground = Brushes.LightGray;
 
     public ScoutRow(IReadOnlyDictionary<string, string> r)
     {
@@ -129,56 +126,143 @@ public sealed class ScoutRow : Row
 
     public string BoardType { get => _boardType; private set => Set(ref _boardType, value); }
 
-    public string Room { get => _room; private set => Set(ref _room, value); }
+    public string Room { get => _room; private set { if (Set(ref _room, value)) Raise(nameof(RoomText)); } }
 
-    public string Status { get => _status; private set { if (Set(ref _status, value)) { Raise(nameof(StatusRank)); Raise(nameof(MinsTip)); } } }
+    /// <summary>Blank once the board is over; the file says "N/A".</summary>
+    public string RoomText => Room == AdultRoom.Disabled ? "" : Room;
+
+    public string Status
+    {
+        get => _status;
+        private set
+        {
+            if (Set(ref _status, value))
+            {
+                Raise(nameof(StatusRank));
+                Raise(nameof(MinsTip));
+                Raise(nameof(StatusText));
+            }
+        }
+    }
+
+    /// <summary>The status in words; the file keeps the Java values ("InProgress").</summary>
+    public string StatusText => Display.Status(Status);
 
     public int StatusRank => BoardStatus.Rank(Status);
 
     public string Leader { get => _leader; private set => Set(ref _leader, value); }
 
-    public string Result { get => _result; private set => Set(ref _result, value); }
+    public string Result { get => _result; private set { if (Set(ref _result, value)) Raise(nameof(ResultText)); } }
+
+    public string ResultText => Display.Result(Result);
 
     public string BoardChair { get => _chair; private set => Set(ref _chair, value); }
 
+    public string BoardChairId { get; private set; } = "";
+
     public string BoardMembers { get => _members; private set { if (Set(ref _members, value)) Raise(nameof(BoardMembersText)); } }
 
-    /// <summary>Stored comma-joined with no spaces (the file format); shown readable.</summary>
-    public string BoardMembersText => BoardMembers.Replace(",", ", ", StringComparison.Ordinal);
+    /// <summary>A list in the file (comma- or ~-joined); shown as a readable list.</summary>
+    public string BoardMembersText => Display.List(BoardMembers);
 
     public string Notes { get => _notes; private set => Set(ref _notes, value); }
-
-    public Brush Background { get => _background; set => Set(ref _background, value); }
-
-    public Brush SelectedBackground { get => _selectedBackground; set => Set(ref _selectedBackground, value); }
 
     public ScoutInfo Info => new(Id, Last, First, UnitName, BoardType, Room, Status, Leader);
 
     public void Update(IReadOnlyDictionary<string, string> r)
     {
         RegNum = V(r, "RegNum");
-        Mins = int.TryParse(V(r, DataRecord.MinsSinceLastUpdateField), out var m) ? m : null;
-        Last = V(r, "Last");
-        First = V(r, "First");
+        _lastUpdate = V(r, DataRecord.LastUpdateTimeField);
+        Tick();
+        Last = Display.Text(V(r, "Last"));
+        First = Display.Text(V(r, "First"));
         UnitName = V(r, "UnitName");
         BoardType = V(r, "BoardType");
         Room = V(r, "Room");
         Status = V(r, "Status");
-        Leader = V(r, "Leader");
+        Leader = Display.Text(V(r, "Leader"));
         Result = V(r, "Result");
-        BoardChair = V(r, "BoardChair");
+        BoardChair = Display.Text(V(r, "BoardChair"));
+        BoardChairId = V(r, "BoardChairID");
         BoardMembers = V(r, "BoardMembers");
-        Notes = V(r, "Notes");
+        Notes = Display.Text(V(r, "Notes"));
+        Raise(nameof(QueueGroup));
+        Raise(nameof(QueueRank));
+        Raise(nameof(SubLine));
+        Raise(nameof(TimeText));
     }
 
-    public void ApplyColors(ConfigRecord config)
+    /// <summary>The queue's sections: who's next, who's in a room, who's done.</summary>
+    public string QueueGroup => BoardStatus.IsWaiting(Status) ? "Waiting" : BoardStatus.IsActive(Status) ? "On a board" : "Finished";
+
+    public int QueueRank => BoardStatus.IsWaiting(Status) ? 0 : BoardStatus.IsActive(Status) ? 1 : 2;
+
+    /// <summary>"W9 · Troop 1409 · Final board", or the room once seated.</summary>
+    public string SubLine => string.Join(" · ", new[] { RegNum, UnitLabel, BoardStatus.IsActive(Status) ? "Room " + Room : Display.BoardType(BoardType) }
+        .Where(s => s.Length > 0));
+
+    public string TimeText => Mins is { } m && !BoardStatus.IsFinished(Status) ? $"{m} min" : "";
+
+    /// <summary>
+    /// Recount the minutes since the last status change. Stamps are to the
+    /// minute, so the count changes on the clock's minute; the window calls
+    /// this then, with no need to reload anything.
+    /// </summary>
+    public void Tick()
     {
-        Background = Brushes2.FromHex(config.ColorFor(Status, false), Brushes.White);
-        SelectedBackground = Brushes2.FromHex(config.ColorFor(Status, true), Brushes.LightGray);
+        var m = DataRecord.MinutesSince(_lastUpdate);
+        Mins = m >= 0 ? m : null;
+        Raise(nameof(TimeText));
     }
 }
 
-/// <summary>An adult in the Adult Board Members panel.</summary>
+/// <summary>
+/// An adult in the board builder, seen from one youth's board: picked
+/// members (with the chair choice) and the eligible adults to add.
+/// </summary>
+public sealed class PickRow : Row
+{
+    private bool _isChair;
+
+    public PickRow(AdultRow adult, string boardType, string scoutUnit, Action<PickRow>? chairChosen = null)
+    {
+        Adult = adult;
+        Id = adult.Id;
+        var role = adult.Info.RoleFor(boardType);
+        CanChair = role == BoardRoles.Chair;
+        SameUnit = scoutUnit.Length > 0 && adult.UnitName == scoutUnit;
+        Detail = string.Join(" · ", new[] { adult.UnitLabel, role, SameUnit ? "same unit as the youth" : "" }.Where(s => s.Length > 0));
+        ChairChosen = chairChosen;
+    }
+
+    public AdultRow Adult { get; }
+
+    public string Name => Adult.FullName;
+
+    public string Detail { get; }
+
+    public bool CanChair { get; }
+
+    public bool SameUnit { get; }
+
+    private Action<PickRow>? ChairChosen { get; }
+
+    public bool IsChair
+    {
+        get => _isChair;
+        set
+        {
+            if (Set(ref _isChair, value) && value)
+            {
+                ChairChosen?.Invoke(this);
+            }
+        }
+    }
+
+    internal void SetChairQuietly(bool value) => Set(ref _isChair, value, nameof(IsChair));
+}
+
+/// <summary>An adult on the People page and the source of the builder's rows.</summary>
 public sealed class AdultRow : Row
 {
     private string _last = "", _first = "", _unitName = "", _room = "", _final = "", _project = "";
@@ -243,7 +327,9 @@ public sealed class AdultRow : Row
             {
                 Raise(nameof(CanPick));
                 Raise(nameof(PickTip));
-                Raise(nameof(Foreground));
+                Raise(nameof(RoomText));
+                Raise(nameof(IsDisabled));
+                Raise(nameof(IsBusy));
             }
         }
     }
@@ -254,22 +340,25 @@ public sealed class AdultRow : Row
 
     public bool IsDisabled => Room == AdultRoom.Disabled;
 
+    /// <summary>On a board now.</summary>
+    public bool IsBusy => Room.Length > 0 && !IsDisabled;
+
+    /// <summary>"Gone home" rather than the file's "N/A".</summary>
+    public string RoomText => IsDisabled ? "Gone home" : Room;
+
     /// <summary>Someone on a board or gone home can't be ticked for another.</summary>
     public bool CanPick => Room.Length == 0;
 
-    public string? PickTip => IsDisabled ? "Disabled for tonight -- enable them first"
-        : Room.Length > 0 ? "Already seated on the board in room " + Room : null;
-
-    /// <summary>Red when on a board, grey when gone home.</summary>
-    public Brush Foreground => IsDisabled ? Brushes.Gray : Room.Length > 0 ? Brushes.Red : Brushes.Black;
+    public string? PickTip => IsDisabled ? "Gone home. Mark them back first."
+        : Room.Length > 0 ? "On the board in room " + Room : null;
 
     public AdultInfo Info => new(Id, Last, First, UnitName, Room, FinalBoard, ProjectReview);
 
     public void Update(IReadOnlyDictionary<string, string> r)
     {
         SetSelQuietly(V(r, "Sel") is "1" or "true");
-        Last = V(r, "Last");
-        First = V(r, "First");
+        Last = Display.Text(V(r, "Last"));
+        First = Display.Text(V(r, "First"));
         UnitName = V(r, "UnitName");
         Room = V(r, "Room");
         FinalBoard = V(r, "FinalBoard");
@@ -292,18 +381,52 @@ public sealed class RoomCard : Row
 
     public string Room { get => _room; private set => Set(ref _room, value); }
 
-    public string BoardType { get => _boardType; private set => Set(ref _boardType, value); }
+    public string BoardType { get => _boardType; private set { if (Set(ref _boardType, value)) Raise(nameof(BoardTypeText)); } }
 
-    public string Scout { get => _scout; private set { if (Set(ref _scout, value)) Raise(nameof(IsFree)); } }
+    public string BoardTypeText => Display.BoardType(BoardType);
 
-    public string Leaders { get => _leaders; private set { if (Set(ref _leaders, value)) Raise(nameof(LeadersText)); } }
+    public string Scout
+    {
+        get => _scout;
+        private set
+        {
+            if (Set(ref _scout, value))
+            {
+                Raise(nameof(IsFree));
+                Raise(nameof(ScoutText));
+                Raise(nameof(AccessibleName));
+            }
+        }
+    }
 
-    public string LeadersText => Leaders.Replace(",", ", ", StringComparison.Ordinal);
+    public string ScoutText => IsFree ? "Free" : Scout;
+
+    public string Leaders
+    {
+        get => _leaders;
+        private set
+        {
+            if (Set(ref _leaders, value))
+            {
+                Raise(nameof(LeadersText));
+                Raise(nameof(LeadersLines));
+            }
+        }
+    }
+
+    public string LeadersText => Display.List(Leaders);
+
+    /// <summary>The members one per line, for the room card.</summary>
+    public string LeadersLines => Display.Lines(Leaders);
 
     public bool IsFree => Scout is "" or "-";
 
-    /// <summary>"[12m]" while a board holds the room.</summary>
-    public string TimerText { get => _timer; set => Set(ref _timer, value); }
+    /// <summary>"12 min" while a board holds the room.</summary>
+    public string TimerText { get => _timer; set { if (Set(ref _timer, value)) Raise(nameof(AccessibleName)); } }
+
+    /// <summary>What a screen reader says for the card.</summary>
+    public string AccessibleName => $"Room {Room}, {BoardTypeText}, "
+        + (IsFree ? "free" : $"{Scout}, {TimerText}{(TimerState == TimerState.Overdue ? ", overdue" : TimerState == TimerState.Warning ? ", running long" : "")}");
 
     public TimerState TimerState
     {
@@ -312,17 +435,18 @@ public sealed class RoomCard : Row
         {
             if (Set(ref _timerState, value))
             {
-                Raise(nameof(TimerBrush));
                 Raise(nameof(ShowWarning));
+                Raise(nameof(TimerTip));
+                Raise(nameof(AccessibleName));
             }
         }
     }
 
-    public Brush TimerBrush => TimerState switch
+    public string? TimerTip => TimerState switch
     {
-        TimerState.Warning => Brushes.DarkOrange,
-        TimerState.Overdue => Brushes.Red,
-        _ => Brushes.Black,
+        TimerState.Warning => "Running long: past the caution time in Settings",
+        TimerState.Overdue => "Overdue: past the overdue time in Settings",
+        _ => null,
     };
 
     public bool ShowWarning => TimerState is TimerState.Warning or TimerState.Overdue;
@@ -335,37 +459,46 @@ public sealed class RoomCard : Row
     {
         Room = V(r, "Room");
         BoardType = V(r, "BoardType");
-        Scout = V(r, "Scout");
+        Scout = Display.Text(V(r, "Scout"));
         Leaders = V(r, "Leaders");
     }
 }
 
-internal static class Brushes2
+/// <summary>
+/// Words for the values the data files store in their Java form. Display
+/// only: the files keep "InProgress", "NotApproved", "N/A", and the Java
+/// escapes ("," written as "~").
+/// </summary>
+public static class Display
 {
-    private static readonly Dictionary<string, Brush> Cache = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// The file format writes a comma in a value as "~" and never turns it back
+    /// (the Java version's format, kept so both can read the files). Undo it
+    /// for display; IDs and the files themselves are left alone.
+    /// </summary>
+    public static string Text(string value) => value.Replace('~', ',');
 
-    public static Brush FromHex(string hex, Brush fallback)
+    /// <summary>The same list, one name per line.</summary>
+    public static string Lines(string value) =>
+        string.Join(Environment.NewLine, value.Split([',', '~'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+    /// <summary>A list of names, joined with "," in memory or "~" once saved, as "A, B, C".</summary>
+    public static string List(string value) =>
+        string.Join(", ", value.Split([',', '~'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+    public static string Status(string status) => status switch
     {
-        if (string.IsNullOrWhiteSpace(hex))
-        {
-            return fallback;
-        }
+        BoardStatus.Registered => "Waiting",
+        BoardStatus.InProgress => "In review",
+        _ => status,
+    };
 
-        if (Cache.TryGetValue(hex, out var cached))
-        {
-            return cached;
-        }
+    public static string Result(string result) => result == BoardResults.NotApproved ? "Not approved" : result;
 
-        try
-        {
-            var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
-            brush.Freeze();
-            Cache[hex] = brush;
-            return brush;
-        }
-        catch (Exception ex) when (ex is FormatException or NotSupportedException)
-        {
-            return fallback;
-        }
-    }
+    public static string BoardType(string type) => type switch
+    {
+        BoardTypes.Final => "Final board",
+        BoardTypes.Project => "Project review",
+        _ => type,
+    };
 }

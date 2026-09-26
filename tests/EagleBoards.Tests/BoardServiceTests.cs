@@ -294,4 +294,99 @@ public class BoardServiceTests
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{junior}").Ok);
         Assert.Equal("101", AdultRow(s, junior)["Room"]);
     }
+
+    /// <summary>A board of three in room 101 (chair A1, members A2 and A3), in review, and three free adults.</summary>
+    private static (BoardService S, string Scout) BoardInReview(Sandbox box)
+    {
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        foreach (var (last, final) in new[] { ("A1", "Chair"), ("A2", "Member"), ("A3", "Member"), ("B1", "Member"), ("B2", "Chair"), ("B3", "Unavailable") })
+        {
+            s.RegisterAdult(Seed.Adult(last, "X", "2" + last, "Member", final));
+        }
+
+        var scout = Seed.ScoutId("Aldridge", "Alex", "1001");
+        string A(string last) => Seed.AdultId(last, "X", "2" + last);
+        Assert.True(s.SeatBoard("ROOM:101", scout, A("A1"), $"{A("A1")},{A("A2")},{A("A3")}").Ok);
+        Assert.True(s.StartReview(scout).Ok);
+        return (s, scout);
+    }
+
+    private static string Id(string last) => Seed.AdultId(last, "X", "2" + last);
+
+    [Fact]
+    public void AMemberCanBeSwappedMidBoard()
+    {
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+
+        var r = s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("B1")},{Id("A3")}");
+        Assert.True(r.Ok, r.Message);
+
+        Assert.Equal("", AdultRow(s, Id("A2"))["Room"]);
+        Assert.Equal("101", AdultRow(s, Id("B1"))["Room"]);
+        var row = s.Snapshot(DataTable.Scouts).Single(x => x["ID"] == scout);
+        Assert.Equal(BoardStatus.InProgress, row["Status"]);
+        Assert.Contains("X B1", row["BoardMembers"]);
+        Assert.DoesNotContain("X A2", row["BoardMembers"]);
+        Assert.Contains("X B1", s.Snapshot(DataTable.Rooms).Single()["Leaders"]);
+    }
+
+    [Fact]
+    public void TheChairCanBeHandedToAnotherQualifiedMember()
+    {
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+        Assert.True(s.ChangeBoardMembers(scout, Id("B2"), $"{Id("B2")},{Id("A2")},{Id("A3")}").Ok);
+        Assert.Equal("X B2", s.Snapshot(DataTable.Scouts).Single(x => x["ID"] == scout)["BoardChair"]);
+        Assert.Equal("", AdultRow(s, Id("A1"))["Room"]);
+    }
+
+    [Theory]
+    [InlineData("B3", "Unavailable")]
+    [InlineData("A2", "more than once")]
+    public void ChangingMembersKeepsTheSeatingRules(string extra, string refusal)
+    {
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+        var r = s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("A2")},{Id(extra)}");
+        Assert.False(r.Ok);
+        Assert.Contains(refusal, r.Message);
+        Assert.Equal("101", AdultRow(s, Id("A2"))["Room"]);
+    }
+
+    [Fact]
+    public void ChangingMembersRefusesAnUnqualifiedChairOrTooFew()
+    {
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+        Assert.Contains("not qualified", s.ChangeBoardMembers(scout, Id("A2"), $"{Id("A1")},{Id("A2")},{Id("A3")}").Message);
+        Assert.Contains("Only 2", s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("A2")}").Message);
+    }
+
+    [Fact]
+    public void AMemberBusyOnAnotherBoardCantJoin()
+    {
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+        s.AddRoom("102", BoardTypes.Final);
+        s.RegisterAdult(Seed.Adult("C1", "X", "2C1", "Member", "Member"));
+        s.RegisterScout(Seed.Scout("Bram", "Beau", "1002", "Final"));
+        Assert.True(s.SeatBoard("ROOM:102", Seed.ScoutId("Bram", "Beau", "1002"), Id("B2"), $"{Id("B2")},{Id("B1")},{Id("C1")}").Ok);
+
+        var r = s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("A2")},{Id("B1")}");
+        Assert.False(r.Ok);
+        Assert.Contains("room 102", r.Message);
+        Assert.Equal("101", AdultRow(s, Id("A3"))["Room"]);
+    }
+
+    [Fact]
+    public void OnlyASeatedOrRunningBoardCanBeChanged()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        Assert.Contains("no board", s.ChangeBoardMembers(Seed.ScoutId("Aldridge", "Alex", "1001"), "x", "x").Message);
+    }
 }

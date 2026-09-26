@@ -26,7 +26,7 @@ public partial class StartupWindow : Window
     {
         _settings = settings;
         InitializeComponent();
-        Title = $"Eagle Board Scheduler {AppVersion.Text} - Start an event night";
+        Title = $"Eagle Board Scheduler {AppVersion.Text} - Start an event";
         DataFolderBox.Text = _settings.DataFolder.Length > 0 ? _settings.DataFolder : SuggestDataFolder();
         HistoryBox.Text = _settings.AdultHistoryFile;
         PortBox.Text = _settings.Port.ToString(CultureInfo.InvariantCulture);
@@ -101,19 +101,19 @@ public partial class StartupWindow : Window
             if (File.Exists(HistoryPath))
             {
                 var adults = File.ReadLines(HistoryPath).Skip(1).Count(l => l.Length > 0);
-                HistoryStatus.Text = $"Found: {adults} adult{(adults == 1 ? "" : "s")} on record.";
-                HistoryStatus.Foreground = Brushes.DimGray;
+                HistoryStatus.Text = $"{adults} adult{(adults == 1 ? "" : "s")} on record.";
+                HistoryStatus.SetResourceReference(ForegroundProperty, "TextFillColorSecondaryBrush");
             }
             else
             {
-                HistoryStatus.Text = "Not found. A new, empty adult history will be started there.";
-                HistoryStatus.Foreground = Brushes.DarkOrange;
+                HistoryStatus.Text = "Not found. Starting will create a new, empty adult history there.";
+                HistoryStatus.SetResourceReference(ForegroundProperty, "SystemFillColorCautionBrush");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             HistoryStatus.Text = "Can't read it: " + ex.Message;
-            HistoryStatus.Foreground = Brushes.Firebrick;
+            HistoryStatus.SetResourceReference(ForegroundProperty, "SystemFillColorCriticalBrush");
         }
 
         var (key, source) = AppSettings.FindSignUpGeniusKey(DataFolder);
@@ -182,10 +182,9 @@ public partial class StartupWindow : Window
             Directory.CreateDirectory(DataFolder);
             if (!File.Exists(HistoryPath))
             {
-                var answer = MessageBox.Show(this,
-                    $"There is no adult history at\n{HistoryPath}\n\nStart a new, empty one? (Choose No to pick a different file.)",
-                    Title, MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (answer != MessageBoxResult.Yes)
+                if (!AppDialog.Confirm(this, "Start a new adult history?",
+                        $"There's no adult history at **{HistoryPath}**. Start a new, empty one there, or go back and choose a different file.",
+                        "Start new history", detail: null))
                 {
                     return;
                 }
@@ -218,7 +217,7 @@ public partial class StartupWindow : Window
 
         Form.IsEnabled = false;
         StartButton.IsEnabled = false;
-        ProgressText.Foreground = Brushes.DimGray;
+        StartNotice.Close();
         try
         {
             Session = await EventSession.StartAsync(plan, new Progress<string>(m => ProgressText.Text = m));
@@ -248,7 +247,7 @@ public partial class StartupWindow : Window
 
     private void ShowError(string message)
     {
-        ProgressText.Text = message;
-        ProgressText.Foreground = Brushes.Firebrick;
+        ProgressText.Text = "";
+        StartNotice.Show(Severity.Error, "Can't start", message);
     }
 }

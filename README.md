@@ -1,51 +1,82 @@
 # Eagle Board Scheduler for Windows
 
-Check-in and room scheduling for an evening of Eagle Scout boards of review.
-Youth and adults sign in on a **website** from any tablet or laptop at the
-venue; the person running the evening uses a **native Windows app** on the
-admin computer to seat boards, start reviews, record results and manage rooms.
+**Check-in and room scheduling for Eagle Scout board of review events.**
+Youth and adults sign themselves in on a tablet; the person running the event
+seats boards in a few clicks, with every Guide to Advancement rule checked
+before anyone sits down, and sees every room's time at a glance.
 
-This is a Windows port of the Java [Eagle Board Scheduler](https://github.com/deekayen/eagleboards)
-(itself reconstructed from an inherited binary). The server logic was ported
-to C#, the check-in pages are the same, and the browser admin pages were
-replaced by a WPF app. It reads and writes the **same data files** as the Java
-version, so an existing data folder keeps working and either version can pick
-up where the other left off (just not both at once: they would fight over the
-port and the files).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/scheduler-demo-dark.gif">
+  <img src="docs/images/scheduler-demo.gif" alt="A board from sign-in to result: the youth checks in, a board is proposed, a rule is flagged, the board is seated, started and completed">
+</picture>
 
-```
-  Check-in stations (any browser)             Admin computer
-     /  /youth_register  /adult_register      EagleBoards.exe
-              |                                 |  scheduler window, admin tables,
-              |  HTTP, venue network            |  settings, reports
-              +---------------> Kestrel <-------+  (in-process, no browser)
-                                   |
-                              BoardService  --  CSV files in the data folder
-```
+<sub>Every name in these images is made up. The demo is rendered by `tests/EagleBoards.UiSnapshots` from synthetic data.</sub>
 
-## Running an event night
+## What it does
 
-1. Put `EagleBoards.exe` anywhere (e.g. in the data folder, `C:\eagleboards`)
-   and double-click it. Nothing to install: it carries its own .NET runtime.
+- **Sign-in on any tablet, phone or laptop.** Stations open a web page on the
+  venue Wi-Fi; nothing to install on them. A sign-in appears on the admin
+  computer at once, matched to its pre-registration when there is one.
+- **A board proposed for you.** Select a waiting youth and the scheduler
+  suggests a free room of the right type, a qualified chair, and members from
+  other units. Take it, or change anything: pick someone yourself and
+  **Fill the rest** completes the board around them.
+- **Rules checked as you build, not after.** Board size (3 to 6 for a board of
+  review), a qualified chair, nobody on two boards or gone home, and the
+  council's same-unit rule, with the national floor enforced when you
+  override it. Problems are listed above the Seat button, in plain words.
+- **Every room timed.** Convening, in review, running long, overdue. Times
+  follow the Guide to Advancement and can be changed in Settings.
+- **Where their people are.** Each youth's leader and parents, and which room
+  they're in, for fetching them and for afterwards.
+- **Results and a report.** Every board and its result, saved to a CSV file
+  for Excel.
+- **A Windows 11 app.** Light and dark mode, your accent colour, usable
+  from the keyboard, with controls labelled for screen readers. Runs on
+  Windows 10 too.
+- **Your data stays on your computer.** Plain CSV files in a folder you
+  choose, nothing sent anywhere. (Optional: import the event's sign-ups from
+  SignUpGenius.)
+
+| Light | Dark |
+|---|---|
+| ![The Event page in the light theme](docs/images/scheduler.png) | ![The Event page in the dark theme](docs/images/scheduler-dark.png) |
+
+## Getting it
+
+Download `EagleBoards.exe` from
+[**Releases**](https://github.com/deekayen/eagleboards-windows/releases). It's
+one file with its own .NET runtime: nothing to install. The version is on the
+Settings page. The exe isn't code-signed yet, so the first time Windows may
+say it *protected your PC*: choose **More info**, then **Run anyway**.
+
+**Requirements.** Windows 11 on the admin computer. Windows 10 (22H2) should
+work too, without Windows 11's translucent window background; please report
+anything that doesn't. The check-in stations only need a web browser.
+
+## Running an event
+
+1. Put `EagleBoards.exe` anywhere (for example in the data folder,
+   `C:\eagleboards`) and double-click it.
 2. The start-up window asks for:
    - **Data folder**: holds `config.properties`, the adult history
-     (`Master_AdultHistory.csv`), and one folder per event night named by date.
-     A new folder gets a commented `config.properties`; a missing adult history
-     can be started empty.
-   - **Event date**: defaults to today; each night gets its own `YYYY-MM-DD`
+     (`Master_AdultHistory.csv`), and one folder per event named by its date.
+     A new folder gets a commented `config.properties`; a missing adult
+     history can be started empty.
+   - **Event date**: defaults to today; each event gets its own `YYYY-MM-DD`
      folder.
    - **Check-in network**: the venue Wi-Fi. Serving only that network keeps
      the site off Hyper-V, WSL and VPN adapters. "All networks" is there too.
-   - **Port** (8080) and whether to **import tonight's SignUpGenius sign-ups**
-     (needs `SUG_KEY=...` in a `.env` file in the data folder, or the `SUG_KEY`
-     environment variable).
+   - **Port** (8080) and whether to **import the event's SignUpGenius
+     sign-ups** (needs `SUG_KEY=...` in a `.env` file in the data folder, or
+     the `SUG_KEY` environment variable).
 3. Press **Start**. The first time, Windows Firewall asks whether to allow the
    scheduler on the network: allow **private** networks, or the stations can't
    connect.
-4. Point each check-in station's browser at the address in the scheduler's
-   status bar (right-click it to copy), e.g. `http://192.168.1.23:8080`.
-5. Add rooms (**+ Room**) and run the evening. **Help** in the app walks
-   through seating, starting and completing boards.
+4. Point each check-in station's browser at the check-in address at the
+   bottom of the window (right-click it to copy), e.g. `http://192.168.1.23:8080`.
+5. Add rooms with **Add room** and run the event from the **Event** page.
+   **Help** in the app walks through seating, starting and completing boards.
 
 Closing the scheduler stops the check-in site. Everything is saved as it
 happens; there is no "save" step.
@@ -59,45 +90,55 @@ and skips the start-up window:
 EagleBoards.exe -d 2026-09-22 -a Master_AdultHistory.csv -c config.properties -port 8080 -bind 192.168. -sugkey %SUG_KEY%
 ```
 
-`-d` data folder for the night · `-a` adult history · `-c` config · `-p`
+`-d` data folder for the event · `-a` adult history · `-c` config · `-p`
 district pre-registration CSV · `-sugkey`/`-sugid` SignUpGenius · `-port` ·
 `-bind` IPv4 prefix to serve on (`127.0.0.1` keeps it off the network) · `-v`
 verbose log. `EagleBoards.Server` (for tests, or a machine with no desktop)
 takes the same options and runs the check-in site with no window.
 
-## Getting the exe
+## Support this project
 
-Download `EagleBoards.exe` from the repository's
-[**Releases**](https://github.com/deekayen/eagleboards-windows/releases) page.
-The version is in the window title. The exe isn't code-signed, so the first
-time Windows may say it *protected your PC*: choose **More info**, then
-**Run anyway**.
+The scheduler is free, and built and kept up by a volunteer. If it helps your
+district's board events, you can chip in:
+[GitHub Sponsors](https://github.com/sponsors/deekayen) ·
+[Ko-fi](https://ko-fi.com/deekayen) ·
+[Liberapay](https://liberapay.com/deekayen) ·
+[PayPal](https://paypal.me/deekayen) ·
+[Venmo](https://venmo.com/drdnorman) ·
+[Buy Me a Coffee](https://buymeacoff.ee/deekayen).
+The same links are on the app's Settings page.
 
-**Cutting a release.** On GitHub go to **Actions → release → Run workflow**.
-That releases `main` as today's date (`v2026.09.22`); type a version to
-override it, e.g. `2026.09.22.1` for a second release the same day. Or tag a
-commit and push the tag (`git tag v2026.09.22 && git push origin v2026.09.22`).
-Either way the workflow builds, runs every test, checks the exe carries no data
-files, smoke-tests the exact exe, and only then publishes it with a SHA-256
-checksum. The version is stamped in from the tag; there's no file to bump.
+## How it's built
 
-Every push to `main` also leaves a build of the latest code as the
-**EagleBoards-win-x64** artifact on its Actions run (its title says
-`YYYY.MM.DD-ci.N`); use a release for an event night. To build it yourself you
-need the .NET 10 SDK:
+This is the Windows version of the Java
+[Eagle Board Scheduler](https://github.com/deekayen/eagleboards-java) (itself
+reconstructed from an inherited binary). The rules and server were ported to
+C#; the check-in pages are the same; the Java version's browser admin pages
+are replaced by a native WPF app using Windows' Fluent theme. It reads and
+writes the **same data files** as the Java version, so an existing data
+folder keeps working and either version can pick up where the other left off
+if one crashes mid-event (`scripts/test-handoff.sh` checks both directions).
+Just never run both at once: they would fight over the port and the files.
 
-```bat
-dotnet publish src/EagleBoards.App -c Release -r win-x64 -o publish
+```
+  Check-in stations (any browser)             Admin computer
+     /  /youth_register  /adult_register      EagleBoards.exe
+              |                                 |  Event, Results, People,
+              |  HTTP, venue network            |  Settings pages
+              +---------------> Kestrel <-------+  (in-process, no browser)
+                                   |
+                              BoardService  --  CSV files in the data folder
 ```
 
-## What's different from the Java version
+### What's different from the Java version
 
 Deliberate changes. The server-side ones each have a unit test in
 `tests/EagleBoards.Tests`:
 
 - **The admin side is a Windows app.** `/scheduler`, `/admin`, `/configure`
   and `/help` are gone from the website. A sign-in in the browser shows up in
-  the scheduler immediately rather than at the next poll.
+  the scheduler immediately rather than at the next poll. Boards are built in
+  one pane with every rule listed as you go, instead of a pop-up per problem.
 - **Stations can only check in.** The endpoints the old admin pages used
   (seat, complete, record edits, room changes, settings) still exist with the
   same wire formats, but answer only requests from the admin computer itself.
@@ -108,15 +149,14 @@ Deliberate changes. The server-side ones each have a unit test in
   that board type is refused wherever they appear in the list (the browser
   only checked members listed before the chair, the server not at all).
 - **Picks are used up by seating.** Seating a board clears its members'
-  checkboxes; before, they stayed ticked and blocked auto-select for the next
-  youth. Looking at a board that is already seated highlights its members
-  instead of ticking them, for the same reason.
+  picks; before, they stayed ticked and blocked auto-select for the next
+  youth.
 - **Sign-in numbering.** Submitting the sign-in form twice keeps your place
   in the queue instead of renumbering you to the back, and a youth with no
   email is no longer counted as pre-registered because some sign-up also had
   none.
 - **SignUpGenius.** Imported adults get their real ID straight away (the Java
-  import left them all as `ADULT:::` until a restart, so a sign-in that night
+  import left them all as `ADULT:::` until a restart, so a sign-in that day
   created a duplicate history record). The API key is never written to the log.
 - **Phone numbers** from pre-registration are normalized from their digits;
   the Java code formatted the raw text, so `(555) 123-4567` came out garbled.
@@ -124,6 +164,8 @@ Deliberate changes. The server-side ones each have a unit test in
   can't leave half a file. Old files in the Windows ANSI code page (accented
   names in an adult history from the 2019 build) and files saved by Excel with
   a byte-order mark are read correctly.
+- **Status colours** come from the Windows theme instead of `config.properties`;
+  the colour keys stay in the file, untouched, for the Java version.
 - **HTTP details.** A refused board action is `409` with the reason as text
   (the Java server used `304`, which may not carry a body). Success is still
   `200 OK.`
@@ -131,13 +173,14 @@ Deliberate changes. The server-side ones each have a unit test in
 ## Development
 
 ```
-src/EagleBoards.Core     records, CSV storage, BoardService (every rule), SignUpGenius
+src/EagleBoards.Core     records, CSV storage, BoardService, BoardCheck (every rule), SignUpGenius
 src/EagleBoards.Web      Kestrel check-in server + the embedded check-in pages (wwwroot/)
 src/EagleBoards.Server   headless console host (tests, no-desktop use)
 src/EagleBoards.App      the WPF admin app (EagleBoards.exe)
 tests/EagleBoards.Tests       xUnit: composition rules, storage format, lifecycle, auto-select
-tests/EagleBoards.UiSnapshots renders every window off-screen to PNG over synthetic data
-scripts/test-board-evening.sh the Java project's HTTP end-to-end evening, run against this server
+tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and the demo GIF
+scripts/test-board-evening.sh the Java project's HTTP end-to-end event, run against this server
+scripts/test-handoff.sh       the Java and Windows versions taking turns on one event folder
 ```
 
 ```bat
@@ -145,10 +188,26 @@ dotnet build -c Release
 dotnet test tests/EagleBoards.Tests -c Release
 bash scripts/test-board-evening.sh
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots
+dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots-dark --dark
+dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/images
+dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/images --dark
 ```
 
+The last two regenerate the images in this README; run them after a UI change.
 `EB_JAR=/path/to/eagleboardscheduler-*.jar bash scripts/test-board-evening.sh`
-runs the same evening against the Java server, for comparison.
+runs the same end-to-end test against the Java server, for comparison, and
+`EB_JAR=... bash scripts/test-handoff.sh` has the two versions take turns on
+one event folder, as they would if one crashed mid-event.
+
+**Cutting a release.** On GitHub go to **Actions → release → Run workflow**.
+That releases `main` as today's date (`v2026.09.22`); type a version to
+override it, e.g. `2026.09.22.1` for a second release the same day. Or tag a
+commit and push the tag (`git tag v2026.09.22 && git push origin v2026.09.22`).
+Either way the workflow builds, runs every test, checks the exe carries no data
+files, smoke-tests the exact exe, and only then publishes it with a SHA-256
+checksum. The version is stamped in from the tag; there's no file to bump.
+Every push to `main` also leaves a build as the **EagleBoards-win-x64**
+artifact on its Actions run; use a release for an event.
 
 See [CLAUDE.md](CLAUDE.md) for the working rules (data privacy above all).
 
@@ -163,3 +222,6 @@ folders, the adult history and `.env`. Install the hook once per clone with
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Eagle Scout is a trademark of Scouting America. This project is not affiliated
+with or endorsed by Scouting America.

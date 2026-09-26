@@ -109,4 +109,40 @@ public class SchedulerLogicTests
     [InlineData("", "")]
     public void NumberedUnitsAreAbbreviatedForDisplayOnly(string unitName, string label) =>
         Assert.Equal(label, SchedulerLogic.UnitLabel(unitName));
+
+    [Fact]
+    public void FillKeepsTheOperatorsChoiceAndAddsAChairAndOneMember()
+    {
+        // The operator wants m9 (a member from another unit) on the board.
+        var adults = new[] { A("m9", "Troop9", "Member", "Member"), A("chair", "Troop3", "Member", "Chair"), A("m1", "Troop5", "Member", "Member"), A("m2", "Troop7", "Member", "Member") };
+        var fill = SchedulerLogic.FillBoard(FinalScout, adults, ["m9"]);
+        Assert.Equal(["chair"], fill.ChairIds);
+        Assert.Equal(["m1"], fill.MemberIds);
+        Assert.Empty(fill.Problems);
+    }
+
+    [Fact]
+    public void FillAddsNoChairWhenTheOperatorChoseOne()
+    {
+        var adults = new[] { A("c9", "Troop9", "Member", "Chair"), A("chair", "Troop3", "Member", "Chair"), A("m1", "Troop5", "Member", "Member"), A("m2", "Troop7", "Member", "Member") };
+        var fill = SchedulerLogic.FillBoard(FinalScout, adults, ["c9"]);
+        Assert.Empty(fill.ChairIds);
+        Assert.Equal(["m1", "m2"], fill.MemberIds);
+    }
+
+    [Fact]
+    public void FillOnAFullBoardAddsNobody()
+    {
+        var adults = new[] { A("c", "Troop2", "Member", "Chair"), A("a", "Troop3", "Member", "Member"), A("b", "Troop4", "Member", "Member"), A("m", "Troop5", "Member", "Member") };
+        var fill = SchedulerLogic.FillBoard(FinalScout, adults, ["c", "a", "b"]);
+        Assert.Empty(fill.AllAdultIds);
+    }
+
+    [Fact]
+    public void FillSaysWhatIsMissing()
+    {
+        var fill = SchedulerLogic.FillBoard(FinalScout, [A("m9", "Troop9", "Member", "Member")], ["m9"]);
+        Assert.Contains("No Final Chairs Available.", fill.Problems);
+        Assert.Contains("Only 0 Final Members Available", fill.Problems);
+    }
 }

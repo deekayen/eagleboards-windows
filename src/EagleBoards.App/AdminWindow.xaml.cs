@@ -28,7 +28,7 @@ public sealed class RecordRow : Row
 
     public string this[string field]
     {
-        get => _values.TryGetValue(field, out var v) ? v : "";
+        get => _values.TryGetValue(field, out var v) ? Display.Text(v) : "";
         set
         {
             value ??= "";
@@ -74,12 +74,13 @@ public partial class AdminWindow : Window
 
     private static KeyValuePair<string, string>[] Same(params string[] values) => values.Select(v => new KeyValuePair<string, string>(v, v)).ToArray();
 
-    private static readonly KeyValuePair<string, string>[] BoardTypeChoices = [new("", ""), new(BoardTypes.Final, "Final Board"), new(BoardTypes.Project, "Proposal Review")];
+    private static readonly KeyValuePair<string, string>[] BoardTypeChoices =
+        [new("", ""), new(BoardTypes.Final, Display.BoardType(BoardTypes.Final)), new(BoardTypes.Project, Display.BoardType(BoardTypes.Project))];
     private static readonly KeyValuePair<string, string>[] UnitTypeChoices = Same(["", .. UnitTypes.All]);
-    private static readonly KeyValuePair<string, string>[] StatusChoices = Same(["", .. BoardStatus.All]);
+    private static readonly KeyValuePair<string, string>[] StatusChoices = [new("", ""), .. BoardStatus.All.Select(v => new KeyValuePair<string, string>(v, Display.Status(v)))];
     // A board's three decisions only. Not "Postponed": that is the Status of a
     // scout sent away unprepared before any board met them, who has no Result.
-    private static readonly KeyValuePair<string, string>[] ResultChoices = Same(["", .. BoardResults.All]);
+    private static readonly KeyValuePair<string, string>[] ResultChoices = [new("", ""), .. BoardResults.All.Select(v => new KeyValuePair<string, string>(v, Display.Result(v)))];
     private static readonly KeyValuePair<string, string>[] RoleChoices = Same(["", .. BoardRoles.All]);
 
     private static readonly TabSpec[] Specs =
@@ -87,39 +88,39 @@ public partial class AdminWindow : Window
         new("Boards", DataTable.Scouts,
         [
             new("Last", "Last", 100), new("First", "First", 100), new("Phone", "Phone", 105), new("Email", "Email", 150),
-            new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices), new("DOB", "DOB", 85),
+            new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices), new("DOB", "Birth date", 85),
             new("UnitType", "Unit type", 85, Kind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 110),
             new("Status", "Status", 95, Kind.Choice, StatusChoices), new("Result", "Result", 100, Kind.Choice, ResultChoices),
             new("BoardChair", "Chair", 120), new("BoardMembers", "Members", 180), new("Notes", "Notes", 250),
         ], "Report"),
         new("Youth", DataTable.Scouts,
         [
-            new("RegTime", "In", 55, Kind.ReadOnly, Display: DataRecord.RegTimeHmField), new("RegNum", "#", 45, Kind.ReadOnly),
-            new("Last", "Last", 110), new("First", "First", 110), new("DOB", "DOB", 85),
+            new("RegTime", "Signed in", 72, Kind.ReadOnly, Display: DataRecord.RegTimeHmField), new("RegNum", "Sign-in", 64, Kind.ReadOnly),
+            new("Last", "Last", 110), new("First", "First", 110), new("DOB", "Birth date", 85),
             new("UnitType", "Unit type", 85, Kind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 130),
             new("Email", "Email", 170), new("Phone", "Phone", 110), new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
             new("Room", "Room", 60), new("Status", "Status", 95, Kind.Choice, StatusChoices), new("Result", "Result", 100, Kind.Choice, ResultChoices),
         ], "Youth"),
-        new("Youth Scheduled", DataTable.ScoutsScheduled,
+        new("Pre-registered", DataTable.ScoutsScheduled,
         [
-            new("Last", "Last", 110), new("First", "First", 110), new("DOB", "DOB", 85),
+            new("Last", "Last", 110), new("First", "First", 110), new("DOB", "Birth date", 85),
             new("UnitType", "Unit type", 85, Kind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 150),
             new("Email", "Email", 190), new("Phone", "Phone", 110), new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
         ], "YouthScheduled"),
         new("Adults", DataTable.Adults,
         [
-            new("RegTime", "In", 55, Kind.ReadOnly, Display: DataRecord.RegTimeHmField),
+            new("RegTime", "Signed in", 72, Kind.ReadOnly, Display: DataRecord.RegTimeHmField),
             new("Last", "Last", 120), new("First", "First", 120), new("UnitType", "Unit type", 90, Kind.Choice, UnitTypeChoices),
             new("Unit", "Unit", 70), new("Email", "Email", 190), new("Phone", "Phone", 110),
-            new("FinalBoard", "Final", 100, Kind.Choice, RoleChoices), new("ProjectReview", "Project", 100, Kind.Choice, RoleChoices),
+            new("FinalBoard", "Final role", 100, Kind.Choice, RoleChoices), new("ProjectReview", "Project role", 110, Kind.Choice, RoleChoices),
             new("Room", "Room", 70),
         ], "Adults"),
-        new("Adult History", DataTable.AdultHistory,
+        new("Adult history", DataTable.AdultHistory,
         [
             new("Last", "Last", 120), new("First", "First", 120), new("UnitType", "Unit type", 90, Kind.Choice, UnitTypeChoices),
             new("Unit", "Unit", 70), new("Email", "Email", 200), new("Phone", "Phone", 110),
-            new("FinalBoard", "Final", 100, Kind.Choice, RoleChoices), new("ProjectReview", "Project", 100, Kind.Choice, RoleChoices),
-            new("BoardHistory", "Nights signed in", 300, Kind.ReadOnly),
+            new("FinalBoard", "Final role", 100, Kind.Choice, RoleChoices), new("ProjectReview", "Project role", 110, Kind.Choice, RoleChoices),
+            new("BoardHistory", "Events signed in", 300, Kind.ReadOnly),
         ], "AdultHistory"),
         new("Rooms", DataTable.Rooms,
         [
@@ -178,8 +179,8 @@ public partial class AdminWindow : Window
         private readonly ObservableCollection<RecordRow> _rows = [];
         private readonly ListCollectionView _view;
         private readonly DataGrid _grid;
-        private readonly TextBox _filter = new() { Width = 160, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
-        private readonly TextBlock _count = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0), Foreground = Brushes2.FromHex("#555", System.Windows.Media.Brushes.Gray) };
+        private readonly TextBox _filter = new() { Width = 200, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+        private readonly TextBlock _count = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
         private bool _editing;
 
         public AdminTab(AdminWindow owner, TabSpec spec)
@@ -201,19 +202,22 @@ public partial class AdminWindow : Window
 
             _grid.BeginningEdit += (_, _) => _editing = true;
             _grid.CellEditEnding += (_, _) => _editing = false;
+            _count.SetResourceReference(FrameworkElement.StyleProperty, "Secondary");
+            System.Windows.Automation.AutomationProperties.SetName(_filter, "Find in " + spec.Title);
             _filter.TextChanged += (_, _) =>
             {
                 _view.Refresh();
                 UpdateCount();
             };
 
-            var bar = new WrapPanel { Margin = new Thickness(0, 6, 0, 6) };
+            var bar = new WrapPanel { Margin = new Thickness(0, 12, 0, 12) };
             bar.Children.Add(Button("Refresh", () => Reload(quiet: false)));
             bar.Children.Add(Button("Export CSV...", Export));
             if (spec.Rooms)
             {
-                var room = new TextBox { Width = 70, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0), ToolTip = "Room number" };
-                var type = new ComboBox { ItemsSource = BoardTypeChoices.Skip(1).ToList(), DisplayMemberPath = "Value", SelectedValuePath = "Key", SelectedIndex = 0, Width = 130 };
+                var room = new TextBox { Width = 80, VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0), ToolTip = "Room number" };
+                System.Windows.Automation.AutomationProperties.SetName(room, "Room number");
+                var type = new ComboBox { ItemsSource = BoardTypeChoices.Skip(1).ToList(), DisplayMemberPath = "Value", SelectedValuePath = "Key", SelectedIndex = 0, Width = 150, Margin = new Thickness(0, 0, 8, 0) };
                 bar.Children.Add(room);
                 bar.Children.Add(type);
                 bar.Children.Add(Button("Add room", () =>
@@ -225,7 +229,7 @@ public partial class AdminWindow : Window
                     }
                     else
                     {
-                        MessageBox.Show(_owner, result.Message, "Add room", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        _owner.Notice.Show(Severity.Error, "Couldn't add the room", result.Message);
                     }
 
                     Reload(quiet: true);
@@ -237,15 +241,15 @@ public partial class AdminWindow : Window
                 bar.Children.Add(Button("Delete...", Delete));
             }
 
-            bar.Children.Add(new TextBlock { Text = "Filter:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) });
+            bar.Children.Add(new TextBlock { Text = "Find", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) });
             bar.Children.Add(_filter);
             bar.Children.Add(_count);
 
-            var panel = new DockPanel { Background = System.Windows.Media.Brushes.White };
+            var panel = new DockPanel();
             DockPanel.SetDock(bar, Dock.Top);
             panel.Children.Add(bar);
             panel.Children.Add(_grid);
-            Item = new TabItem { Header = spec.Title, Content = panel, Padding = new Thickness(12, 4, 12, 4) };
+            Item = new TabItem { Header = spec.Title, Content = panel };
         }
 
         public TabSpec Spec { get; }
@@ -254,7 +258,7 @@ public partial class AdminWindow : Window
 
         private static Button Button(string text, Action click)
         {
-            var b = new Button { Content = text, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 6, 0) };
+            var b = new Button { Content = text, Margin = new Thickness(0, 0, 8, 0) };
             b.Click += (_, _) => click();
             return b;
         }
@@ -274,6 +278,10 @@ public partial class AdminWindow : Window
                         SelectedValuePath = "Key",
                         SelectedValueBinding = new Binding(path) { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged },
                         SortMemberPath = path,
+
+                        // The column's own editing combo is the classic one:
+                        // a white list with invisible items in dark mode.
+                        EditingElementStyle = (Style)Application.Current.FindResource("DefaultComboBoxStyle"),
                     };
                 default:
                     return new DataGridTextColumn
@@ -312,8 +320,7 @@ public partial class AdminWindow : Window
             var action = _owner._svc.SaveRow(Spec.Table, "updated", row.Id, new Dictionary<string, string> { [field] = value });
             if (action == "invalid")
             {
-                MessageBox.Show(_owner, "That record no longer exists (it may have been deleted); reloading.", "Admin tables",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                _owner.Notice.Show(Severity.Warning, "That record is gone", "It may have been deleted. The table has been reloaded.");
                 _owner.Dispatcher.BeginInvoke(() => Reload(quiet: false));
             }
         }
@@ -322,7 +329,7 @@ public partial class AdminWindow : Window
         {
             if (_grid.SelectedItem is not RecordRow row)
             {
-                MessageBox.Show(_owner, "Select a row first.", Spec.Title, MessageBoxButton.OK, MessageBoxImage.Information);
+                _owner.Notice.Show(Severity.Informational, "Select a row first", "Click the row to delete, then Delete.");
                 return;
             }
 
@@ -331,10 +338,10 @@ public partial class AdminWindow : Window
                 var result = _owner._svc.RemoveRoom(row.Id);
                 if (!result.Ok)
                 {
-                    MessageBox.Show(_owner, result.Message, "Remove room", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    _owner.Notice.Show(Severity.Error, "Couldn't remove the room", result.Message);
                 }
             }
-            else if (Ask.Confirm(_owner, "Delete", $"Delete {row.Describe()} from {Spec.Title}?\n\nThis can't be undone.", MessageBoxImage.Warning))
+            else if (AppDialog.Confirm(_owner, "Delete this record?", $"**{row.Describe()}** will be removed from {Spec.Title}. This can't be undone.", "Delete"))
             {
                 _owner._svc.SaveRow(Spec.Table, "deleted", row.Id, new Dictionary<string, string>());
             }
@@ -362,7 +369,7 @@ public partial class AdminWindow : Window
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                MessageBox.Show(_owner, "Couldn't save it: " + ex.Message, "Export", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _owner.Notice.Show(Severity.Error, "Couldn't export it", ex.Message);
             }
         }
     }

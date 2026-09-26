@@ -6,7 +6,7 @@ using EagleBoards.Web;
 
 namespace EagleBoards.App;
 
-/// <summary>Everything needed to start an event night.</summary>
+/// <summary>Everything needed to start an event.</summary>
 public sealed class LaunchPlan
 {
     public required string DataDirectory { get; init; }
@@ -58,6 +58,12 @@ public sealed class EventSession : IAsyncDisposable
     /// <summary>The addresses check-in stations can use, most likely first.</summary>
     public IReadOnlyList<string> CheckInUrls { get; private set; } = [];
 
+    /// <summary>
+    /// Served on this computer only (-bind 127.0.0.1): the check-in stations,
+    /// being other computers, can't reach it.
+    /// </summary>
+    public bool IsLocalOnly => Plan.BindAddress is { } a && IPAddress.IsLoopback(a);
+
     /// <summary>This machine's own view of the check-in site.</summary>
     public string LocalUrl => $"http://127.0.0.1:{Plan.Port}/";
 
@@ -90,7 +96,7 @@ public sealed class EventSession : IAsyncDisposable
     private async Task StartCoreAsync(IProgress<string>? progress)
     {
         Log($"--- starting: data {Plan.DataDirectory}, port {Plan.Port}, bind {Plan.BindAddress?.ToString() ?? "all"}");
-        progress?.Report("Opening tonight's data...");
+        progress?.Report("Opening the event's data...");
         Service = BoardService.Open(new EventOptions
         {
             DataDirectory = Plan.DataDirectory,

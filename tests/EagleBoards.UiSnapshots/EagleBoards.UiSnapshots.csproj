@@ -8,6 +8,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode, which loads the Fluent (Windows 11) theme, is
+         still marked experimental in .NET 10. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

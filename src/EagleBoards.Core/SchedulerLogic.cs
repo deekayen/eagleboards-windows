@@ -125,6 +125,46 @@ public static class SchedulerLogic
     }
 
     /// <summary>
+    /// Complete a board around the adults the operator has already chosen:
+    /// a qualified chair if none of them can chair, then members up to the
+    /// minimum, by the same preferences as <see cref="AutoSelect"/>. Returns
+    /// only the adults to add; the operator's choices are never replaced.
+    /// </summary>
+    public static AutoSelection FillBoard(ScoutInfo scout, IReadOnlyList<AdultInfo> adults, IReadOnlyCollection<string> pickedIds)
+    {
+        var problems = new List<string>();
+        var picked = adults.Where(a => pickedIds.Contains(a.Id)).ToList();
+        var chairs = new List<string>();
+        if (picked.All(a => a.RoleFor(scout.BoardType) != BoardRoles.Chair))
+        {
+            chairs = FindBoardMembers(adults, scout.UnitName, scout.BoardType, [BoardRoles.Chair], 1, pickedIds);
+            if (chairs.Count == 0)
+            {
+                problems.Add($"No {scout.BoardType} Chairs Available.");
+            }
+        }
+
+        var wanted = BoardRules.MinMembers(scout.BoardType) - pickedIds.Count - chairs.Count;
+        var members = new List<string>();
+        if (wanted > 0)
+        {
+            var omit = pickedIds.Concat(chairs).ToList();
+            members = FindBoardMembers(adults, scout.UnitName, scout.BoardType, [BoardRoles.Member], wanted, omit);
+            if (members.Count < wanted)
+            {
+                members.AddRange(FindBoardMembers(adults, scout.UnitName, scout.BoardType,
+                    [BoardRoles.Member, BoardRoles.Chair], wanted - members.Count, omit.Concat(members).ToList()));
+                if (members.Count < wanted)
+                {
+                    problems.Add($"Only {members.Count} {scout.BoardType} Members Available");
+                }
+            }
+        }
+
+        return new AutoSelection(chairs, members, null, problems);
+    }
+
+    /// <summary>
     /// Find a scout's leaders (an adult whose last name appears in the
     /// scout's Leader field, and who shares the unit or whose first name also
     /// appears) and parents (same unit and same last name). Once a leader is

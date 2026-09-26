@@ -4,16 +4,14 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <!-- Only for the standard Windows color picker on the Settings window. -->
-    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF0001: ThemeMode, which loads the Fluent (Windows 11) theme, is
+         still marked experimental in .NET 10. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <RootNamespace>EagleBoards.App</RootNamespace>
     <AssemblyName>EagleBoards</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Eagle rank patch; drawn in Assets/EagleBoards.svg, packed by scripts/make-icon.sh. -->
     <ApplicationIcon>Assets\EagleBoards.ico</ApplicationIcon>
-    <!-- WFO0003 wants WinForms DPI configured in code; this is a WPF app, where
-         per-monitor DPI awareness belongs in the manifest. -->
-    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <!-- dotnet publish -r win-x64 gives one self-contained EagleBoards.exe:
@@ -25,13 +23,6 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
-
-  <!-- WinForms' implicit usings would make Application, MessageBox, Button and
-       friends ambiguous with WPF's. The one WinForms type used is qualified. -->
-  <ItemGroup>
-    <Using Remove="System.Windows.Forms" />
-    <Using Remove="System.Drawing" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EagleBoards.Web\EagleBoards.Web.csproj" />

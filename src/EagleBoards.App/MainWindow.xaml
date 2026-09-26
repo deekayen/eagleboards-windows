@@ -1,125 +1,295 @@
 <Window x:Class="EagleBoards.App.MainWindow"
-        Icon="/Assets/EagleBoards.ico"
+        Icon="pack://application:,,,/EagleBoards;component/Assets/EagleBoards.ico"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:EagleBoards.App"
-        Title="Eagle Board Scheduler" Width="1400" Height="900" MinWidth="900" MinHeight="600"
-        WindowState="Maximized" FontSize="13" Background="#F4F3EF">
+        Title="Eagle Board Scheduler" Width="1400" Height="900" MinWidth="1100" MinHeight="640"
+        WindowState="Maximized">
+
+  <!-- Layout after Windows' NavigationView and list/details patterns: pages in
+       a sidebar on the window's base layer; the page on a content layer.
+       Event is the console: the youth queue, the rooms, and a details pane
+       that builds and runs the selected youth's board. -->
 
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-    <!-- Cells take their colors from the row, including when selected, so the
-         status colors (and their "Hi" variants) are what marks the selection
-         rather than the system highlight. -->
-    <Style x:Key="PlainCell" TargetType="DataGridCell">
-      <Setter Property="BorderThickness" Value="0" />
+    <!-- Status as a tinted label with an icon: the words carry the meaning,
+         the icon and tint help scanning, and none of it relies on colour alone. -->
+    <DataTemplate x:Key="StatusCell" DataType="{x:Type app:ScoutRow}">
+      <Border x:Name="Pill" CornerRadius="{DynamicResource ControlCornerRadius}" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
+              Background="{DynamicResource SystemFillColorNeutralBackgroundBrush}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock x:Name="Icon" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,6,0" Text="&#xE823;"
+                     Foreground="{DynamicResource SystemFillColorNeutralBrush}" />
+          <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Status}" Value="Seated">
+          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+          <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+          <Setter TargetName="Icon" Property="Text" Value="&#xE716;" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="InProgress">
+          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
+          <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorAttentionBrush}" />
+          <Setter TargetName="Icon" Property="Text" Value="&#xE768;" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Completed">
+          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
+          <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+          <Setter TargetName="Icon" Property="Text" Value="&#xE73E;" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Status}" Value="Postponed">
+          <Setter TargetName="Icon" Property="Text" Value="&#xE769;" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- Sidebar entries, after NavigationView: icon and label, a pill on the selected one. -->
+    <Style x:Key="NavItem" TargetType="ListBoxItem" BasedOn="{StaticResource SubtleListItem}">
+      <Setter Property="Height" Value="40" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+
+    <Style x:Key="NavList" TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Padding" Value="3,1" />
-      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-      <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="ItemContainerStyle" Value="{StaticResource NavItem}" />
+    </Style>
+
+    <!-- The queue: two lines per youth, time or status on the right. -->
+    <DataTemplate x:Key="QueueItem" DataType="{x:Type app:ScoutRow}">
+      <DockPanel Margin="0,6">
+        <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+          <ContentControl x:Name="Pill" Content="{Binding}" ContentTemplate="{StaticResource StatusCell}" HorizontalAlignment="Right" Focusable="False" />
+          <TextBlock Style="{StaticResource Hint}" Text="{Binding TimeText}" HorizontalAlignment="Right" ToolTip="{Binding MinsTip}" />
+        </StackPanel>
+        <StackPanel>
+          <TextBlock Text="{Binding FullName}" TextWrapping="Wrap" />
+          <TextBlock Style="{StaticResource Hint}" Text="{Binding SubLine}" ToolTip="{Binding RegNumTip}" />
+        </StackPanel>
+      </DockPanel>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding QueueRank}" Value="0">
+          <Setter TargetName="Pill" Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <Style x:Key="RoomItem" TargetType="ListBoxItem">
+      <Setter Property="Margin" Value="0,0,8,8" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="Width" Value="200" />
+      <Setter Property="MinHeight" Value="112" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleName}" />
+      <Setter Property="ToolTip" Value="{Binding TimerTip}" />
+      <Setter Property="ToolTipService.IsEnabled" Value="{Binding ShowWarning}" />
       <Setter Property="Template">
         <Setter.Value>
-          <ControlTemplate TargetType="DataGridCell">
-            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-              <ContentPresenter VerticalAlignment="Center" />
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="Card" Padding="{TemplateBinding Padding}" BorderThickness="1"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+              <ContentPresenter />
             </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Card" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                <Setter TargetName="Card" Property="BorderThickness" Value="2" />
+                <Setter TargetName="Card" Property="Padding" Value="11" />
+              </Trigger>
+            </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
-      <Style.Triggers>
-        <Trigger Property="IsSelected" Value="True">
-          <Setter Property="Background" Value="Transparent" />
-          <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}" />
-        </Trigger>
-      </Style.Triggers>
     </Style>
 
-    <Style x:Key="ScoutRowStyle" TargetType="DataGridRow">
-      <Setter Property="Background" Value="{Binding Background}" />
-      <Setter Property="Foreground" Value="Black" />
-      <Style.Triggers>
-        <Trigger Property="IsSelected" Value="True">
-          <Setter Property="Background" Value="{Binding SelectedBackground}" />
-          <Setter Property="FontWeight" Value="SemiBold" />
-        </Trigger>
-      </Style.Triggers>
-    </Style>
-
-    <Style x:Key="AdultRowStyle" TargetType="DataGridRow">
-      <Setter Property="Foreground" Value="{Binding Foreground}" />
-      <Setter Property="Background" Value="White" />
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
-          <Setter Property="Background" Value="#E8F0FE" />
-          <Setter Property="FontWeight" Value="SemiBold" />
+    <DataTemplate x:Key="RoomCardTemplate" DataType="{x:Type app:RoomCard}">
+      <StackPanel>
+        <DockPanel>
+          <StackPanel x:Name="Timer" DockPanel.Dock="Right" Orientation="Horizontal"
+                      TextElement.Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+            <TextBlock Style="{StaticResource Glyph}" FontSize="14" Text="&#xE7BA;" Margin="0,0,4,0"
+                       Visibility="{Binding ShowWarning, Converter={StaticResource BoolToVis}}" />
+            <TextBlock Text="{Binding TimerText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}">
+            <Run Text="Room" /> <Run Text="{Binding Room, Mode=OneWay}" />
+          </TextBlock>
+        </DockPanel>
+        <TextBlock Style="{StaticResource Hint}" Text="{Binding BoardTypeText}" />
+        <TextBlock x:Name="Scout" Text="{Binding ScoutText}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <!-- One member per line, in full: this is how people find which room someone is in. -->
+        <TextBlock Style="{StaticResource Hint}" Text="{Binding LeadersLines}" Margin="0,2,0,0" />
+      </StackPanel>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding IsFree}" Value="True">
+          <Setter TargetName="Scout" Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
         </DataTrigger>
-        <Trigger Property="IsSelected" Value="True">
-          <Setter Property="Background" Value="#D2E3FC" />
-        </Trigger>
+        <DataTrigger Binding="{Binding TimerState}" Value="Warning">
+          <Setter TargetName="Timer" Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding TimerState}" Value="Overdue">
+          <Setter TargetName="Timer" Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A picked member in the builder: who, and the chair choice. -->
+    <DataTemplate x:Key="PickTemplate" DataType="{x:Type app:PickRow}">
+      <Border Padding="12,8" Margin="0,0,0,4" CornerRadius="{DynamicResource ControlCornerRadius}"
+              Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" BorderThickness="1"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Click="OnRemovePick" Tag="{Binding}" Padding="6" Margin="8,0,0,0" VerticalAlignment="Center"
+                  ToolTip="Remove from this board" AutomationProperties.Name="{Binding Name, StringFormat=Remove {0}}">
+            <TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE711;" />
+          </Button>
+          <RadioButton DockPanel.Dock="Right" GroupName="Chair" Content="Chair" IsChecked="{Binding IsChair}" VerticalAlignment="Center"
+                       MinWidth="0" Visibility="{Binding CanChair, Converter={StaticResource BoolToVis}}"
+                       AutomationProperties.Name="{Binding Name, StringFormat={}{0} chairs}" />
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+            <TextBlock x:Name="Detail" Style="{StaticResource Hint}" Text="{Binding Detail}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SameUnit}" Value="True">
+          <Setter TargetName="Detail" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- An adult who could join the board. -->
+    <DataTemplate x:Key="AvailableTemplate" DataType="{x:Type app:PickRow}">
+      <DockPanel Margin="0,4">
+        <Button DockPanel.Dock="Right" Click="OnAddPick" Tag="{Binding}" Padding="8,4" Margin="8,0,0,0" VerticalAlignment="Center"
+                AutomationProperties.Name="{Binding Name, StringFormat=Add {0}}">
+          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE710;" Margin="0,0,6,0" /><TextBlock Text="Add" /></StackPanel>
+        </Button>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+          <TextBlock x:Name="Detail" Style="{StaticResource Hint}" Text="{Binding Detail}" />
+        </StackPanel>
+      </DockPanel>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SameUnit}" Value="True">
+          <Setter TargetName="Detail" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A member of a seated or running board: replace or remove them. -->
+    <DataTemplate x:Key="SeatedMemberTemplate" DataType="{x:Type app:PickRow}">
+      <Border Padding="12,8" Margin="0,0,0,4" CornerRadius="{DynamicResource ControlCornerRadius}"
+              Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" BorderThickness="1"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Click="OnRemoveMember" Tag="{Binding}" Padding="6" Margin="8,0,0,0" VerticalAlignment="Center"
+                  ToolTip="Take them off this board" AutomationProperties.Name="{Binding Name, StringFormat=Remove {0} from the board}">
+            <TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE711;" />
+          </Button>
+          <Button DockPanel.Dock="Right" Click="OnReplaceMember" Tag="{Binding}" Padding="8,4" Margin="8,0,0,0" VerticalAlignment="Center"
+                  ToolTip="Swap in someone else" AutomationProperties.Name="{Binding Name, StringFormat=Replace {0}}">
+            <TextBlock Text="Replace..." />
+          </Button>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+            <TextBlock x:Name="Detail" Style="{StaticResource Hint}" Text="{Binding Detail}" />
+            <TextBlock Style="{StaticResource Hint}" Text="Chairing this board" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                       Visibility="{Binding IsChair, Converter={StaticResource BoolToVis}}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding SameUnit}" Value="True">
+          <Setter TargetName="Detail" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A label over its value, for the details pane. -->
+    <DataTemplate x:Key="FactTemplate">
+      <StackPanel Margin="0,0,0,12">
+        <TextBlock Style="{StaticResource Hint}" Text="{Binding Key}" />
+        <TextBlock Text="{Binding Value}" TextWrapping="Wrap" />
+      </StackPanel>
+    </DataTemplate>
+
+    <Style x:Key="PageTitle" TargetType="TextBlock" BasedOn="{StaticResource SubtitleTextBlockStyle}">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="SectionLabel" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
+      <Setter Property="Margin" Value="0,16,0,8" />
+    </Style>
+
+    <Style x:Key="PeopleRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsBusy}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding IsDisabled}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+        </DataTrigger>
       </Style.Triggers>
-    </Style>
-
-    <Style x:Key="PanelToolbar" TargetType="WrapPanel">
-      <Setter Property="Margin" Value="4,4,4,4" />
-    </Style>
-
-    <Style x:Key="Sep" TargetType="Border">
-      <Setter Property="Width" Value="1" />
-      <Setter Property="Margin" Value="6,2" />
-      <Setter Property="Background" Value="{StaticResource PanelBorder}" />
     </Style>
   </Window.Resources>
 
   <Grid>
-    <DockPanel>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="184" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
 
-      <Menu DockPanel.Dock="Top" Padding="2" Background="#FBFAF7">
-        <MenuItem Header="_File">
-          <MenuItem Header="Save _Report..." ToolTip="Save the evening's board results as a CSV file" Click="OnReport" />
-          <MenuItem Header="Open _Check-in Page" ToolTip="Open the sign-in website in a browser on this computer" Click="OnOpenCheckIn" />
-          <Separator />
-          <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="OnExit" />
-        </MenuItem>
-        <MenuItem Header="_View">
-          <MenuItem Header="_Refresh" InputGestureText="F5" Click="OnRefresh" />
-          <MenuItem Header="_Admin Tables..." ToolTip="View and edit every record: youth, adults, adult history, rooms" Click="OnAdmin" />
-        </MenuItem>
-        <MenuItem Header="R_ooms">
-          <MenuItem Header="_Add Room..." Click="OnAddRoom" />
-          <MenuItem Header="_Remove Room" ToolTip="Remove the selected room" Click="OnRemoveRoom" />
-          <MenuItem Header="_Change Room..." ToolTip="Move or swap the selected room's board with another room" Click="OnChangeRoom" />
-        </MenuItem>
-        <MenuItem Header="_Tools">
-          <MenuItem Header="_Settings..." ToolTip="Timers and status colors" Click="OnSettings" />
-        </MenuItem>
-        <MenuItem Header="_Help">
-          <MenuItem Header="Scheduler _Help" InputGestureText="F1" Click="OnHelp" />
-        </MenuItem>
-      </Menu>
+    <!-- Sidebar -->
+    <DockPanel Grid.Column="0" Margin="8,8,8,12">
+      <StackPanel DockPanel.Dock="Bottom">
+        <Button Click="OnHelp" Padding="12,0" Height="40" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
+                ToolTip="How to run an event (F1)">
+          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE897;" Margin="0,0,16,0" /><TextBlock Text="Help" /></StackPanel>
+        </Button>
+        <ListBox x:Name="FooterNav" Style="{StaticResource NavList}" SelectionChanged="OnNavigate" AutomationProperties.Name="Settings">
+          <ListBoxItem Tag="Settings">
+            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE713;" Margin="0,0,16,0" /><TextBlock Text="Settings" /></StackPanel>
+          </ListBoxItem>
+        </ListBox>
+      </StackPanel>
+      <ListBox x:Name="MainNav" Style="{StaticResource NavList}" SelectionChanged="OnNavigate" AutomationProperties.Name="Pages">
+        <ListBoxItem Tag="Event" ToolTip="The event's youth, rooms and boards (Ctrl+1)">
+          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE80F;" Margin="0,0,16,0" /><TextBlock Text="Event" /></StackPanel>
+        </ListBoxItem>
+        <ListBoxItem Tag="Results" ToolTip="Every board and its result, and the report (Ctrl+2)">
+          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE9D5;" Margin="0,0,16,0" /><TextBlock Text="Results" /></StackPanel>
+        </ListBoxItem>
+        <ListBoxItem Tag="People" ToolTip="The adults signed in at this event (Ctrl+3)">
+          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE716;" Margin="0,0,16,0" /><TextBlock Text="People" /></StackPanel>
+        </ListBoxItem>
+      </ListBox>
+    </DockPanel>
 
-      <!-- Toolbar: the things used all evening -->
-      <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="{StaticResource PanelBorder}" BorderThickness="0,1,0,1" Background="#FBFAF7">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Right" Text="Eagle Board Scheduler" FontSize="17" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,4,0" />
-          <WrapPanel>
-            <Button Style="{StaticResource ToolButton}" Content="Refresh" ToolTip="Reload everything now (F5)" Click="OnRefresh" />
-            <Border Style="{StaticResource Sep}" />
-            <Button Style="{StaticResource ToolButton}" Content="+ Room" ToolTip="Add a room" Click="OnAddRoom" />
-            <Button Style="{StaticResource ToolButton}" Content="- Room" ToolTip="Remove the selected room" Click="OnRemoveRoom" />
-            <Button Style="{StaticResource ToolButton}" Content="Change Room" ToolTip="Move or swap the selected room's board with another room" Click="OnChangeRoom" />
-          </WrapPanel>
-        </DockPanel>
-      </Border>
-
-      <!-- Status bar: where the check-in stations should point -->
-      <Border DockPanel.Dock="Bottom" Padding="10,4" BorderBrush="{StaticResource PanelBorder}" BorderThickness="0,1,0,0" Background="#FBFAF7">
-        <DockPanel>
-          <TextBlock x:Name="ClockText" DockPanel.Dock="Right" Foreground="#555" Margin="16,0,0,0" />
-          <TextBlock x:Name="ImportText" DockPanel.Dock="Right" Foreground="#555" Margin="16,0,0,0" />
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Text="Check-in stations: " FontWeight="SemiBold" VerticalAlignment="Center" />
-            <ItemsControl x:Name="UrlList" VerticalAlignment="Center">
+    <!-- Content layer -->
+    <Border Grid.Column="1" Background="{DynamicResource LayerFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
+      <DockPanel>
+        <!-- Where the check-in stations should point. -->
+        <!-- Docked, not a StatusBar: its last item only gets what's left, so a
+             long data path pushed the others off the edge. The path gives way.
+             No clock: the taskbar has one. -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="16,6,16,8" LastChildFill="True">
+          <TextBlock x:Name="ImportText" DockPanel.Dock="Right" Style="{StaticResource Secondary}" Margin="16,0,0,0" VerticalAlignment="Center" />
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock x:Name="UrlLabel" Text="Check-in address: " VerticalAlignment="Center" />
+            <ItemsControl x:Name="UrlList" VerticalAlignment="Center" Focusable="False">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <StackPanel Orientation="Horizontal" />
@@ -127,8 +297,8 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Margin="0,0,14,0">
-                    <Hyperlink NavigateUri="{Binding}" RequestNavigate="OnUrlClicked" ToolTip="Click to open; right-click to copy">
+                  <TextBlock Margin="0,0,16,0">
+                    <Hyperlink NavigateUri="{Binding}" RequestNavigate="OnUrlClicked" ToolTip="Open in a browser. Right-click to copy.">
                       <Hyperlink.ContextMenu>
                         <ContextMenu>
                           <MenuItem Header="Copy address" Click="OnCopyUrl" Tag="{Binding}" />
@@ -140,244 +310,291 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock x:Name="DataText" Foreground="#555" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <TextBlock x:Name="CopiedText" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="0,0,16,0" />
           </StackPanel>
+          <TextBlock x:Name="DataText" Style="{StaticResource Secondary}" VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
         </DockPanel>
-      </Border>
 
-      <Grid Margin="8">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="4*" MinHeight="120" />
-          <RowDefinition Height="8" />
-          <RowDefinition Height="2*" MinHeight="110" />
-          <RowDefinition Height="8" />
-          <RowDefinition Height="3*" MinHeight="100" />
-        </Grid.RowDefinitions>
+        <!-- Messages about the event as a whole (the import, the report). -->
+        <app:InfoBar x:Name="Notice" DockPanel.Dock="Top" Margin="16,16,16,0" IsClosable="True" />
 
-        <Grid Grid.Row="0">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="300" />
-            <ColumnDefinition Width="8" />
-            <ColumnDefinition Width="*" MinWidth="260" />
-          </Grid.ColumnDefinitions>
+        <Grid>
+          <!-- ============================= Event ============================== -->
+          <Grid x:Name="EventPage" Margin="16">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="280" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="*" MinWidth="240" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="360" />
+            </Grid.ColumnDefinitions>
 
-          <!-- Youth -->
-          <Border Grid.Column="0" Style="{StaticResource Panel}">
-            <DockPanel>
-              <Border DockPanel.Dock="Top" Style="{StaticResource PanelTitle}">
-                <DockPanel>
-                  <TextBox x:Name="ScoutFilter" DockPanel.Dock="Right" Width="140" VerticalContentAlignment="Center" TextChanged="OnScoutFilter"
-                           ToolTip="Show only rows containing this text" />
-                  <TextBlock DockPanel.Dock="Right" Text="Filter " VerticalAlignment="Center" />
-                  <TextBlock Text="Youth" FontWeight="Bold" VerticalAlignment="Center" />
-                </DockPanel>
-              </Border>
-              <WrapPanel DockPanel.Dock="Top" Style="{StaticResource PanelToolbar}">
-                <Button x:Name="SeatButton" Style="{StaticResource ActionButton}" Content="_Seat Board" Click="OnSeat"
-                        ToolTip="Put the board members in a room to read the application, references and project workbook. The scout stays outside until Start Review." />
-                <Button x:Name="StartButton" Style="{StaticResource ActionButton}" Content="Start Re_view" Click="OnStart"
-                        ToolTip="Bring the scout into the room and begin the interview, once the members have finished reading." />
-                <Button x:Name="CompleteButton" Style="{StaticResource ActionButton}" Content="_Complete" Click="OnComplete"
-                        ToolTip="Finish the review and record the result. Available once the scout has been brought in." />
-                <Border Style="{StaticResource Sep}" />
-                <Button x:Name="LocateButton" Style="{StaticResource ToolButton}" Content="_Locate" Click="OnLocate" ToolTip="Where are this scout's leaders and parents?" />
-                <Button x:Name="ResetButton" Style="{StaticResource ToolButton}" Content="Reset" Click="OnReset" ToolTip="Undo the seating: back to Registered, room and members freed" />
-                <Button x:Name="PostponeButton" Style="{StaticResource ToolButton}" Content="Postpone" Click="OnPostpone" ToolTip="Postpone this scout's board (e.g. paperwork not in order)" />
-                <Border Style="{StaticResource Sep}" />
-                <ToggleButton x:Name="ShowFinishedToggle" Content="Show finished" Padding="8,3" Margin="2,0" Click="OnScoutViewToggle"
-                              ToolTip="Also list Completed and Postponed youth" />
-              </WrapPanel>
-              <DataGrid x:Name="ScoutGrid" IsReadOnly="True" CellStyle="{StaticResource PlainCell}" RowStyle="{StaticResource ScoutRowStyle}"
-                        SelectionChanged="OnScoutSelected" PreviewMouseLeftButtonDown="OnScoutGridClick">
-                <DataGrid.Columns>
-                  <DataGridTextColumn Header="#" Binding="{Binding RegNum}" SortMemberPath="RegNumSort" Width="46">
-                    <DataGridTextColumn.CellStyle>
-                      <Style TargetType="DataGridCell" BasedOn="{StaticResource PlainCell}">
-                        <Setter Property="ToolTip" Value="{Binding RegNumTip}" />
-                      </Style>
-                    </DataGridTextColumn.CellStyle>
-                    <DataGridTextColumn.HeaderStyle>
-                      <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="ToolTip" Value="P = pre-registered (matched a sign-up), W = walk-in. The number is the order they signed in within their group. Pre-registered sort first." />
-                      </Style>
-                    </DataGridTextColumn.HeaderStyle>
-                  </DataGridTextColumn>
-                  <DataGridTextColumn Header="Min" Binding="{Binding Mins}" Width="44">
-                    <DataGridTextColumn.CellStyle>
-                      <Style TargetType="DataGridCell" BasedOn="{StaticResource PlainCell}">
-                        <Setter Property="ToolTip" Value="{Binding MinsTip}" />
-                      </Style>
-                    </DataGridTextColumn.CellStyle>
-                  </DataGridTextColumn>
-                  <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="100" />
-                  <DataGridTextColumn Header="First" Binding="{Binding First}" Width="90" />
-                  <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="64" />
-                  <DataGridTextColumn Header="F/P" Binding="{Binding BoardType}" Width="60" />
-                  <DataGridTextColumn Header="RM#" Binding="{Binding Room}" Width="52" />
-                  <DataGridTextColumn Header="Status" Binding="{Binding Status}" SortMemberPath="StatusRank" Width="84" />
-                  <DataGridTextColumn Header="Leader" Binding="{Binding Leader}" Width="*" />
-                </DataGrid.Columns>
-              </DataGrid>
-            </DockPanel>
-          </Border>
-
-          <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" />
-
-          <!-- Adults -->
-          <Border Grid.Column="2" Style="{StaticResource Panel}">
-            <DockPanel>
-              <Border DockPanel.Dock="Top" Style="{StaticResource PanelTitle}">
-                <DockPanel>
-                  <TextBox x:Name="AdultFilter" DockPanel.Dock="Right" Width="140" VerticalContentAlignment="Center" TextChanged="OnAdultFilter"
-                           ToolTip="Show only rows containing this text" />
-                  <TextBlock DockPanel.Dock="Right" Text="Filter " VerticalAlignment="Center" />
-                  <TextBlock Text="Adult Board Members" FontWeight="Bold" VerticalAlignment="Center" />
-                </DockPanel>
-              </Border>
-              <WrapPanel DockPanel.Dock="Top" Style="{StaticResource PanelToolbar}">
-                <ToggleButton x:Name="ShowAllAdultsToggle" Content="Show all" Padding="8,3" Margin="2,0" Click="OnAdultViewToggle"
-                              ToolTip="Also list adults already on a board, gone home, or unavailable for final boards" />
-                <Button Style="{StaticResource ToolButton}" Content="Clear picks" Click="OnClearPicks" ToolTip="Untick every adult" />
-                <Border Style="{StaticResource Sep}" />
-                <Button x:Name="EnableButton" Style="{StaticResource ToolButton}" Content="Enable" Click="OnEnableAdult" ToolTip="The selected adult is back and available" />
-                <Button x:Name="DisableButton" Style="{StaticResource ToolButton}" Content="Disable" Click="OnDisableAdult" ToolTip="The selected adult has gone home for tonight" />
-                <TextBlock x:Name="PickCount" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#555" />
-              </WrapPanel>
-              <DataGrid x:Name="AdultGrid" CellStyle="{StaticResource PlainCell}" RowStyle="{StaticResource AdultRowStyle}"
-                        SelectionChanged="OnAdultSelected">
-                <DataGrid.Columns>
-                  <DataGridTemplateColumn Header="@" SortMemberPath="SelSort" Width="36" CanUserSort="True">
-                    <DataGridTemplateColumn.CellTemplate>
-                      <DataTemplate>
-                        <CheckBox IsChecked="{Binding Sel, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanPick}"
-                                  ToolTip="{Binding PickTip}" ToolTipService.ShowOnDisabled="True"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                  </DataGridTemplateColumn>
-                  <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="100" IsReadOnly="True" />
-                  <DataGridTextColumn Header="First" Binding="{Binding First}" Width="90" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="64" IsReadOnly="True" />
-                  <DataGridTextColumn Header="RM#" Binding="{Binding Room}" Width="52" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Final" Binding="{Binding FinalBoard}" Width="84" IsReadOnly="True" />
-                  <DataGridTextColumn Header="Project" Binding="{Binding ProjectReview}" Width="*" IsReadOnly="True" />
-                </DataGrid.Columns>
-              </DataGrid>
-            </DockPanel>
-          </Border>
-        </Grid>
-
-        <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch" Background="Transparent" />
-
-        <!-- Rooms -->
-        <Border Grid.Row="2" Style="{StaticResource Panel}">
-          <DockPanel>
-            <Border DockPanel.Dock="Top" Style="{StaticResource PanelTitle}">
+            <!-- The queue -->
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12,12,4,12">
               <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                  <TextBlock Text="Filter " VerticalAlignment="Center" />
-                  <TextBox x:Name="RoomFilter" Width="140" VerticalContentAlignment="Center" TextChanged="OnRoomFilter" />
-                  <Button Content="Clear" Padding="8,0" Margin="4,0,0,0" Click="OnClearRoomFilter" />
-                </StackPanel>
-                <TextBlock Text="Rooms" FontWeight="Bold" VerticalAlignment="Center" />
-              </DockPanel>
-            </Border>
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="6">
-              <ItemsControl x:Name="RoomList">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="{x:Type app:RoomCard}">
-                    <Border x:Name="Card" Width="210" Margin="0,0,6,0" Padding="8,6" CornerRadius="3" BorderThickness="1"
-                            BorderBrush="#CBD8E4" Background="#E9E9E4" Cursor="Hand" MouseLeftButtonUp="OnRoomCardClicked">
-                      <StackPanel>
-                        <DockPanel>
-                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <TextBlock Text="{Binding TimerText}" Foreground="{Binding TimerBrush}" FontSize="14" FontWeight="SemiBold" />
-                            <TextBlock Text=" &#x26A0;" Foreground="{Binding TimerBrush}" FontSize="14"
-                                       Visibility="{Binding ShowWarning, Converter={StaticResource BoolToVis}}" />
-                          </StackPanel>
-                          <TextBlock FontSize="14">
-                            <Run Text="RM: " /><Run Text="{Binding Room, Mode=OneWay}" FontWeight="Bold" />
-                            <Run Text="{Binding BoardType, Mode=OneWay, StringFormat=({0})}" Foreground="#555" />
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,8,8">
+                  <CheckBox x:Name="ShowFinishedCheck" DockPanel.Dock="Right" Content="Show finished" MinWidth="0" Click="OnQueueViewChanged"
+                            ToolTip="Also list youth whose board is completed or postponed" />
+                  <TextBlock Style="{StaticResource CardTitle}" Text="Youth" />
+                </DockPanel>
+                <TextBox x:Name="QueueFilter" app:Placeholder.Text="Find a youth" DockPanel.Dock="Top" Margin="0,0,8,8" TextChanged="OnQueueFilter"
+                         AutomationProperties.Name="Find a youth" ToolTip="Find a youth by name, unit or room" />
+                <ListBox x:Name="QueueList" Background="Transparent" BorderThickness="0" ItemTemplate="{StaticResource QueueItem}" Padding="0,0,8,0"
+                         SelectionChanged="OnQueueSelected" PreviewMouseLeftButtonDown="OnQueueClick" AutomationProperties.Name="Youth"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                  <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource SubtleListItem}">
+                      <Setter Property="AutomationProperties.Name" Value="{Binding FullName}" />
+                      <Setter Property="AutomationProperties.HelpText" Value="{Binding StatusText}" />
+                    </Style>
+                  </ListBox.ItemContainerStyle>
+                  <ListBox.GroupStyle>
+                    <GroupStyle>
+                      <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                          <TextBlock Style="{StaticResource Hint}" Margin="4,12,0,4">
+                            <Run Text="{Binding Name, Mode=OneWay}" /> <Run Text="{Binding ItemCount, Mode=OneWay, StringFormat=({0})}" />
                           </TextBlock>
-                        </DockPanel>
-                        <TextBlock TextTrimming="CharacterEllipsis" Margin="0,2,0,0" FontSize="14">
-                          <Run Text="S: " /><Run Text="{Binding Scout, Mode=OneWay}" FontWeight="Bold" />
-                        </TextBlock>
-                        <TextBlock TextWrapping="Wrap" Margin="0,2,0,0">
-                          <Run Text="L: " /><Run Text="{Binding LeadersText, Mode=OneWay}" FontWeight="SemiBold" />
-                        </TextBlock>
-                      </StackPanel>
-                    </Border>
-                    <DataTemplate.Triggers>
-                      <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                        <Setter TargetName="Card" Property="Background" Value="#FFFF99" />
-                        <Setter TargetName="Card" Property="BorderBrush" Value="#B6B0A4" />
-                        <Setter TargetName="Card" Property="BorderThickness" Value="2" />
-                      </DataTrigger>
-                    </DataTemplate.Triggers>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-          </DockPanel>
-        </Border>
-
-        <GridSplitter Grid.Row="3" Height="8" HorizontalAlignment="Stretch" Background="Transparent" />
-
-        <!-- Boards -->
-        <Border Grid.Row="4" Style="{StaticResource Panel}">
-          <DockPanel>
-            <Border DockPanel.Dock="Top" Style="{StaticResource PanelTitle}">
-              <DockPanel>
-                <TextBox x:Name="BoardFilter" DockPanel.Dock="Right" Width="140" VerticalContentAlignment="Center" TextChanged="OnBoardFilter"
-                         ToolTip="Show only rows containing this text" />
-                <TextBlock DockPanel.Dock="Right" Text="Filter " VerticalAlignment="Center" />
-                <TextBlock Text="Active and Completed Boards" FontWeight="Bold" VerticalAlignment="Center" />
+                        </DataTemplate>
+                      </GroupStyle.HeaderTemplate>
+                    </GroupStyle>
+                  </ListBox.GroupStyle>
+                </ListBox>
               </DockPanel>
             </Border>
-            <DataGrid x:Name="BoardGrid" IsReadOnly="True" CellStyle="{StaticResource PlainCell}" RowStyle="{StaticResource ScoutRowStyle}"
-                      SelectionChanged="OnBoardSelected">
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="#" Binding="{Binding RegNum}" SortMemberPath="RegNumSort" Width="46" />
-                <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="100" />
-                <DataGridTextColumn Header="First" Binding="{Binding First}" Width="90" />
-                <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="64" />
-                <DataGridTextColumn Header="Leader" Binding="{Binding Leader}" Width="110" />
-                <DataGridTextColumn Header="Board" Binding="{Binding BoardType}" Width="60" />
-                <DataGridTextColumn Header="Status" Binding="{Binding Status}" SortMemberPath="StatusRank" Width="84" />
-                <DataGridTextColumn Header="RM#" Binding="{Binding Room}" Width="52" />
-                <DataGridTextColumn Header="Result" Binding="{Binding Result}" Width="90" />
-                <DataGridTextColumn Header="Chair" Binding="{Binding BoardChair}" Width="150" />
-                <DataGridTextColumn Header="Members" Binding="{Binding BoardMembersText}" SortMemberPath="BoardMembers" Width="240" />
-                <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" />
-              </DataGrid.Columns>
-            </DataGrid>
-          </DockPanel>
-        </Border>
-      </Grid>
-    </DockPanel>
 
-    <!-- Notices, top right, newest last. Click one to dismiss it. -->
-    <ItemsControl x:Name="ToastList" HorizontalAlignment="Right" VerticalAlignment="Top" Width="360" Margin="0,52,14,0" Panel.ZIndex="10">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate DataType="{x:Type app:Toast}">
-          <Border Background="{Binding Background}" BorderBrush="#999" BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,0,0,8"
-                  Cursor="Hand" MouseLeftButtonUp="OnToastClicked">
-            <Border.Effect>
-              <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3" />
-            </Border.Effect>
-            <StackPanel>
-              <TextBlock Text="{Binding Title}" FontWeight="Bold" Margin="0,0,0,2" />
-              <ContentPresenter Content="{Binding Body}" />
-            </StackPanel>
-          </Border>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+            <!-- The rooms -->
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+              <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Style="{StaticResource CommandButton}" Click="OnAddRoom" ToolTip="Add a room">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" Margin="0,0,8,0" /><TextBlock Text="Add room" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Click="OnChangeRoom" ToolTip="Move the selected room's board to another room, or swap two boards">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8AB;" Margin="0,0,8,0" /><TextBlock Text="Move" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnRemoveRoom" ToolTip="Remove the selected room"
+                            AutomationProperties.Name="Remove room">
+                      <TextBlock Style="{StaticResource Glyph}" Text="&#xE74D;" />
+                    </Button>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource CardTitle}" Text="Rooms" />
+                </DockPanel>
+                <ListBox x:Name="RoomList" SelectionMode="Single" SelectionChanged="OnRoomSelected"
+                         ItemContainerStyle="{StaticResource RoomItem}" ItemTemplate="{StaticResource RoomCardTemplate}"
+                         Background="Transparent" BorderThickness="0" Padding="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Rooms">
+                  <!-- On the list, not in the item style (WPF can't wire handlers there);
+                       right-clicking a room selects it first, so these act on that room. -->
+                  <ListBox.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="_Move or swap board..." Click="OnChangeRoom" />
+                      <MenuItem Header="_Remove room" Click="OnRemoveRoom" />
+                    </ContextMenu>
+                  </ListBox.ContextMenu>
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                </ListBox>
+              </DockPanel>
+            </Border>
+
+            <!-- The selected youth's board -->
+            <Border Grid.Column="4" Style="{StaticResource Card}" Padding="0">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel x:Name="Details">
+                  <StackPanel x:Name="DetailsEmpty" Margin="0,48,0,0">
+                    <TextBlock Style="{StaticResource Glyph}" FontSize="32" Text="&#xE716;" HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                    <TextBlock Style="{StaticResource Secondary}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,12,0,0"
+                               Text="Select a youth to build their board, or a room to see who's in it." />
+                  </StackPanel>
+
+                  <StackPanel x:Name="DetailsHead" Visibility="Collapsed">
+                    <TextBlock x:Name="DetailName" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailSub" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,4,0,8" />
+                    <ContentControl x:Name="DetailStatus" ContentTemplate="{StaticResource StatusCell}" HorizontalAlignment="Left" Focusable="False" />
+                    <app:InfoBar x:Name="DetailNotice" Margin="0,12,0,0" IsClosable="True" />
+                  </StackPanel>
+
+                  <!-- Waiting: build the board -->
+                  <StackPanel x:Name="BuilderSection" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SectionLabel}" Text="Room" />
+                    <ComboBox x:Name="BuilderRoom" DisplayMemberPath="Value" SelectedValuePath="Key" HorizontalAlignment="Stretch"
+                              SelectionChanged="OnBuilderRoomChanged" AutomationProperties.Name="Room" />
+
+                    <DockPanel Margin="0,16,0,4">
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button x:Name="FillButton" Click="OnFillBoard" Padding="8,2" Margin="0,0,8,0"
+                                ToolTip="Keep the members you've chosen and add a chair and members to complete the board">
+                          <TextBlock Text="Fill the rest" />
+                        </Button>
+                        <Button Click="OnClearPicks" Padding="8,2" ToolTip="Remove everyone and propose a new board">
+                          <TextBlock Text="Start over" />
+                        </Button>
+                      </StackPanel>
+                      <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Board members" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                               Text="To choose someone yourself, remove who you don't want and add them from the list below. Fill the rest completes the board around your choices." />
+                    <ItemsControl x:Name="PickList" ItemTemplate="{StaticResource PickTemplate}" Focusable="False" AutomationProperties.Name="Board members" />
+                    <TextBlock x:Name="NoPicksText" Style="{StaticResource Hint}" Text="No one yet. Add members below." Margin="0,0,0,4" />
+
+                    <StackPanel x:Name="IssueList" Margin="0,8,0,0" />
+
+                    <WrapPanel Margin="0,8,0,0">
+                      <Button x:Name="SeatButton" Style="{StaticResource PrimaryCommandButton}" Click="OnSeat"
+                              ToolTip="The members go to the room to read the application, references and workbook. The youth waits outside until Start review.">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE716;" Margin="0,0,8,0" /><AccessText x:Name="SeatText" Text="_Seat board" /></StackPanel>
+                      </Button>
+                      <Button x:Name="PostponeButton" Style="{StaticResource CommandButton}" Click="OnPostpone"
+                              ToolTip="No board at this event, usually because the paperwork isn't in order">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE769;" Margin="0,0,8,0" /><AccessText Text="_Postpone..." /></StackPanel>
+                      </Button>
+                    </WrapPanel>
+
+                    <TextBlock Style="{StaticResource SectionLabel}" Text="Add members" Margin="0,24,0,8" />
+                    <TextBox x:Name="AvailableFilter" app:Placeholder.Text="Find an adult" TextChanged="OnAvailableFilter" AutomationProperties.Name="Find an adult"
+                             ToolTip="Find an adult by name or unit" Margin="0,0,0,8" />
+                    <ItemsControl x:Name="AvailableList" ItemTemplate="{StaticResource AvailableTemplate}" Focusable="False"
+                                  AutomationProperties.Name="Adults who can join" />
+                    <TextBlock x:Name="NoAvailableText" Style="{StaticResource Hint}" Text="No other adults are free for this board." />
+                  </StackPanel>
+
+                  <!-- Seated, in review, or finished -->
+                  <StackPanel x:Name="BoardSection" Visibility="Collapsed">
+                    <ItemsControl x:Name="FactList" ItemTemplate="{StaticResource FactTemplate}" Margin="0,16,0,0" Focusable="False" />
+
+                    <!-- Someone has to leave mid-board: change the members here. -->
+                    <StackPanel x:Name="MembersSection">
+                      <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Board members" Margin="0,0,0,8" />
+                      <ItemsControl x:Name="BoardMemberList" ItemTemplate="{StaticResource SeatedMemberTemplate}" Focusable="False"
+                                    AutomationProperties.Name="Board members" />
+                      <WrapPanel Margin="0,4,0,16">
+                        <Button Style="{StaticResource CommandButton}" Click="OnAddMember" ToolTip="Add someone to this board">
+                          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" Margin="0,0,8,0" /><TextBlock Text="Add member..." /></StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource CommandButton}" Click="OnChangeChair" ToolTip="Hand the chair to another qualified member">
+                          <TextBlock Text="Change chair..." />
+                        </Button>
+                      </WrapPanel>
+                    </StackPanel>
+
+                    <StackPanel x:Name="ResultSection">
+                      <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Result" Margin="0,4,0,8" />
+                      <StackPanel x:Name="ResultChoices" />
+                      <TextBlock Text="Notes" Margin="0,12,0,8" />
+                      <TextBox x:Name="NotesBox" AcceptsReturn="True" TextWrapping="Wrap" Height="88" VerticalContentAlignment="Top"
+                               VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Notes" />
+                    </StackPanel>
+
+                    <WrapPanel Margin="0,16,0,0">
+                      <Button x:Name="StartButton" Style="{StaticResource PrimaryCommandButton}" Click="OnStart"
+                              ToolTip="Bring the youth in once the members have finished reading. Reset undoes it.">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE768;" Margin="0,0,8,0" /><AccessText Text="Sta_rt review" /></StackPanel>
+                      </Button>
+                      <Button x:Name="CompleteButton" Style="{StaticResource PrimaryCommandButton}" Click="OnComplete"
+                              ToolTip="Record the result and free the room and its members">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE73E;" Margin="0,0,8,0" /><AccessText Text="_Complete" /></StackPanel>
+                      </Button>
+                      <Button x:Name="ResetButton" Style="{StaticResource CommandButton}" Click="OnReset" ToolTip="Undo the seating: back to waiting, room and members freed">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE7A7;" Margin="0,0,8,0" /><AccessText Text="Rese_t..." /></StackPanel>
+                      </Button>
+                    </WrapPanel>
+                  </StackPanel>
+
+                  <!-- Where their people are: for fetching them, and after the board. -->
+                  <StackPanel x:Name="LocateSection" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource SectionLabel}" Text="Leaders and parents" Margin="0,24,0,8" />
+                    <ItemsControl x:Name="LocateList" ItemTemplate="{StaticResource FactTemplate}" Focusable="False" />
+                    <TextBlock x:Name="LocateNone" Style="{StaticResource Hint}" />
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+          </Grid>
+
+          <!-- ============================ Results ============================ -->
+          <DockPanel x:Name="ResultsPage" Margin="16" Visibility="Collapsed">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <TextBox x:Name="BoardFilter" app:Placeholder.Text="Find a board" Style="{StaticResource SearchBox}" Margin="0,0,8,0" TextChanged="OnBoardFilter"
+                         AutomationProperties.Name="Find a board" ToolTip="Find a board by name, unit, member or result" />
+                <Button Style="{StaticResource CommandButton}" Click="OnReport" ToolTip="Save the event's results as a CSV file for Excel">
+                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE74E;" Margin="0,0,8,0" /><TextBlock Text="Save report..." /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnAdmin" ToolTip="View and edit every record">
+                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" Margin="0,0,8,0" /><TextBlock Text="Admin tables..." /></StackPanel>
+                </Button>
+              </StackPanel>
+              <TextBlock Style="{StaticResource PageTitle}" Text="Results" />
+            </DockPanel>
+            <Border Style="{StaticResource Card}">
+              <DataGrid x:Name="BoardGrid" IsReadOnly="True" AutomationProperties.Name="Boards at this event" MouseDoubleClick="OnBoardOpened"
+                        ToolTip="Double-click a board to open it on the Event page">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Sign-in" Binding="{Binding RegNum}" SortMemberPath="RegNumSort" Width="72" />
+                  <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="110" />
+                  <DataGridTextColumn Header="First" Binding="{Binding First}" Width="100" />
+                  <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="96" />
+                  <DataGridTextColumn Header="Board" Binding="{Binding BoardType}" Width="76" />
+                  <DataGridTemplateColumn Header="Status" CellTemplate="{StaticResource StatusCell}" SortMemberPath="StatusRank" Width="128" />
+                  <DataGridTextColumn Header="Room" Binding="{Binding RoomText}" SortMemberPath="Room" Width="68" />
+                  <DataGridTextColumn Header="Result" Binding="{Binding ResultText}" SortMemberPath="Result" Width="110" />
+                  <DataGridTextColumn Header="Chair" Binding="{Binding BoardChair}" Width="160" />
+                  <DataGridTextColumn Header="Members" Binding="{Binding BoardMembersText}" SortMemberPath="BoardMembers" Width="280" />
+                  <DataGridTextColumn Header="Leader" Binding="{Binding Leader}" Width="150" />
+                  <!-- No star column: DataGrid would squeeze the others to fit it; this scrolls instead. -->
+                  <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="320" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </Border>
+          </DockPanel>
+
+          <!-- ============================ People ============================ -->
+          <DockPanel x:Name="PeoplePage" Margin="16" Visibility="Collapsed">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <TextBox x:Name="AdultFilter" app:Placeholder.Text="Find an adult" Style="{StaticResource SearchBox}" Margin="0,0,8,0" TextChanged="OnAdultFilter"
+                         AutomationProperties.Name="Find an adult" ToolTip="Find an adult by name, unit, room or role" />
+                <Button x:Name="DisableButton" Style="{StaticResource CommandButton}" Click="OnDisableAdult" ToolTip="The selected adult has gone home">
+                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE7E8;" Margin="0,0,8,0" /><TextBlock Text="Gone home" /></StackPanel>
+                </Button>
+                <Button x:Name="EnableButton" Style="{StaticResource CommandButton}" Click="OnEnableAdult" ToolTip="The selected adult is back and available">
+                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8FA;" Margin="0,0,8,0" /><TextBlock Text="Back" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnAdmin" ToolTip="View and edit every record, including roles">
+                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" Margin="0,0,8,0" /><TextBlock Text="Admin tables..." /></StackPanel>
+                </Button>
+              </StackPanel>
+              <TextBlock Style="{StaticResource PageTitle}" Text="People" />
+            </DockPanel>
+            <TextBlock DockPanel.Dock="Top" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="Adults signed in at this event. Change someone's roles on the admin tables." />
+            <Border Style="{StaticResource Card}">
+              <DataGrid x:Name="AdultGrid" IsReadOnly="True" RowStyle="{StaticResource PeopleRowStyle}" SelectionChanged="OnAdultSelected"
+                        AutomationProperties.Name="Adults">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="140" />
+                  <DataGridTextColumn Header="First" Binding="{Binding First}" Width="130" />
+                  <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="110" />
+                  <DataGridTextColumn Header="Room" Binding="{Binding RoomText}" SortMemberPath="Room" Width="110" />
+                  <DataGridTextColumn Header="Final board role" Binding="{Binding FinalBoard}" Width="140" />
+                  <DataGridTextColumn Header="Project review role" Binding="{Binding ProjectReview}" Width="*" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </Border>
+          </DockPanel>
+
+          <!-- ============================ Settings ============================ -->
+          <ScrollViewer x:Name="SettingsPage" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <ContentControl x:Name="SettingsHost" Margin="16" MaxWidth="880" HorizontalAlignment="Left" Focusable="False" />
+          </ScrollViewer>
+        </Grid>
+      </DockPanel>
+    </Border>
   </Grid>
 </Window>

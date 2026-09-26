@@ -20,6 +20,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ThemeSetup.Apply(this, ThemeMode.System);
         DispatcherUnhandledException += OnUnhandledException;
 
         CommandLine cmd;
@@ -29,15 +30,14 @@ public partial class App : Application
         }
         catch (ArgumentException ex)
         {
-            MessageBox.Show("Invalid command line: " + ex.Message + "\n" + CommandLine.Usage, "Eagle Board Scheduler",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Alert(null, "Eagle Board Scheduler", "That command line didn't work: " + ex.Message + "\n\n" + CommandLine.Usage);
             Shutdown(1);
             return;
         }
 
         if (cmd.Help)
         {
-            MessageBox.Show(CommandLine.Usage, "Eagle Board Scheduler");
+            AppDialog.Alert(null, "Eagle Board Scheduler", CommandLine.Usage, Severity.Informational);
             Shutdown(0);
             return;
         }
@@ -94,8 +94,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException
             or InvalidOperationException)
         {
-            MessageBox.Show("The scheduler could not start:\n\n" + ex.Message, "Eagle Board Scheduler",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Alert(null, "The scheduler couldn't start", ex.Message);
             return null;
         }
     }
@@ -118,10 +117,10 @@ public partial class App : Application
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         _session?.Log("UNHANDLED: " + e.Exception);
-        var message = e.Exception is IOException
-            ? "A data file could not be saved. If it is open in Excel, close it and try again.\n\n" + e.Exception.Message
-            : "Something went wrong:\n\n" + e.Exception.Message + "\n\nThe check-in website is still running.";
-        MessageBox.Show(message, "Eagle Board Scheduler", MessageBoxButton.OK, MessageBoxImage.Warning);
+        var (title, message) = e.Exception is IOException
+            ? ("A data file couldn't be saved", "If it's open in Excel, close it and try again. " + e.Exception.Message)
+            : ("Something went wrong", e.Exception.Message + "\n\nNothing was lost: every change is saved as it happens, and the check-in website is still running.");
+        AppDialog.Alert(MainWindow, title, message, Severity.Warning);
         e.Handled = true;
     }
 }

@@ -1,7 +1,7 @@
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -13,14 +13,22 @@ namespace EagleBoards.UiSnapshots;
 
 /// <summary>
 /// Opens each window off-screen over a synthetic evening and saves a PNG of
-/// it. Every name here is made up; nothing reads a real data folder.
+/// it, in the light theme, or the dark one with --dark. Every name here is
+/// made up; nothing reads a real data folder.
 /// </summary>
 internal static class Program
 {
     [STAThread]
     private static int Main(string[] args)
     {
-        var outDir = Path.GetFullPath(args.Length > 0 ? args[0] : "snapshots");
+        var dark = args.Contains("--dark");
+        var rest = args.Where(a => a != "--dark").ToList();
+        if (rest.Count > 0 && rest[0] == "--demo")
+        {
+            return Demo.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "demo"), dark);
+        }
+
+        var outDir = Path.GetFullPath(rest.Count > 0 ? rest[0] : "snapshots");
         Directory.CreateDirectory(outDir);
         var root = Path.Combine(Path.GetTempPath(), "eb-snap-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -29,14 +37,7 @@ internal static class Program
         var config = Path.Combine(root, "config.properties");
         File.WriteAllText(config, "Type=CONFIG\nID=DEFAULT\nName=DEFAULT\n");
 
-        // A plain Application with the app's theme -- NOT EagleBoards.App.App,
-        // whose startup (command line, start-up window, message boxes) WPF
-        // runs on the first message pump even without Run().
-        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-        app.Resources.MergedDictionaries.Add(new ResourceDictionary
-        {
-            Source = new Uri("pack://application:,,,/EagleBoards;component/Theme.xaml"),
-        });
+        StartApplication(dark);
 
         var plan = new LaunchPlan
         {
@@ -52,45 +53,44 @@ internal static class Program
         var session = Task.Run(() => EventSession.StartAsync(plan)).GetAwaiter().GetResult();
         try
         {
+            // Seed, then start again from the saved files, as the app does
+            // between runs: the window must show what the files hold (their
+            // escapes included), not just what was typed.
             Seed(session.Service);
-            Snap(new MainWindow(session), outDir, "1-scheduler.png", win =>
+            session = Restart(session, plan);
+            Snap(new MainWindow(session), outDir, "1-event.png", win =>
             {
-                var grid = (DataGrid)win.FindName("ScoutGrid");
+                var w = (MainWindow)win;
+                var queue = w.QueueList;
                 return
                 [
-                    ("2-autoselect.png", () => grid.SelectedItem = grid.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.Registered)),
-                    ("3-seated-board.png", () =>
-                    {
-                        // Clear the auto-select's picks first, or they stay the operator's board.
-                        foreach (var a in session.Service.Snapshot(DataTable.Adults).Where(a => a["Sel"] == "1"))
-                        {
-                            session.Service.SaveRow(DataTable.Adults, "updated", a["ID"], new Dictionary<string, string> { ["Sel"] = "0" });
-                        }
-
-                        Pump();
-                        grid.SelectedItem = grid.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.InProgress);
-                    }),
+                    ("2-builder.png", () => queue.SelectedItem = queue.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.Registered)),
+                    ("3-board.png", () => queue.SelectedItem = queue.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.InProgress)),
+                    ("4-results.png", () => w.MainNav.SelectedIndex = 1),
+                    ("5-people.png", () => w.MainNav.SelectedIndex = 2),
+                    ("6-settings.png", () => w.FooterNav.SelectedIndex = 0),
                 ];
             });
-            Snap(new AdminWindow(session.Service), outDir, "4-admin.png");
-            Snap(new SettingsWindow(session.Service), outDir, "5-settings.png");
+
+            Snap(new AdminWindow(session.Service), outDir, "7-admin.png");
+
             // Pointed at the sandbox: the default would suggest and read the
             // machine's real data folder.
             Snap(new StartupWindow(new AppSettings { DataFolder = root, AdultHistoryFile = "AdultHistory.csv", Port = plan.Port }),
-                outDir, "6-startup.png");
-            Snap(new HelpWindow(), outDir, "7-help.png");
+                outDir, "8-startup.png");
+            Snap(new HelpWindow(), outDir, "9-help.png");
 
-            // The dialogs the Seat and Complete buttons open, built the same way.
+            // The dialogs, built the way the window builds them.
             var owner = new Window { Left = -32000, Width = 200, Height = 200, ShowInTaskbar = false, ShowActivated = false };
             owner.Show();
-            var seat = new FormDialog(owner, "Seat Board: Dorian Dunmore", "Seat");
-            seat.AddNote("Room **103**, Final board.\nMembers: Anneliese Abernathy, Genevieve Grimaldi, Horatio Hollingsworth");
-            seat.AddChoice("Chair:", [new("A", "Anneliese Abernathy")], "A");
-            Snap(seat, outDir, "8-seat-dialog.png");
-            var complete = new FormDialog(owner, "Complete Board: Beauregard Bram", "Complete");
-            complete.AddChoice("Result:", BoardResults.All.Select(r => new KeyValuePair<string, string>(r, r)), BoardResults.Approved);
-            complete.AddMultiline("Notes:");
-            Snap(complete, outDir, "9-complete-dialog.png");
+            var reset = new AppDialog(owner, "Reset this board?", "Reset board");
+            reset.AddMessage("**Beauregard Bram** goes back to waiting. Room 101 and its members are freed, and the board would need seating again.");
+            Snap(reset, outDir, "10-confirm-dialog.png");
+            var add = new AppDialog(owner, "Add a room", "Add room");
+            add.AddText("Room number");
+            add.AddChoice("Used for", [new(BoardTypes.Final, "Final board"), new(BoardTypes.Project, "Project review")], BoardTypes.Final);
+            add.AddMessage("For project reviews sharing one room, add one entry per table, like 200A and 200B.");
+            Snap(add, outDir, "11-form-dialog.png");
         }
         finally
         {
@@ -106,6 +106,18 @@ internal static class Program
 
         Console.WriteLine("snapshots: " + outDir);
         return 0;
+    }
+
+    /// <summary>
+    /// A plain Application with the app's theme -- NOT EagleBoards.App.App,
+    /// whose startup (command line, start-up window, dialogs) WPF runs on the
+    /// first message pump even without Run().
+    /// </summary>
+    internal static Application StartApplication(bool dark)
+    {
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        ThemeSetup.Apply(app, dark ? ThemeMode.Dark : ThemeMode.Light);
+        return app;
     }
 
     private static void Seed(BoardService s)
@@ -146,8 +158,23 @@ internal static class Program
         s.SeatBoard("ROOM:200A", S(5), A(2), $"{A(2)},{A(5)}");
         s.SeatBoard("ROOM:102", S(2), A(0), $"{A(0)},{A(6)},{A(7)}");
         s.StartReview(S(2));
-        s.CompleteBoard(S(2), "Approved", "Well prepared.");
+        s.CompleteBoard(S(2), "Approved", "Well prepared, and a strong project.");
         s.PostponeBoard(S(4));
+    }
+
+    /// <summary>Stop the session and start a new one on the same files.</summary>
+    internal static EventSession Restart(EventSession session, LaunchPlan plan)
+    {
+        Task.Run(async () => await session.DisposeAsync()).GetAwaiter().GetResult();
+        var again = new LaunchPlan
+        {
+            DataDirectory = plan.DataDirectory,
+            AdultHistoryPath = plan.AdultHistoryPath,
+            ConfigPath = plan.ConfigPath,
+            Port = plan.Port + 1,
+            BindAddress = plan.BindAddress,
+        };
+        return Task.Run(() => EventSession.StartAsync(again)).GetAwaiter().GetResult();
     }
 
     private static void Snap(Window win, string dir, string name, Func<Window, (string Name, Action Act)[]>? steps = null)
@@ -158,8 +185,8 @@ internal static class Program
         win.Top = 0;
         if (win.SizeToContent == SizeToContent.Manual)
         {
-            win.Width = Math.Max(win.Width is double.NaN ? 1500 : win.Width, 1500);
-            win.Height = Math.Max(win.Height is double.NaN ? 900 : win.Height, 880);
+            win.Width = 1440;
+            win.Height = 900;
         }
 
         win.ShowActivated = false;
@@ -177,7 +204,7 @@ internal static class Program
         win.Hide();
     }
 
-    private static void Pump()
+    internal static void Pump()
     {
         for (var i = 0; i < 5; i++)
         {
@@ -188,23 +215,48 @@ internal static class Program
         }
     }
 
+    internal static object? Invoke(object target, string method, params object[] args) =>
+        target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!.Invoke(target, args);
+
     private static void Save(Window win, string path)
     {
-        var content = (FrameworkElement)win.Content;
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(Render(win)));
+        using var file = File.Create(path);
+        encoder.Save(file);
+    }
+
+    /// <summary>
+    /// The window's content over the theme's base colour. On screen that base
+    /// is Mica (Windows 11), which an off-screen render can't draw.
+    /// </summary>
+    internal static BitmapSource Render(Window win)
+    {
+        // The window template's root, not its Content: it includes the
+        // adorner layer (placeholder text, focus visuals).
+        var content = (FrameworkElement)VisualTreeHelper.GetChild(win, 0);
         var width = (int)Math.Ceiling(content.ActualWidth);
         var height = (int)Math.Ceiling(content.ActualHeight);
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            dc.DrawRectangle(win.Background ?? Brushes.White, null, new Rect(0, 0, width, height));
-            dc.DrawRectangle(new VisualBrush(content), null, new Rect(0, 0, width, height));
+            var backdrop = Application.Current.TryFindResource("SolidBackgroundFillColorBaseBrush") as Brush ?? Brushes.White;
+            dc.DrawRectangle(backdrop, null, new Rect(0, 0, width, height));
+            // Absolute viewbox: by default a VisualBrush trims the content's
+            // empty margins and stretches what's left to fill.
+            var brush = new VisualBrush(content)
+            {
+                Stretch = Stretch.None,
+                AlignmentX = AlignmentX.Left,
+                AlignmentY = AlignmentY.Top,
+                ViewboxUnits = BrushMappingMode.Absolute,
+                Viewbox = new Rect(0, 0, width, height),
+            };
+            dc.DrawRectangle(brush, null, new Rect(0, 0, width, height));
         }
 
         bitmap.Render(visual);
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-        using var file = File.Create(path);
-        encoder.Save(file);
+        return bitmap;
     }
 }

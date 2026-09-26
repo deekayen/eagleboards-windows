@@ -1,0 +1,64 @@
+<UserControl x:Class="EagleBoards.App.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:EagleBoards.App">
+  <!-- After the Windows settings pattern: grouped cards, a setting's name
+       and what it does on the left, its value on the right. -->
+  <StackPanel>
+    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Settings" Margin="0,0,0,8" />
+
+    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Room timers" Margin="0,16,0,4" />
+    <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,8"
+               Text="A room's time turns to caution, then overdue, to prompt the room. Nothing stops a board that needs longer." />
+    <StackPanel x:Name="TimerCards" />
+
+    <app:InfoBar x:Name="SaveNotice" Margin="0,8,0,0" IsClosable="True" />
+    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+      <Button Style="{StaticResource PrimaryCommandButton}" Click="OnSave" MinWidth="120"><AccessText Text="_Save" /></Button>
+      <Button Style="{StaticResource CommandButton}" Content="Restore defaults" Click="OnDefaults" />
+    </StackPanel>
+
+    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="About" Margin="0,32,0,8" />
+    <Border Style="{StaticResource Card}" Padding="16">
+      <DockPanel>
+        <Image x:Name="AppIcon" DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,16,0" VerticalAlignment="Top"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <StackPanel>
+          <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Eagle Board Scheduler" />
+          <TextBlock x:Name="VersionText" Style="{StaticResource Secondary}" />
+          <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,8,0,0"
+                     Text="Check-in and room scheduling for Eagle Scout board of review events. Not affiliated with or endorsed by Scouting America." />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}" Padding="16" Margin="0,4,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource Glyph}" Text="&#xEB51;" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+          <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Support this project" />
+        </StackPanel>
+        <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,8,0,12"
+                   Text="The scheduler is free, and built and kept up by a volunteer. If it helps your district's board events, you can chip in through any of these." />
+        <ItemsControl x:Name="SupportLinks" Focusable="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Style="{StaticResource CommandButton}" Margin="0,0,8,8" Click="OnSupportLink" Tag="{Binding Value}"
+                      ToolTip="{Binding Value}" AutomationProperties.Name="{Binding Key, StringFormat=Support on {0}}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding Key}" />
+                  <TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE8A7;" Margin="8,0,0,0" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

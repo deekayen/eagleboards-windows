@@ -1,48 +1,152 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace EagleBoards.App;
 
-public enum ToastKind
+/// <summary>
+/// Loads WPF's Fluent theme (Windows 11 controls; light or dark with the
+/// system; the accent colour; Mica on Windows 11, a solid background on
+/// Windows 10), then the app's own styles, which build on it. The app and the
+/// snapshot harness both start here so they look the same.
+/// </summary>
+internal static class ThemeSetup
 {
-    Info,
-    Ok,
-    Warn,
+    public static void Apply(Application app, ThemeMode mode)
+    {
+        app.ThemeMode = mode;
+
+        // After the theme: Theme.xaml's styles are BasedOn Fluent's.
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("pack://application:,,,/EagleBoards;component/Theme.xaml"),
+        });
+    }
+}
+
+public enum Severity
+{
+    Informational,
+    Success,
+    Warning,
     Error,
 }
 
-/// <summary>A notice in the top-right corner. Click to dismiss; most expire on their own.</summary>
-public sealed class Toast
+/// <summary>
+/// An inline message, after WinUI's InfoBar: a tinted strip with an icon, a
+/// bold title and the message, sitting in the layout it is about rather
+/// than floating over it. Stays until closed or replaced.
+/// </summary>
+public sealed class InfoBar : Border
 {
-    public Toast(string title, string body, ToastKind kind)
+    private readonly TextBlock _icon = new() { Margin = new Thickness(0, 1, 12, 0), VerticalAlignment = VerticalAlignment.Top };
+    private readonly TextBlock _text = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Button _action = new() { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+    private readonly Button _close = new()
     {
-        Title = title;
-        Body = Rich(body);
-        Background = kind switch
-        {
-            ToastKind.Error => Brushes2.FromHex("#F3B50C", Brushes.Orange),
-            ToastKind.Ok => Brushes2.FromHex("#EEFFEE", Brushes.White),
-            ToastKind.Warn => Brushes2.FromHex("#FFFF99", Brushes.White),
-            _ => Brushes2.FromHex("#EEF4FF", Brushes.White),
-        };
+        Content = "",
+        Width = 32,
+        Height = 32,
+        Padding = new Thickness(0),
+        Margin = new Thickness(8, -4, -4, -4),
+        Background = Brushes.Transparent,
+        BorderThickness = new Thickness(0),
+        VerticalAlignment = VerticalAlignment.Top,
+        ToolTip = "Close",
+    };
+
+    private Action? _onAction;
+
+    public InfoBar()
+    {
+        BorderThickness = new Thickness(1);
+        Padding = new Thickness(16, 12, 16, 12);
+        SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
+        SetResourceReference(CornerRadiusProperty, "ControlCornerRadius");
+        _icon.SetResourceReference(StyleProperty, "Glyph");
+        _close.SetResourceReference(Control.FontFamilyProperty, "SymbolThemeFontFamily");
+        _close.FontSize = 12;
+        AutomationProperties.SetName(_close, "Close");
+        _close.Click += (_, _) => Close();
+        _action.Click += (_, _) => _onAction?.Invoke();
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(_text, 1);
+        Grid.SetColumn(_action, 2);
+        Grid.SetColumn(_close, 3);
+        grid.Children.Add(_icon);
+        grid.Children.Add(_text);
+        grid.Children.Add(_action);
+        grid.Children.Add(_close);
+        Child = grid;
+        Visibility = Visibility.Collapsed;
     }
 
-    public string Title { get; }
+    public bool IsClosable
+    {
+        get => _close.Visibility == Visibility.Visible;
+        set => _close.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
 
-    public TextBlock Body { get; }
+    public Severity Severity { get; private set; }
 
-    public Brush Background { get; }
+    public bool IsOpen => Visibility == Visibility.Visible;
 
-    /// <summary>
-    /// Plain text with **bold** spans and line breaks -- enough to make a
-    /// name stand out in a notice without an HTML renderer.
-    /// </summary>
-    public static TextBlock Rich(string text)
+    /// <summary>The whole message as plain text, for tests and screen readers.</summary>
+    public string Text => new TextRange(_text.ContentStart, _text.ContentEnd).Text;
+
+    /// <summary>Show a message, replacing any already shown. <paramref name="message"/> may use **bold**.</summary>
+    public void Show(Severity severity, string title, string message, string? actionText = null, Action? action = null)
+    {
+        Severity = severity;
+        var (background, foreground, glyph) = severity switch
+        {
+            Severity.Success => ("SystemFillColorSuccessBackgroundBrush", "SystemFillColorSuccessBrush", ""),
+            Severity.Warning => ("SystemFillColorCautionBackgroundBrush", "SystemFillColorCautionBrush", ""),
+            Severity.Error => ("SystemFillColorCriticalBackgroundBrush", "SystemFillColorCriticalBrush", ""),
+            _ => ("SystemFillColorAttentionBackgroundBrush", "SystemFillColorAttentionBrush", ""),
+        };
+        SetResourceReference(BackgroundProperty, background);
+        _icon.SetResourceReference(TextBlock.ForegroundProperty, foreground);
+        _icon.Text = glyph;
+
+        _text.Inlines.Clear();
+        if (title.Length > 0)
+        {
+            _text.Inlines.Add(new Run(title) { FontWeight = FontWeights.SemiBold });
+            _text.Inlines.Add(new Run("   "));
+        }
+
+        Rich.AppendTo(_text, message);
+        _onAction = action;
+        _action.Content = actionText;
+        _action.Visibility = actionText != null ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetName(this, $"{severity}: {title}. {Text}");
+        Visibility = Visibility.Visible;
+    }
+
+    public void Close() => Visibility = Visibility.Collapsed;
+}
+
+/// <summary>Plain text with **semibold** spans and line breaks.</summary>
+internal static class Rich
+{
+    public static TextBlock Block(string text)
     {
         var block = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        var bold = false;
+        AppendTo(block, text);
+        return block;
+    }
+
+    public static void AppendTo(TextBlock block, string text)
+    {
+        var strong = false;
         foreach (var part in text.Split("**"))
         {
             var lines = part.Split('\n');
@@ -55,85 +159,103 @@ public sealed class Toast
 
                 if (lines[i].Length > 0)
                 {
-                    var run = new Run(lines[i]);
-                    if (bold)
-                    {
-                        run.FontWeight = FontWeights.Bold;
-                    }
-
-                    block.Inlines.Add(run);
+                    block.Inlines.Add(new Run(lines[i]) { FontWeight = strong ? FontWeights.SemiBold : FontWeights.Normal });
                 }
             }
 
-            bold = !bold;
+            strong = !strong;
         }
-
-        return block;
     }
 }
 
-/// <summary>A small modal form: labelled fields, then OK and Cancel.</summary>
-internal sealed class FormDialog : Window
+/// <summary>
+/// A modal dialog after WinUI's ContentDialog: the title asks the question,
+/// the body explains, and the buttons answer it with verbs ("Seat board",
+/// "Cancel"), primary on the left in the accent colour. Fields have their
+/// label above them. Replaces MessageBox, whose OK/Cancel don't answer
+/// anything.
+/// </summary>
+internal sealed class AppDialog : Window
 {
-    private readonly Grid _fields = new() { Margin = new Thickness(0, 0, 0, 12) };
-    private readonly TextBlock _error = new() { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) };
+    private readonly StackPanel _fields = new();
+    private readonly InfoBar _error = new() { IsClosable = false, Margin = new Thickness(0, 0, 0, 16) };
+    private readonly Button _primary;
 
-    public FormDialog(Window owner, string title, string okText = "OK")
+    public AppDialog(Window? owner, string title, string primaryText, string? closeText = "Cancel")
     {
         Owner = owner;
         Title = title;
         SizeToContent = SizeToContent.WidthAndHeight;
         ResizeMode = ResizeMode.NoResize;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        ShowInTaskbar = false;
-        FontSize = 13;
-        MinWidth = 360;
+        WindowStartupLocation = owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
+        ShowInTaskbar = owner == null;
+        Icon = owner?.Icon;
+        MinWidth = 420;
         MaxWidth = 560;
 
-        _fields.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        _fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 220 });
-
-        var ok = new Button { Content = okText, IsDefault = true, MinWidth = 90, Padding = new Thickness(10, 3, 10, 3) };
-        ok.Click += (_, _) =>
+        _primary = new Button { Content = primaryText, IsDefault = true, HorizontalAlignment = HorizontalAlignment.Stretch };
+        _primary.SetResourceReference(StyleProperty, "AccentButtonStyle");
+        _primary.Click += (_, _) =>
         {
             var problem = Validate?.Invoke();
             if (problem != null)
             {
-                _error.Text = problem;
-                _error.Visibility = Visibility.Visible;
+                _error.Show(Severity.Error, "", problem);
                 return;
             }
 
             DialogResult = true;
         };
-        var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 90, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(8, 0, 0, 0) };
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        buttons.Children.Add(ok);
-        buttons.Children.Add(cancel);
 
-        _error.Visibility = Visibility.Collapsed;
-        var root = new StackPanel { Margin = new Thickness(18, 14, 18, 14) };
-        root.Children.Add(_fields);
-        root.Children.Add(_error);
-        root.Children.Add(buttons);
+        var buttons = new Grid();
+        buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        buttons.Children.Add(_primary);
+        if (closeText != null)
+        {
+            buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var close = new Button { Content = closeText, IsCancel = true, HorizontalAlignment = HorizontalAlignment.Stretch };
+            Grid.SetColumn(close, 2);
+            buttons.Children.Add(close);
+        }
+        else
+        {
+            _primary.IsCancel = true;
+        }
+
+        // The command area: a band across the bottom, as in ContentDialog.
+        var commandArea = new Border { Padding = new Thickness(24), BorderThickness = new Thickness(0, 1, 0, 0), Child = buttons };
+        commandArea.SetResourceReference(BackgroundProperty, "SolidBackgroundFillColorBaseBrush");
+        commandArea.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
+        DockPanel.SetDock(commandArea, Dock.Bottom);
+
+        var body = new StackPanel { Margin = new Thickness(24, 20, 24, 8) };
+        body.Children.Add(_error);
+        body.Children.Add(_fields);
+
+        var root = new DockPanel();
+        root.Children.Add(commandArea);
+        root.Children.Add(body);
         Content = root;
     }
 
     /// <summary>Return a message to keep the dialog open, or null to accept.</summary>
     public Func<string?>? Validate { get; set; }
 
-    public void AddNote(string text)
+    public void AddMessage(string text) => Add(Rich.Block(text));
+
+    /// <summary>A warning or note inside the dialog, above the buttons it qualifies.</summary>
+    public void AddInfo(Severity severity, string title, string message)
     {
-        var note = Toast.Rich(text);
-        note.Margin = new Thickness(0, 0, 0, 10);
-        note.MaxWidth = 500;
-        AddRow(null, note);
+        var bar = new InfoBar { IsClosable = false };
+        bar.Show(severity, title, message);
+        Add(bar);
     }
 
-    public TextBox AddText(string label, string initial = "", bool readOnly = false)
+    public TextBox AddText(string label, string initial = "")
     {
-        var box = new TextBox { Text = initial, IsReadOnly = readOnly, Padding = new Thickness(2), VerticalContentAlignment = VerticalAlignment.Center };
-        AddRow(label, box);
+        var box = new TextBox { Text = initial };
+        AddLabelled(label, box);
         return box;
     }
 
@@ -143,11 +265,11 @@ internal sealed class FormDialog : Window
         {
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
-            Height = 18 * lines + 8,
+            Height = (20 * lines) + 12,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            Padding = new Thickness(2),
+            VerticalContentAlignment = VerticalAlignment.Top,
         };
-        AddRow(label, box);
+        AddLabelled(label, box);
         return box;
     }
 
@@ -159,9 +281,10 @@ internal sealed class FormDialog : Window
             ItemsSource = items,
             DisplayMemberPath = "Value",
             SelectedValuePath = "Key",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         combo.SelectedValue = selected ?? (items.Count > 0 ? items[0].Key : null);
-        AddRow(label, combo);
+        AddLabelled(label, combo);
         return combo;
     }
 
@@ -169,41 +292,139 @@ internal sealed class FormDialog : Window
     {
         Loaded += (_, _) =>
         {
-            var first = _fields.Children.OfType<Control>().FirstOrDefault(c => c is TextBox { IsReadOnly: false } or ComboBox);
-            first?.Focus();
+            var first = _fields.Children.OfType<StackPanel>().SelectMany(p => p.Children.OfType<Control>())
+                .FirstOrDefault(c => c is TextBox or ComboBox);
+            (first ?? (Control)_primary).Focus();
         };
         return base.ShowDialog() == true;
     }
 
-    private void AddRow(string? label, UIElement control)
+    /// <summary>Ask before something that can't be undone or overrides a rule. True if the primary button was pressed.</summary>
+    public static bool Confirm(Window? owner, string title, string message, string primaryText, Severity? severity = null, string? detail = null)
     {
-        var row = _fields.RowDefinitions.Count;
-        _fields.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        if (label != null)
+        var dialog = new AppDialog(owner, title, primaryText);
+        if (severity is { } s)
         {
-            var text = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 8) };
-            Grid.SetRow(text, row);
-            _fields.Children.Add(text);
+            dialog.AddInfo(s, "", message);
+        }
+        else
+        {
+            dialog.AddMessage(message);
         }
 
-        if (control is FrameworkElement fe)
+        if (detail != null)
         {
-            fe.Margin = new Thickness(fe.Margin.Left, fe.Margin.Top, fe.Margin.Right, Math.Max(fe.Margin.Bottom, 8));
+            dialog.AddMessage(detail);
         }
 
-        Grid.SetRow(control, row);
-        Grid.SetColumn(control, label == null ? 0 : 1);
-        if (label == null)
-        {
-            Grid.SetColumnSpan(control, 2);
-        }
+        return dialog.ShowDialog();
+    }
 
-        _fields.Children.Add(control);
+    /// <summary>Tell the user something they must read before carrying on (start-up failures and the like).</summary>
+    public static void Alert(Window? owner, string title, string message, Severity severity = Severity.Error)
+    {
+        var dialog = new AppDialog(owner, title, "OK", closeText: null);
+        dialog.AddInfo(severity, "", message);
+        dialog.ShowDialog();
+    }
+
+    private void AddLabelled(string label, Control control)
+    {
+        var text = new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 8) };
+        AutomationProperties.SetName(control, label);
+        var group = new StackPanel();
+        group.Children.Add(text);
+        group.Children.Add(control);
+        Add(group);
+    }
+
+    private void Add(FrameworkElement element)
+    {
+        element.Margin = new Thickness(element.Margin.Left, element.Margin.Top, element.Margin.Right, 16);
+        _fields.Children.Add(element);
     }
 }
 
-internal static class Ask
+/// <summary>
+/// Hint text in an empty text box, like WinUI's PlaceholderText, which WPF's
+/// TextBox lacks: <c>app:Placeholder.Text="Find a youth"</c>. Drawn on the
+/// adorner layer so it never becomes part of the text, and used as the
+/// box's accessible help text too.
+/// </summary>
+public static class Placeholder
 {
-    public static bool Confirm(Window owner, string title, string message, MessageBoxImage icon = MessageBoxImage.Question) =>
-        MessageBox.Show(owner, message, title, MessageBoxButton.OKCancel, icon, MessageBoxResult.Cancel) == MessageBoxResult.OK;
+    public static readonly DependencyProperty TextProperty =
+        DependencyProperty.RegisterAttached("Text", typeof(string), typeof(Placeholder), new PropertyMetadata(null, OnTextChanged));
+
+    public static string? GetText(DependencyObject o) => (string?)o.GetValue(TextProperty);
+
+    public static void SetText(DependencyObject o, string? value) => o.SetValue(TextProperty, value);
+
+    private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not TextBox box)
+        {
+            return;
+        }
+
+        AutomationProperties.SetHelpText(box, (string?)e.NewValue ?? "");
+        box.Loaded += (_, _) => Attach(box);
+        box.TextChanged += (_, _) => Attach(box);
+
+        // Adorners don't follow their element's visibility: a box on a hidden
+        // page would leave its hint floating over the page shown instead.
+        box.IsVisibleChanged += (_, _) => box.Dispatcher.BeginInvoke(() => Attach(box), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private static void Attach(TextBox box)
+    {
+        if (System.Windows.Documents.AdornerLayer.GetAdornerLayer(box) is not { } layer)
+        {
+            return;
+        }
+
+        var existing = layer.GetAdorners(box)?.OfType<HintAdorner>().FirstOrDefault();
+        var show = box.Text.Length == 0 && box.IsVisible;
+        if (show && existing == null)
+        {
+            layer.Add(new HintAdorner(box, GetText(box) ?? ""));
+        }
+        else if (!show && existing != null)
+        {
+            layer.Remove(existing);
+        }
+    }
+
+    private sealed class HintAdorner : System.Windows.Documents.Adorner
+    {
+        private readonly TextBlock _text;
+
+        public HintAdorner(TextBox box, string text)
+            : base(box)
+        {
+            IsHitTestVisible = false;
+            _text = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+            _text.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorTertiaryBrush");
+            AddVisualChild(_text);
+        }
+
+        protected override int VisualChildrenCount => 1;
+
+        protected override Visual GetVisualChild(int index) => _text;
+
+        protected override Size MeasureOverride(Size constraint)
+        {
+            _text.Measure(AdornedElement.RenderSize);
+            return AdornedElement.RenderSize;
+        }
+
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            var box = (TextBox)AdornedElement;
+            var left = box.Padding.Left + box.BorderThickness.Left + 2;
+            var top = Math.Max(0, (finalSize.Height - _text.DesiredSize.Height) / 2);
+            _text.Arrange(new Rect(left, top, Math.Max(0, finalSize.Width - left - 8), _text.DesiredSize.Height));
+            return finalSize;
+        }
+    }
 }

@@ -28,10 +28,15 @@ jobs:
         shell: bash
         run: bash scripts/test-board-evening.sh
 
-      # Off-screen renders of every window over synthetic data, for review.
+      # Off-screen renders of every window over synthetic data, light and
+      # dark, plus the README's demo GIF, for review.
       - name: UI snapshots
         continue-on-error: true
-        run: dotnet run --project tests/EagleBoards.UiSnapshots -c Release --no-build -- snapshots
+        shell: bash
+        run: |
+          dotnet run --project tests/EagleBoards.UiSnapshots -c Release --no-build -- snapshots/light
+          dotnet run --project tests/EagleBoards.UiSnapshots -c Release --no-build -- snapshots/dark --dark
+          dotnet run --project tests/EagleBoards.UiSnapshots -c Release --no-build -- --demo snapshots/demo
 
       - uses: actions/upload-artifact@v7
         if: always()

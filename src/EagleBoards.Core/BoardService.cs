@@ -401,87 +401,13 @@ public sealed class BoardService
             return ActionResult.Error("ERROR: No board members selected");
         }
 
-        var members = new List<AdultRecord>();
-        var names = new StringBuilder();
-        foreach (var raw in memberIds.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        if (CheckComposition(scout, memberIds, chairId, boardRoom: null) is not { } board)
         {
-            var id = raw.Trim();
-            var member = Adults.Get(id);
-            if (member == null)
-            {
-                return ActionResult.Error("ERROR: Invalid Member ID " + id);
-            }
-
-            // Counting one person twice would let "A,A,A" pass as a board of three.
-            if (members.Contains(member))
-            {
-                return ActionResult.Error("ERROR: Member " + member.FullName + " is listed more than once");
-            }
-
-            if (member.Room == AdultRoom.Disabled)
-            {
-                return ActionResult.Error("ERROR: Member " + member.FullName + " has been disabled for tonight");
-            }
-
-            if (member.Room.Length > 0)
-            {
-                return ActionResult.Error("ERROR: Member " + member.FullName + " already assigned to a board in room " + member.Room);
-            }
-
-            // The browser checked this only for members listed before the
-            // chair, and the Java server not at all, so an Unavailable adult
-            // could be seated by ticking them after someone qualified.
-            if (member.RoleFor(scout.BoardType) == BoardRoles.Unavailable)
-            {
-                return ActionResult.Error("ERROR: Member " + member.FullName + " is Unavailable for " + scout.BoardType + " boards");
-            }
-
-            if (names.Length > 0)
-            {
-                names.Append(',');
-            }
-
-            // Full names on the room card: it is how someone finds which room
-            // an adult is in, and "F. Last" made that lookup by first name
-            // impossible.
-            names.Append(member.FullName);
-            members.Add(member);
+            return _lastRefusal!;
         }
 
-        var isProject = scout.BoardType == BoardTypes.Project;
-        var min = isProject ? BoardRules.ProjectMinMembers : BoardRules.BoardMinMembers;
-        if (members.Count < min)
-        {
-            return ActionResult.Error($"ERROR: Only {members.Count} board member(s) selected; {min} required for {scout.BoardType} boards");
-        }
-
-        if (members.Count > BoardRules.BoardMaxMembers)
-        {
-            return ActionResult.Error($"ERROR: {members.Count} board members selected; no more than {BoardRules.BoardMaxMembers} permitted (Guide to Advancement 8.0.0.3)");
-        }
-
-        // The Chair designation is binding. Promoting a Member is a deliberate
-        // edit on the Admin tables, never a side effect of seating a board
-        // because the qualified chairs were all busy.
-        var chair = Adults.Get(chairId);
-        if (chair == null)
-        {
-            return ActionResult.Error("ERROR: Invalid Chair ID " + chairId);
-        }
-
-        if (!members.Contains(chair))
-        {
-            return ActionResult.Error("ERROR: Chair " + chair.FullName + " is not one of the board members");
-        }
-
-        var role = chair.RoleFor(scout.BoardType);
-        if (role != BoardRoles.Chair)
-        {
-            return ActionResult.Error("ERROR: " + chair.FullName + " is not qualified to chair a " + scout.BoardType
-                + " board (role: " + (role.Length == 0 ? "none" : role) + ")");
-        }
-
-        var leaders = names.ToString();
+        var (members, chair, names) = board;
+        var leaders = names;
         room.Scout = scout.FullName;
         room.Leaders = leaders;
         scout.Room = room.Room;
@@ -684,6 +610,174 @@ public sealed class BoardService
                 scout.BoardMemberIds = "";
                 scout.BoardMembers = "";
                 scout.UpdateFields(true);
+                Scouts.Store();
+                Rooms.Store();
+                Adults.Store();
+                result = ActionResult.Success;
+            }
+        }
+
+        if (result.Ok)
+        {
+            OnChanged(DataTable.Scouts, DataTable.Rooms, DataTable.Adults);
+        }
+
+        return result;
+    }
+
+    /// <summary>Why <see cref="CheckComposition"/> last said no. Only touched under _lock.</summary>
+    private ActionResult? _lastRefusal;
+
+    /// <summary>
+    /// Who may sit on a scout's board, for seating it or changing it: each
+    /// member exists, is listed once, is here, is free (or already on this
+    /// board, <paramref name="boardRoom"/>), and isn't Unavailable for the
+    /// board type; three to six of them (two for a project review); and a
+    /// chair who is one of them and qualified to chair. Null, with the refusal
+    /// in <see cref="_lastRefusal"/>, when any of that fails.
+    /// </summary>
+    private (List<AdultRecord> Members, AdultRecord Chair, string Names)? CheckComposition(
+        ScoutRecord scout, string? memberIds, string? chairId, string? boardRoom)
+    {
+        (List<AdultRecord>, AdultRecord, string)? Refuse(string message)
+        {
+            _lastRefusal = ActionResult.Error(message);
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(memberIds))
+        {
+            return Refuse("ERROR: No board members selected");
+        }
+
+        var members = new List<AdultRecord>();
+        var names = new StringBuilder();
+        foreach (var raw in memberIds.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var id = raw.Trim();
+            var member = Adults.Get(id);
+            if (member == null)
+            {
+                return Refuse("ERROR: Invalid Member ID " + id);
+            }
+
+            // Counting one person twice would let "A,A,A" pass as a board of three.
+            if (members.Contains(member))
+            {
+                return Refuse("ERROR: Member " + member.FullName + " is listed more than once");
+            }
+
+            if (member.Room == AdultRoom.Disabled)
+            {
+                return Refuse("ERROR: Member " + member.FullName + " has been disabled for tonight");
+            }
+
+            if (member.Room.Length > 0 && member.Room != boardRoom)
+            {
+                return Refuse("ERROR: Member " + member.FullName + " already assigned to a board in room " + member.Room);
+            }
+
+            // The browser checked this only for members listed before the
+            // chair, and the Java server not at all, so an Unavailable adult
+            // could be seated by ticking them after someone qualified.
+            if (member.RoleFor(scout.BoardType) == BoardRoles.Unavailable)
+            {
+                return Refuse("ERROR: Member " + member.FullName + " is Unavailable for " + scout.BoardType + " boards");
+            }
+
+            if (names.Length > 0)
+            {
+                names.Append(',');
+            }
+
+            // Full names on the room card: it is how someone finds which room
+            // an adult is in, and "F. Last" made that lookup by first name
+            // impossible.
+            names.Append(member.FullName);
+            members.Add(member);
+        }
+
+        var isProject = scout.BoardType == BoardTypes.Project;
+        var min = isProject ? BoardRules.ProjectMinMembers : BoardRules.BoardMinMembers;
+        if (members.Count < min)
+        {
+            return Refuse($"ERROR: Only {members.Count} board member(s) selected; {min} required for {scout.BoardType} boards");
+        }
+
+        if (members.Count > BoardRules.BoardMaxMembers)
+        {
+            return Refuse($"ERROR: {members.Count} board members selected; no more than {BoardRules.BoardMaxMembers} permitted (Guide to Advancement 8.0.0.3)");
+        }
+
+        // The Chair designation is binding. Promoting a Member is a deliberate
+        // edit on the Admin tables, never a side effect of seating a board
+        // because the qualified chairs were all busy.
+        var chair = Adults.Get(chairId);
+        if (chair == null)
+        {
+            return Refuse("ERROR: Invalid Chair ID " + chairId);
+        }
+
+        if (!members.Contains(chair))
+        {
+            return Refuse("ERROR: Chair " + chair.FullName + " is not one of the board members");
+        }
+
+        var role = chair.RoleFor(scout.BoardType);
+        if (role != BoardRoles.Chair)
+        {
+            return Refuse("ERROR: " + chair.FullName + " is not qualified to chair a " + scout.BoardType
+                + " board (role: " + (role.Length == 0 ? "none" : role) + ")");
+        }
+
+        return (members, chair, names.ToString());
+    }
+
+    /// <summary>
+    /// Change who sits on a board already seated or in review: swap a member
+    /// who had to leave, add one, or change the chair. The same rules as
+    /// seating apply. Members who leave are freed; those who join are marked
+    /// in the room. The board's timer keeps running: it's the same board.
+    /// </summary>
+    public ActionResult ChangeBoardMembers(string? scoutId, string? chairId, string? memberIds)
+    {
+        ActionResult result;
+        lock (_lock)
+        {
+            Trace($"ChangeBoardMembers ScoutID={scoutId} ChairID={chairId} MemberIDs={memberIds}");
+            var scout = Scouts.Get(scoutId);
+            var room = scout == null ? null : FindBoardRoom(scout);
+            if (scout == null)
+            {
+                result = ActionResult.Error("ERROR: Invalid Scout ID" + scoutId);
+            }
+            else if (!BoardStatus.IsActive(scout.Status) || room == null)
+            {
+                result = ActionResult.Error("ERROR: " + scout.FullName + " has no board seated or in review to change");
+            }
+            else if (CheckComposition(scout, memberIds, chairId, room.Room) is not { } board)
+            {
+                result = _lastRefusal!;
+            }
+            else
+            {
+                var (members, chair, names) = board;
+                foreach (var adult in Adults.Records.Where(a => a.Room == room.Room && !members.Contains(a)))
+                {
+                    adult.Room = "";
+                }
+
+                foreach (var member in members)
+                {
+                    member.Room = room.Room;
+                    member.Sel = "0";
+                }
+
+                room.Leaders = names;
+                scout.BoardMembers = names;
+                scout.BoardMemberIds = string.Join(",", members.Select(m => m.Id));
+                scout.BoardChair = chair.FullName;
+                scout.BoardChairId = chair.Id;
                 Scouts.Store();
                 Rooms.Store();
                 Adults.Store();

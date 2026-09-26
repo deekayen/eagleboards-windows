@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;
@@ -16,14 +15,15 @@ using Microsoft.Win32;
 namespace EagleBoards.App;
 
 /// <summary>
-/// The operator's screen: youth and adults side by side, the room cards,
-/// and the list of boards. Replaces the Java app's scheduler.html and its
-/// scheduler_*.js / process_*.js, with the same workflow.
+/// The operator's window. A sidebar of pages: Event (the youth queue, the
+/// rooms, and a details pane that builds and runs the selected youth's
+/// board), Results, People and Settings.
 ///
-/// Data is read from and written to <see cref="BoardService"/> in-process.
-/// A sign-in on the website raises <see cref="BoardService.Changed"/>, which
-/// refreshes the screen at once; a timer also refreshes every
-/// RefreshTimeSecs so the minute counts and room timers keep moving.
+/// Data is read from and written to <see cref="BoardService"/> in-process,
+/// and every change, including a sign-in on the website, raises
+/// <see cref="BoardService.Changed"/>, which refreshes the screen at once.
+/// Nothing is polled. The only thing that moves by itself is time: a timer
+/// on each minute recounts waiting times and room timers.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -35,18 +35,29 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<ScoutRow> _scouts = [];
     private readonly ObservableCollection<AdultRow> _adults = [];
     private readonly ObservableCollection<RoomCard> _rooms = [];
-    private readonly ObservableCollection<Toast> _toasts = [];
-    private readonly ListCollectionView _scoutView;
+    private readonly ListCollectionView _queueView;
     private readonly ListCollectionView _boardView;
     private readonly ListCollectionView _adultView;
-    private readonly ListCollectionView _roomView;
-    private readonly DispatcherTimer _poll = new();
+    private readonly DispatcherTimer _minute = new();
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    private readonly DispatcherTimer _copied = new() { Interval = TimeSpan.FromSeconds(3) };
+    private readonly Dictionary<string, RadioButton> _resultButtons = [];
 
     private ConfigRecord _config = new();
     private bool _quiet;
-    private string? _focusRoom;
     private AdminWindow? _admin;
+
+    /// <summary>
+    /// The youth the details pane shows. Chosen by the operator; kept when the
+    /// youth drops out of the queue's view (completed, with finished hidden),
+    /// so the result and where their people are stay on screen.
+    /// </summary>
+    private ScoutRow? _current;
+
+    /// <summary>The builder's choices that aren't saved until Seat: chair and room.</summary>
+    private string? _chairId;
+
+    private string? _builderRoomId;
 
     public MainWindow(EventSession session)
     {
@@ -55,36 +66,74 @@ public partial class MainWindow : Window
         InitializeComponent();
         Title = "Eagle Board Scheduler " + AppVersion.Text;
 
-        _scoutView = new ListCollectionView(_scouts) { Filter = o => ScoutVisible((ScoutRow)o), IsLiveFiltering = true, IsLiveSorting = true };
-        _scoutView.LiveFilteringProperties.Add(nameof(ScoutRow.Status));
-        _scoutView.SortDescriptions.Add(new SortDescription(nameof(ScoutRow.RegNumSort), ListSortDirection.Ascending));
-        _scoutView.LiveSortingProperties.Add(nameof(ScoutRow.RegNumSort));
-        ScoutGrid.ItemsSource = _scoutView;
+        _queueView = new ListCollectionView(_scouts)
+        {
+            Filter = o => QueueVisible((ScoutRow)o),
+            IsLiveFiltering = true,
+            IsLiveSorting = true,
+            IsLiveGrouping = true,
+        };
+        _queueView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ScoutRow.QueueGroup)));
+        _queueView.SortDescriptions.Add(new SortDescription(nameof(ScoutRow.QueueRank), ListSortDirection.Ascending));
+        _queueView.SortDescriptions.Add(new SortDescription(nameof(ScoutRow.RegNumSort), ListSortDirection.Ascending));
+        foreach (var p in new[] { nameof(ScoutRow.Status), nameof(ScoutRow.QueueRank), nameof(ScoutRow.QueueGroup), nameof(ScoutRow.RegNumSort) })
+        {
+            _queueView.LiveFilteringProperties.Add(p);
+            _queueView.LiveSortingProperties.Add(p);
+            _queueView.LiveGroupingProperties.Add(p);
+        }
+
+        QueueList.ItemsSource = _queueView;
 
         _boardView = new ListCollectionView(_scouts) { Filter = o => BoardVisible((ScoutRow)o), IsLiveFiltering = true };
         _boardView.LiveFilteringProperties.Add(nameof(ScoutRow.Status));
         BoardGrid.ItemsSource = _boardView;
 
-        _adultView = new ListCollectionView(_adults) { Filter = o => AdultVisible((AdultRow)o), IsLiveFiltering = true };
-        _adultView.LiveFilteringProperties.Add(nameof(AdultRow.Room));
-        _adultView.LiveFilteringProperties.Add(nameof(AdultRow.FinalBoard));
+        _adultView = new ListCollectionView(_adults) { Filter = o => AdultVisible((AdultRow)o) };
+        _adultView.SortDescriptions.Add(new SortDescription(nameof(AdultRow.Last), ListSortDirection.Ascending));
         AdultGrid.ItemsSource = _adultView;
 
-        _roomView = new ListCollectionView(_rooms) { Filter = o => RoomVisible((RoomCard)o) };
-        RoomList.ItemsSource = _roomView;
-        ToastList.ItemsSource = _toasts;
+        RoomList.ItemsSource = _rooms;
+
+        foreach (var r in BoardResults.All)
+        {
+            var button = new RadioButton { Content = Display.Result(r), GroupName = "Result", Margin = new Thickness(0, 0, 0, 4), MinWidth = 0 };
+            _resultButtons[r] = button;
+            ResultChoices.Children.Add(button);
+        }
+
+        SettingsHost.Content = new SettingsPage(_svc, RefreshAll);
 
         UrlList.ItemsSource = session.CheckInUrls;
-        DataText.Text = "   Data: " + session.Plan.DataDirectory;
+        DataText.Text = "Data: " + session.Plan.DataDirectory;
+        DataText.ToolTip = session.Plan.DataDirectory;
+        ImportText.Text = session.ImportError != null ? "SignUpGenius import failed" : session.ImportSummary ?? "";
         if (session.ImportError != null)
         {
-            ImportText.Text = "SignUpGenius import failed";
             ImportText.ToolTip = session.ImportError;
-            ImportText.Foreground = Brushes.Firebrick;
+            ImportText.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCautionBrush");
         }
-        else
+        // The address is read off this screen and typed into every station, so
+        // say plainly when it's one the stations can't use.
+        if (session.IsLocalOnly)
         {
-            ImportText.Text = session.ImportSummary ?? "";
+            UrlLabel.Text = "This computer only: ";
+            UrlLabel.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCautionBrush");
+            Notice.Show(Severity.Warning, "Check-in stations can't connect",
+                "The scheduler was started for this computer only (-bind 127.0.0.1), so other computers can't reach the sign-in page. "
+                + "To use check-in stations, close the scheduler and start it again with the venue Wi-Fi as the check-in network.");
+        }
+        else if (session.CheckInUrls.Count == 0)
+        {
+            UrlLabel.Text = "No network found";
+            UrlLabel.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCautionBrush");
+            Notice.Show(Severity.Warning, "Check-in stations can't connect",
+                "This computer isn't on a network, so there's no address for the stations. Connect to the venue Wi-Fi, then close the scheduler and start it again.");
+        }
+        else if (session.ImportError != null)
+        {
+            Notice.Show(Severity.Warning, "SignUpGenius import failed",
+                "Pre-registrations aren't loaded, so everyone signs in as a walk-in. " + session.ImportError);
         }
 
         _svc.Changed += (_, _) => Dispatcher.BeginInvoke(() =>
@@ -97,18 +146,23 @@ public partial class MainWindow : Window
             _debounce.Stop();
             RefreshAll();
         };
-        _poll.Tick += (_, _) => RefreshAll();
+        _minute.Tick += (_, _) => OnMinute();
+        _copied.Tick += (_, _) =>
+        {
+            _copied.Stop();
+            CopiedText.Text = "";
+        };
 
         InputBindings.Add(new KeyBinding(new RelayCommand(RefreshAll), Key.F5, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnHelp(this, new RoutedEventArgs())), Key.F1, ModifierKeys.None));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 0), Key.D1, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 1), Key.D2, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 2), Key.D3, ModifierKeys.Control));
         Closing += OnClosing;
 
+        MainNav.SelectedIndex = 0;
         RefreshAll();
-        UpdateButtons();
-        if (session.ImportError != null)
-        {
-            Notify("SignUpGenius", "The sign-up import failed, so pre-registrations are not loaded:\n" + session.ImportError, ToastKind.Warn, 20000);
-        }
+        ScheduleMinute();
     }
 
     // ------------------------------------------------------------------
@@ -119,32 +173,47 @@ public partial class MainWindow : Window
     {
         _config = _svc.GetConfig();
         RowSync.Sync(_scouts, _svc.Snapshot(DataTable.Scouts), r => new ScoutRow(r), (row, r) => row.Update(r));
-        foreach (var s in _scouts)
-        {
-            s.ApplyColors(_config);
-        }
-
         RowSync.Sync(_adults, _svc.Snapshot(DataTable.Adults), r => new AdultRow(r) { OnSelChanged = OnPickChanged }, (row, r) => row.Update(r));
         RowSync.Sync(_rooms, _svc.Snapshot(DataTable.Rooms), r => new RoomCard(r), (row, r) => row.Update(r));
-
-        ApplyFocusRoom();
-        UpdateRoomTimers();
-        UpdateButtons();
-        UpdatePickCount();
-        ClockText.Text = DateTime.Now.ToString("h:mm tt");
-
-        var interval = TimeSpan.FromSeconds(Math.Max(5, _config.RefreshTimeSecs));
-        if (_poll.Interval != interval || !_poll.IsEnabled)
+        if (_current != null && !_scouts.Contains(_current))
         {
-            _poll.Interval = interval;
-            _poll.Start();
+            _current = null;
         }
+
+        UpdateRoomTimers();
+        ShowDetails();
+        UpdatePeopleButtons();
+    }
+
+    /// <summary>Times are stamped to the minute, so counts change on the clock's minute: tick just after it.</summary>
+    private void ScheduleMinute()
+    {
+        var now = DateTime.Now;
+        _minute.Interval = TimeSpan.FromSeconds(60 - now.Second) - TimeSpan.FromMilliseconds(now.Millisecond) + TimeSpan.FromMilliseconds(250);
+        _minute.Start();
+    }
+
+    private void OnMinute()
+    {
+        _minute.Stop();
+        foreach (var s in _scouts)
+        {
+            s.Tick();
+        }
+
+        UpdateRoomTimers();
+        if (_current is { } scout && !BoardStatus.IsWaiting(scout.Status))
+        {
+            ShowBoard(scout);
+        }
+
+        ScheduleMinute();
     }
 
     /// <summary>
-    /// "[12m]" on each room holding a board, orange then red at the
-    /// board-type thresholds. Runs on the youth's minutes-since-last-change,
-    /// so the clock restarts by itself at Seat and again at Start Review.
+    /// Minutes on each room holding a board, caution then overdue at the
+    /// board-type thresholds. Runs on the youth's minutes since the last
+    /// change, so the clock restarts by itself at Seat and at Start review.
     /// </summary>
     private void UpdateRoomTimers()
     {
@@ -153,7 +222,7 @@ public partial class MainWindow : Window
             var scout = _scouts.FirstOrDefault(s => s.Room == card.Room && BoardStatus.IsActive(s.Status));
             if (scout?.Mins is { } mins)
             {
-                card.TimerText = $"[{mins}m]";
+                card.TimerText = $"{mins} min";
                 card.TimerState = SchedulerLogic.TimerFor(scout.Status, scout.BoardType, mins, _config);
             }
             else
@@ -164,75 +233,32 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateButtons()
-    {
-        var actions = SelectedScout is { } s ? SchedulerLogic.ActionsFor(s.Status) : ScoutActions.None;
-        SeatButton.IsEnabled = actions.HasFlag(ScoutActions.Seat);
-        StartButton.IsEnabled = actions.HasFlag(ScoutActions.Start);
-        CompleteButton.IsEnabled = actions.HasFlag(ScoutActions.Complete);
-        LocateButton.IsEnabled = actions.HasFlag(ScoutActions.Locate);
-        ResetButton.IsEnabled = actions.HasFlag(ScoutActions.Reset);
-        PostponeButton.IsEnabled = actions.HasFlag(ScoutActions.Postpone);
+    // ------------------------------------------------------------------
+    // Navigation
+    // ------------------------------------------------------------------
 
-        var adult = AdultGrid.SelectedItem as AdultRow;
-        EnableButton.IsEnabled = adult is { IsDisabled: true };
-        DisableButton.IsEnabled = adult is { Room: "" };
+    private void OnNavigate(object sender, SelectionChangedEventArgs e)
+    {
+        if (_quiet || sender is not ListBox { SelectedItem: ListBoxItem { Tag: string page } } list)
+        {
+            return;
+        }
+
+        Quietly(() => (ReferenceEquals(list, MainNav) ? FooterNav : MainNav).SelectedItem = null);
+        ShowPage(page);
     }
 
-    private void UpdatePickCount()
+    private void ShowPage(string page)
     {
-        var n = _adults.Count(a => a.Sel);
-        PickCount.Text = n == 0 ? "" : $"{n} picked";
+        EventPage.Visibility = page == "Event" ? Visibility.Visible : Visibility.Collapsed;
+        ResultsPage.Visibility = page == "Results" ? Visibility.Visible : Visibility.Collapsed;
+        PeoplePage.Visibility = page == "People" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPage.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
+        if (page == "Settings" && SettingsHost.Content is SettingsPage settings)
+        {
+            settings.Load();
+        }
     }
-
-    // ------------------------------------------------------------------
-    // Filters
-    // ------------------------------------------------------------------
-
-    private static bool Matches(string filter, params string[] fields) =>
-        filter.Length == 0 || fields.Any(f => f.Contains(filter, StringComparison.OrdinalIgnoreCase));
-
-    private bool ScoutVisible(ScoutRow s) =>
-        (ShowFinishedToggle.IsChecked == true || !BoardStatus.IsFinished(s.Status))
-        && Matches(ScoutFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.UnitName, s.BoardType, s.Room, s.Status, s.Leader);
-
-    private bool BoardVisible(ScoutRow s) =>
-        s.Status is BoardStatus.Seated or BoardStatus.InProgress or BoardStatus.Completed or BoardStatus.Postponed
-        && Matches(BoardFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.UnitName, s.Leader, s.Status, s.Room, s.Result, s.BoardChair, s.BoardMembers, s.Notes);
-
-    /// <summary>
-    /// By default only adults free to sit: not on a board, not gone home, not
-    /// unavailable for final boards. The board in focus stays visible so you
-    /// can see who is on it.
-    /// </summary>
-    private bool AdultVisible(AdultRow a) =>
-        (ShowAllAdultsToggle.IsChecked == true || (a.Room.Length == 0 && a.FinalBoard != BoardRoles.Unavailable)
-            || (_focusRoom != null && a.Room == _focusRoom))
-        && Matches(AdultFilter.Text.Trim(), a.Last, a.First, a.UnitName, a.Room, a.FinalBoard, a.ProjectReview);
-
-    private bool RoomVisible(RoomCard r) => Matches(RoomFilter.Text.Trim(), r.Room, r.Scout, r.Leaders);
-
-    private void OnScoutFilter(object sender, TextChangedEventArgs e) => _scoutView?.Refresh();
-
-    private void OnBoardFilter(object sender, TextChangedEventArgs e) => _boardView?.Refresh();
-
-    private void OnAdultFilter(object sender, TextChangedEventArgs e) => _adultView?.Refresh();
-
-    private void OnRoomFilter(object sender, TextChangedEventArgs e) => _roomView?.Refresh();
-
-    private void OnClearRoomFilter(object sender, RoutedEventArgs e) => RoomFilter.Text = "";
-
-    private void OnScoutViewToggle(object sender, RoutedEventArgs e) => _scoutView.Refresh();
-
-    private void OnAdultViewToggle(object sender, RoutedEventArgs e) => _adultView.Refresh();
-
-    // ------------------------------------------------------------------
-    // Selection cascade
-    // ------------------------------------------------------------------
-
-    private ScoutRow? SelectedScout => ScoutGrid.SelectedItem as ScoutRow;
-
-    private RoomCard? SelectedRoom => _rooms.FirstOrDefault(r => r.IsSelected);
 
     /// <summary>Change a selection without running the cascade that a user's click runs.</summary>
     private void Quietly(Action action)
@@ -249,235 +275,625 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnScoutSelected(object sender, SelectionChangedEventArgs e)
+    // ------------------------------------------------------------------
+    // Filters
+    // ------------------------------------------------------------------
+
+    private static bool Matches(string filter, params string[] fields) =>
+        filter.Length == 0 || fields.Any(f => f.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+    private bool QueueVisible(ScoutRow s) =>
+        (ShowFinishedCheck.IsChecked == true || !BoardStatus.IsFinished(s.Status))
+        && Matches(QueueFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.FullName, s.UnitName, s.UnitLabel, s.Room, s.Leader);
+
+    private bool BoardVisible(ScoutRow s) =>
+        !BoardStatus.IsWaiting(s.Status)
+        && Matches(BoardFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.UnitName, s.Leader, s.Status, s.Room, s.Result, s.BoardChair, s.BoardMembers, s.Notes);
+
+    private bool AdultVisible(AdultRow a) =>
+        Matches(AdultFilter.Text.Trim(), a.Last, a.First, a.UnitName, a.UnitLabel, a.RoomText, a.FinalBoard, a.ProjectReview);
+
+    private void OnQueueFilter(object sender, TextChangedEventArgs e) => _queueView?.Refresh();
+
+    private void OnQueueViewChanged(object sender, RoutedEventArgs e) => _queueView.Refresh();
+
+    private void OnBoardFilter(object sender, TextChangedEventArgs e) => _boardView?.Refresh();
+
+    private void OnAdultFilter(object sender, TextChangedEventArgs e) => _adultView?.Refresh();
+
+    private void OnAvailableFilter(object sender, TextChangedEventArgs e) => ShowDetails();
+
+    // ------------------------------------------------------------------
+    // Selection
+    // ------------------------------------------------------------------
+
+    private void OnQueueSelected(object sender, SelectionChangedEventArgs e)
     {
-        UpdateButtons();
-        if (!_quiet && e.AddedItems.Count > 0 && SelectedScout is { } s)
+        // Null when the selected youth leaves the view (say, completed with
+        // finished hidden): keep showing them rather than blanking the pane.
+        if (!_quiet && QueueList.SelectedItem is ScoutRow s)
         {
-            AutoSelect(s);
+            Open(s);
         }
     }
 
-    /// <summary>Clicking the row that is already selected runs the cascade again, as a fresh click would.</summary>
-    private void OnScoutGridClick(object sender, MouseButtonEventArgs e)
+    /// <summary>Clicking the youth already open opens them again, as a fresh click would.</summary>
+    private void OnQueueClick(object sender, MouseButtonEventArgs e)
     {
-        if (ItemsControl.ContainerFromElement(ScoutGrid, (DependencyObject)e.OriginalSource) is DataGridRow { Item: ScoutRow row }
-            && ReferenceEquals(row, SelectedScout))
+        if (ItemsControl.ContainerFromElement(QueueList, (DependencyObject)e.OriginalSource) is ListBoxItem { Content: ScoutRow row }
+            && ReferenceEquals(row, _current))
         {
-            Dispatcher.BeginInvoke(() => AutoSelect(row), DispatcherPriority.Input);
+            Dispatcher.BeginInvoke(() => Open(row), DispatcherPriority.Input);
         }
     }
 
-    private void OnBoardSelected(object sender, SelectionChangedEventArgs e)
+    private void OnRoomSelected(object sender, SelectionChangedEventArgs e)
     {
-        if (_quiet || e.AddedItems.Count == 0 || BoardGrid.SelectedItem is not ScoutRow row)
+        if (_quiet || RoomList.SelectedItem is not RoomCard card)
         {
             return;
         }
 
-        Quietly(() =>
+        if (!card.IsFree && _scouts.FirstOrDefault(s => s.Room == card.Room && BoardStatus.IsActive(s.Status)) is { } inRoom)
         {
-            ScoutGrid.SelectedItem = _scoutView.Contains(row) ? row : null;
-            ScoutGrid.ScrollIntoView(row);
-        });
-        UpdateButtons();
-        AutoSelect(row);
-    }
-
-    private void OnAdultSelected(object sender, SelectionChangedEventArgs e) => UpdateButtons();
-
-    private void OnRoomCardClicked(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: RoomCard card })
+            Open(inRoom);
+        }
+        else if (card.IsFree && _current is { } s && BoardStatus.IsWaiting(s.Status))
         {
-            SelectRoomCard(card);
-            if (!card.IsFree)
-            {
-                FocusRoom(card.Room);
-            }
+            // Building a board: a free room clicked is the room for it.
+            _builderRoomId = card.Id;
+            ShowDetails();
         }
     }
 
-    private void SelectRoomCard(RoomCard? card)
+    private void OnBoardOpened(object sender, MouseButtonEventArgs e)
     {
-        foreach (var r in _rooms)
+        if (BoardGrid.SelectedItem is ScoutRow row)
         {
-            r.IsSelected = ReferenceEquals(r, card);
+            MainNav.SelectedIndex = 0;
+            if (BoardStatus.IsFinished(row.Status))
+            {
+                ShowFinishedCheck.IsChecked = true;
+                _queueView.Refresh();
+            }
+
+            Open(row);
         }
     }
 
     /// <summary>
-    /// What clicking a youth does. Picks the operator has already made are
-    /// their work in progress and are never thrown away by clicking around --
-    /// only Clear picks does that. Otherwise: a waiting youth gets a proposed
-    /// board (a qualified chair, members from other units, a free room of the
-    /// right type); a youth whose board is running brings its room into focus.
+    /// Show a youth in the details pane. A waiting youth gets a proposed board
+    /// unless the operator already has picks: picks are their work in
+    /// progress and survive clicking around; only Start over and seating
+    /// clear them.
     /// </summary>
-    private void AutoSelect(ScoutRow scout)
+    private void Open(ScoutRow scout)
     {
-        Quietly(() => AdultGrid.SelectedItem = null);
-        var picksMade = _adults.Any(a => a.Sel);
-        if (picksMade)
+        if (!ReferenceEquals(_current, scout))
         {
-            if (BoardStatus.IsActive(scout.Status))
+            DetailNotice.Close();
+            NotesBox.Text = "";
+            AvailableFilter.Text = "";
+            _resultButtons[BoardResults.Approved].IsChecked = true;
+        }
+
+        _current = scout;
+        Quietly(() =>
+        {
+            QueueList.SelectedItem = _queueView.Contains(scout) ? scout : null;
+            if (QueueList.SelectedItem != null)
             {
-                FocusRoom(scout.Room);
+                QueueList.ScrollIntoView(scout);
+            }
+
+            RoomList.SelectedItem = BoardStatus.IsActive(scout.Status) ? _rooms.FirstOrDefault(r => r.Room == scout.Room) : null;
+        });
+
+        if (BoardStatus.IsWaiting(scout.Status))
+        {
+            ProposeBoard(scout);
+        }
+
+        ShowDetails();
+    }
+
+    private void ProposeBoard(ScoutRow scout)
+    {
+        var free = _rooms.Where(r => r.IsFree).ToList();
+        if (_adults.Any(IsPicked))
+        {
+            // Keep their picks; just make sure there's a sensible room.
+            if (free.All(r => r.Id != _builderRoomId))
+            {
+                _builderRoomId = (free.FirstOrDefault(r => r.BoardType == scout.BoardType) ?? free.FirstOrDefault())?.Id;
             }
 
             return;
         }
 
-        SelectRoomCard(null);
-        SetFocusRoom(null);
-
-        if (BoardStatus.IsActive(scout.Status))
+        var pick = SchedulerLogic.AutoSelect(scout.Info, _adults.Select(a => a.Info).ToList(), _rooms.Select(r => r.Info));
+        foreach (var id in pick.AllAdultIds)
         {
-            FocusRoom(scout.Room);
-        }
-        else if (BoardStatus.IsWaiting(scout.Status))
-        {
-            var pick = SchedulerLogic.AutoSelect(scout.Info, _adults.Select(a => a.Info).ToList(), _rooms.Select(r => r.Info));
-            foreach (var id in pick.AllAdultIds)
+            if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
             {
-                if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
-                {
-                    adult.Sel = true;
-                }
-            }
-
-            SortPicksToTop();
-            if (pick.RoomId != null)
-            {
-                var card = _rooms.FirstOrDefault(r => r.Id == pick.RoomId);
-                SelectRoomCard(card);
-                if (card != null)
-                {
-                    RoomList.UpdateLayout();
-                    (RoomList.ItemContainerGenerator.ContainerFromItem(card) as FrameworkElement)?.BringIntoView();
-                }
-            }
-
-            foreach (var problem in pick.Problems)
-            {
-                Notify("Auto Select", problem, ToastKind.Error);
-            }
-
-            if (pick.Problems.Count == 0)
-            {
-                Notify("Auto Select OK", $"Ready to seat:\n**{scout.Last}, {scout.First}**", ToastKind.Ok);
+                adult.Sel = true;
             }
         }
-        else if (scout.Room.Length > 0 && scout.Room != AdultRoom.Disabled)
+
+        _chairId = pick.ChairIds.FirstOrDefault();
+        _builderRoomId = pick.RoomId ?? free.FirstOrDefault()?.Id;
+    }
+
+    // ------------------------------------------------------------------
+    // Details pane
+    // ------------------------------------------------------------------
+
+    private void ShowDetails()
+    {
+        var scout = _current;
+        DetailsEmpty.Visibility = scout == null ? Visibility.Visible : Visibility.Collapsed;
+        DetailsHead.Visibility = scout != null ? Visibility.Visible : Visibility.Collapsed;
+        LocateSection.Visibility = DetailsHead.Visibility;
+        BuilderSection.Visibility = scout != null && BoardStatus.IsWaiting(scout.Status) ? Visibility.Visible : Visibility.Collapsed;
+        BoardSection.Visibility = scout != null && !BoardStatus.IsWaiting(scout.Status) ? Visibility.Visible : Visibility.Collapsed;
+        if (scout == null)
         {
-            FocusRoom(scout.Room);
+            return;
+        }
+
+        DetailName.Text = scout.FullName;
+        DetailSub.Text = string.Join(" · ", new[] { scout.UnitLabel, Display.BoardType(scout.BoardType), scout.RegNum }.Where(s => s.Length > 0));
+        DetailStatus.Content = null;
+        DetailStatus.Content = scout;
+
+        if (BoardStatus.IsWaiting(scout.Status))
+        {
+            ShowBuilder(scout);
         }
         else
         {
-            Quietly(() => BoardGrid.SelectedItem = _boardView.Contains(scout) ? scout : null);
+            ShowBoard(scout);
+        }
+
+        ShowLocate(scout);
+    }
+
+    private void ShowBuilder(ScoutRow scout)
+    {
+        // Rooms: free ones, this board's type first.
+        var free = _rooms.Where(r => r.IsFree).OrderBy(r => r.BoardType == scout.BoardType ? 0 : 1).ThenBy(r => r.Room, StringComparer.OrdinalIgnoreCase).ToList();
+        Quietly(() =>
+        {
+            BuilderRoom.ItemsSource = free.Select(r => new KeyValuePair<string, string>(r.Id, $"{r.Room} · {r.BoardTypeText}")).ToList();
+            BuilderRoom.SelectedValue = _builderRoomId;
+        });
+
+        var picked = _adults.Where(IsPicked).Select(a => new PickRow(a, scout.BoardType, scout.UnitName, OnChairChosen)).ToList();
+        if (picked.Where(p => p.CanChair).All(p => p.Id != _chairId))
+        {
+            _chairId = picked.FirstOrDefault(p => p.CanChair)?.Id;
+        }
+
+        foreach (var p in picked)
+        {
+            p.SetChairQuietly(p.Id == _chairId);
+        }
+
+        PickList.ItemsSource = picked.OrderByDescending(p => p.Id == _chairId).ToList();
+        NoPicksText.Visibility = picked.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        var filter = AvailableFilter.Text.Trim();
+        var available = _adults
+            .Where(a => !a.Sel && a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
+            .Where(a => Matches(filter, a.Last, a.First, a.FullName, a.UnitName, a.UnitLabel))
+            .Select(a => new PickRow(a, scout.BoardType, scout.UnitName))
+            .OrderBy(p => p.SameUnit)
+            .ThenByDescending(p => p.CanChair && _chairId == null)
+            .ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        AvailableList.ItemsSource = available;
+        NoAvailableText.Visibility = available.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        var room = _rooms.FirstOrDefault(r => r.Id == _builderRoomId);
+        var issues = BoardCheck.Review(scout.Info, picked.Select(p => p.Adult.Info).ToList(), _chairId, room?.Info);
+        IssueList.Children.Clear();
+        foreach (var issue in issues.OrderBy(i => i.Level))
+        {
+            var bar = new InfoBar { IsClosable = false, Margin = new Thickness(0, 0, 0, 8) };
+            bar.Show(issue.Level == IssueLevel.Block ? Severity.Error : Severity.Warning, issue.Title, issue.Message);
+            IssueList.Children.Add(bar);
+        }
+
+        SeatButton.IsEnabled = issues.All(i => i.Level != IssueLevel.Block);
+        FillButton.IsEnabled = picked.Count < BoardRules.MinMembers(scout.BoardType) || picked.All(p => !p.CanChair);
+        SeatText.Text = issues.Any(i => i.Level == IssueLevel.Warn) ? "_Seat anyway" : "_Seat board";
+    }
+
+    private void ShowBoard(ScoutRow scout)
+    {
+        var facts = new List<KeyValuePair<string, string>>();
+        if (BoardStatus.IsActive(scout.Status))
+        {
+            var what = scout.Status == BoardStatus.Seated ? "Convening" : "In review";
+            facts.Add(new("Room", $"{scout.Room} · {what} for {scout.Mins ?? 0} min"));
+        }
+
+        // A finished board's members are history; a running board's can change.
+        var active = BoardStatus.IsActive(scout.Status);
+        if (scout.BoardChair.Length > 0 && !active)
+        {
+            facts.Add(new("Chair", scout.BoardChair));
+            facts.Add(new("Members", scout.BoardMembersText));
+        }
+
+        MembersSection.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        if (active)
+        {
+            var members = _adults.Where(a => a.Room == scout.Room)
+                .Select(a => new PickRow(a, scout.BoardType, scout.UnitName)).ToList();
+            foreach (var m in members)
+            {
+                m.SetChairQuietly(m.Id == scout.BoardChairId);
+            }
+
+            BoardMemberList.ItemsSource = members.OrderByDescending(m => m.IsChair).ThenBy(m => m.Adult.Last, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        if (scout.Status == BoardStatus.Completed)
+        {
+            facts.Add(new("Result", scout.ResultText));
+            if (scout.Notes.Length > 0)
+            {
+                facts.Add(new("Notes", scout.Notes));
+            }
+        }
+
+        FactList.ItemsSource = facts;
+        ResultSection.Visibility = scout.Status == BoardStatus.InProgress ? Visibility.Visible : Visibility.Collapsed;
+        StartButton.Visibility = scout.Status == BoardStatus.Seated ? Visibility.Visible : Visibility.Collapsed;
+        CompleteButton.Visibility = scout.Status == BoardStatus.InProgress ? Visibility.Visible : Visibility.Collapsed;
+        ResetButton.Visibility = SchedulerLogic.ActionsFor(scout.Status).HasFlag(ScoutActions.Reset) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Where the youth's leaders and parents are: for fetching them, and after the board.</summary>
+    private void ShowLocate(ScoutRow scout)
+    {
+        var found = SchedulerLogic.Locate(scout.Info, _adults.Select(a => a.Info), includeParents: true);
+        LocateList.ItemsSource = found.Select(f => new KeyValuePair<string, string>(
+            f.IsLeader ? "Leader" : "Parent",
+            $"{f.Adult.First} {f.Adult.Last} · {(f.Adult.Room == AdultRoom.Disabled ? "gone home" : f.Adult.Room.Length == 0 ? "main room" : "room " + f.Adult.Room)}")).ToList();
+        LocateNone.Text = found.Count > 0 ? ""
+            : scout.Leader.Length > 0 ? $"{scout.Leader} hasn't signed in, and no parent has."
+            : "No leader was given at sign-in, and no parent has signed in.";
+        LocateNone.Visibility = found.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnChairChosen(PickRow row)
+    {
+        _chairId = row.Id;
+        Dispatcher.BeginInvoke(ShowDetails, DispatcherPriority.Input);
+    }
+
+    private void OnBuilderRoomChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_quiet)
+        {
+            _builderRoomId = BuilderRoom.SelectedValue as string;
+            ShowDetails();
         }
     }
 
-    /// <summary>Bring a room's board into view everywhere: its card, its youth, its board row, its adults.</summary>
-    private void FocusRoom(string room)
+    // ------------------------------------------------------------------
+    // Picks
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Ticked for the board being built. Only a free adult counts: the Java
+    /// version leaves a seated board's members ticked in the file, so after a
+    /// hand-off from it those stale ticks must not reappear on the next board.
+    /// </summary>
+    private static bool IsPicked(AdultRow a) => a.Sel && a.CanPick;
+
+    /// <summary>A pick is saved at once, so nothing can undo it behind the operator's back.</summary>
+    private void OnPickChanged(AdultRow adult, bool picked) =>
+        _svc.SaveRow(DataTable.Adults, "updated", adult.Id, new Dictionary<string, string> { ["Sel"] = picked ? "1" : "0" });
+
+    private void OnAddPick(object sender, RoutedEventArgs e)
     {
-        if (room.Length == 0 || room == AdultRoom.Disabled)
+        if (sender is FrameworkElement { Tag: PickRow row })
+        {
+            row.Adult.Sel = true;
+            ShowDetails();
+        }
+    }
+
+    private void OnRemovePick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: PickRow row })
+        {
+            row.Adult.Sel = false;
+            ShowDetails();
+        }
+    }
+
+    /// <summary>
+    /// The override: keep the adults the operator chose and let auto-select
+    /// complete the board around them (a chair if none of them can chair,
+    /// then members up to the minimum).
+    /// </summary>
+    private void OnFillBoard(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout || !BoardStatus.IsWaiting(scout.Status))
         {
             return;
         }
 
-        SetFocusRoom(room);
-        SelectRoomCard(_rooms.FirstOrDefault(r => r.Room == room));
-        Quietly(() =>
+        var picked = _adults.Where(IsPicked).Select(a => a.Id).ToList();
+        var fill = SchedulerLogic.FillBoard(scout.Info, _adults.Select(a => a.Info).ToList(), picked);
+        foreach (var id in fill.AllAdultIds)
         {
-            var inRoom = _scouts.FirstOrDefault(s => s.Room == room && _boardView.Contains(s));
-            BoardGrid.SelectedItem = inRoom;
-            if (inRoom != null)
+            if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
             {
-                BoardGrid.ScrollIntoView(inRoom);
+                adult.Sel = true;
             }
-
-            var scout = _scouts.FirstOrDefault(s => s.Room == room && _scoutView.Contains(s));
-            if (scout != null && !ReferenceEquals(SelectedScout, scout))
-            {
-                ScoutGrid.SelectedItem = scout;
-                ScoutGrid.ScrollIntoView(scout);
-            }
-        });
-        UpdateButtons();
-    }
-
-    private void SetFocusRoom(string? room)
-    {
-        _focusRoom = room;
-        ApplyFocusRoom();
-        _adultView.Refresh();
-    }
-
-    private void ApplyFocusRoom()
-    {
-        foreach (var a in _adults)
-        {
-            a.IsHighlighted = _focusRoom != null && a.Room == _focusRoom;
-        }
-    }
-
-    // ------------------------------------------------------------------
-    // Adults
-    // ------------------------------------------------------------------
-
-    /// <summary>A tick, by hand or by auto-select, is saved at once so nothing can undo it behind the operator's back.</summary>
-    private void OnPickChanged(AdultRow adult, bool picked)
-    {
-        _svc.SaveRow(DataTable.Adults, "updated", adult.Id, new Dictionary<string, string> { ["Sel"] = picked ? "1" : "0" });
-        if (picked)
-        {
-            SortPicksToTop();
         }
 
-        UpdatePickCount();
+        _chairId ??= fill.ChairIds.FirstOrDefault();
+        ShowDetails();
     }
 
-    private void SortPicksToTop()
-    {
-        using (_adultView.DeferRefresh())
-        {
-            _adultView.SortDescriptions.Clear();
-            _adultView.SortDescriptions.Add(new SortDescription(nameof(AdultRow.SelSort), ListSortDirection.Descending));
-        }
-
-        foreach (var column in AdultGrid.Columns)
-        {
-            column.SortDirection = column.SortMemberPath == nameof(AdultRow.SelSort) ? ListSortDirection.Descending : null;
-        }
-
-        if (_adultView.Count > 0)
-        {
-            AdultGrid.ScrollIntoView(_adultView.GetItemAt(0));
-        }
-    }
-
+    /// <summary>Untick everyone; for a waiting youth, propose a fresh board.</summary>
     private void OnClearPicks(object sender, RoutedEventArgs e)
     {
         foreach (var a in _adults.Where(a => a.Sel).ToList())
         {
             a.Sel = false;
         }
+
+        _chairId = null;
+        if (_current is { } s && BoardStatus.IsWaiting(s.Status))
+        {
+            ProposeBoard(s);
+        }
+
+        ShowDetails();
     }
 
+    // ------------------------------------------------------------------
+    // Board lifecycle
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Waiting → Seated. The builder has already listed every problem and
+    /// only enables Seat when nothing blocks it; warnings (same unit, a larger
+    /// board, the other type's room) make it "Seat anyway". The server
+    /// re-checks the hard rules.
+    /// </summary>
+    private void OnSeat(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout || !BoardStatus.IsWaiting(scout.Status) || _builderRoomId is not { } roomId)
+        {
+            return;
+        }
+
+        var picked = _adults.Where(IsPicked).ToList();
+        var result = _svc.SeatBoard(roomId, scout.Id, _chairId, string.Join(",", picked.Select(a => a.Id)));
+        if (!result.Ok)
+        {
+            DetailNotice.Show(Severity.Error, "Couldn't seat the board", Plain(result.Message));
+        }
+
+        _chairId = null;
+        _builderRoomId = null;
+        RefreshAll();
+        Open(scout);
+    }
+
+    /// <summary>Seated → In review. No confirmation: Reset undoes it.</summary>
+    private void OnStart(object sender, RoutedEventArgs e)
+    {
+        if (_current is { Status: BoardStatus.Seated } scout)
+        {
+            Report(_svc.StartReview(scout.Id), "Couldn't start the review");
+        }
+    }
+
+    private void OnComplete(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { Status: BoardStatus.InProgress } scout)
+        {
+            return;
+        }
+
+        var outcome = _resultButtons.First(b => b.Value.IsChecked == true).Key;
+        Report(_svc.CompleteBoard(scout.Id, outcome, NotesBox.Text.Trim()), "Couldn't complete the board");
+    }
+
+    private void OnReset(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout)
+        {
+            return;
+        }
+
+        if (AppDialog.Confirm(this, "Reset this board?",
+                $"**{scout.FullName}** goes back to waiting. Room {scout.Room} and its members are freed, and the board would need seating again.",
+                "Reset board"))
+        {
+            Report(_svc.ResetBoard(scout.Id), "Couldn't reset the board");
+        }
+    }
+
+    private void OnPostpone(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout || !BoardStatus.IsWaiting(scout.Status))
+        {
+            return;
+        }
+
+        if (AppDialog.Confirm(this, "Postpone this board?",
+                $"**{scout.FullName}** won't have a board at this event. This is usually because the paperwork isn't in order.", "Postpone"))
+        {
+            Report(_svc.PostponeBoard(scout.Id), "Couldn't postpone the board");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Changing a board already seated or in review
+    // ------------------------------------------------------------------
+
+    /// <summary>The seated board's members as they stand, and its chair.</summary>
+    private (List<AdultRow> Members, string ChairId)? RunningBoard() =>
+        _current is { } s && BoardStatus.IsActive(s.Status)
+            ? (_adults.Where(a => a.Room == s.Room).ToList(), s.BoardChairId)
+            : null;
+
+    /// <summary>Free adults who could join this youth's board, as dropdown choices; same-unit ones last and marked.</summary>
+    private List<KeyValuePair<string, string>> JoinChoices(ScoutRow scout) =>
+        _adults.Where(a => a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
+            .Select(a => new PickRow(a, scout.BoardType, scout.UnitName))
+            .OrderBy(p => p.SameUnit).ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
+            .Select(p => new KeyValuePair<string, string>(p.Id, $"{p.Name} · {p.Detail}"))
+            .ToList();
+
+    private void ChangeMembers(ScoutRow scout, IEnumerable<string> memberIds, string chairId)
+    {
+        var ids = memberIds.Distinct().ToList();
+        Report(_svc.ChangeBoardMembers(scout.Id, chairId, string.Join(",", ids)), "Couldn't change the board");
+        var conflicts = BoardRules.FindUnitConflicts(scout.UnitName,
+            _adults.Where(a => ids.Contains(a.Id)).Select(a => new BoardCandidate(a.Id, a.Last, a.First, a.UnitName)));
+        if (conflicts.Count > 0 && !DetailNotice.IsOpen)
+        {
+            DetailNotice.Show(Severity.Warning, "Same unit",
+                $"{string.Join(", ", conflicts.Select(c => $"{c.First} {c.Last}"))} {(conflicts.Count == 1 ? "is" : "are")} in the youth's own unit.");
+        }
+    }
+
+    /// <summary>The chair after a change: the same one if they stay, else the first qualified member left.</summary>
+    private string ChairAfter(ScoutRow scout, IReadOnlyCollection<string> ids, string currentChair) =>
+        ids.Contains(currentChair) ? currentChair
+        : _adults.FirstOrDefault(a => ids.Contains(a.Id) && a.Info.RoleFor(scout.BoardType) == BoardRoles.Chair)?.Id ?? currentChair;
+
+    private void OnReplaceMember(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: PickRow leaving } || _current is not { } scout || RunningBoard() is not { } board)
+        {
+            return;
+        }
+
+        var choices = JoinChoices(scout);
+        if (choices.Count == 0)
+        {
+            DetailNotice.Show(Severity.Informational, "No one is free", "Everyone else is on a board, gone home, or unavailable for this board type.");
+            return;
+        }
+
+        var dialog = new AppDialog(this, $"Replace {leaving.Name}?", "Replace");
+        dialog.AddMessage($"**{leaving.Name}** leaves room {scout.Room} and is free for another board. The board carries on; its time isn't reset.");
+        var pick = dialog.AddChoice("Replace with", choices, null);
+        if (leaving.IsChair)
+        {
+            dialog.AddInfo(Severity.Informational, "", "They're the chair. The new member takes the chair if they're qualified; otherwise another qualified member on the board does.");
+        }
+
+        if (!dialog.ShowDialog() || pick.SelectedValue is not string joining)
+        {
+            return;
+        }
+
+        var ids = board.Members.Select(m => m.Id == leaving.Id ? joining : m.Id).ToList();
+        var chair = leaving.IsChair && _adults.FirstOrDefault(a => a.Id == joining)?.Info.RoleFor(scout.BoardType) == BoardRoles.Chair
+            ? joining
+            : ChairAfter(scout, ids, board.ChairId);
+        ChangeMembers(scout, ids, chair);
+    }
+
+    /// <summary>No confirmation: adding them back is as easy.</summary>
+    private void OnRemoveMember(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: PickRow leaving } && _current is { } scout && RunningBoard() is { } board)
+        {
+            var ids = board.Members.Where(m => m.Id != leaving.Id).Select(m => m.Id).ToList();
+            ChangeMembers(scout, ids, ChairAfter(scout, ids, board.ChairId));
+        }
+    }
+
+    private void OnAddMember(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout || RunningBoard() is not { } board)
+        {
+            return;
+        }
+
+        var choices = JoinChoices(scout);
+        if (choices.Count == 0)
+        {
+            DetailNotice.Show(Severity.Informational, "No one is free", "Everyone else is on a board, gone home, or unavailable for this board type.");
+            return;
+        }
+
+        var dialog = new AppDialog(this, "Add a member?", "Add");
+        var pick = dialog.AddChoice("Add to the board in room " + scout.Room, choices, null);
+        if (dialog.ShowDialog() && pick.SelectedValue is string joining)
+        {
+            ChangeMembers(scout, board.Members.Select(m => m.Id).Append(joining), board.ChairId);
+        }
+    }
+
+    private void OnChangeChair(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout || RunningBoard() is not { } board)
+        {
+            return;
+        }
+
+        var qualified = board.Members.Where(m => m.Info.RoleFor(scout.BoardType) == BoardRoles.Chair && m.Id != board.ChairId)
+            .Select(m => new KeyValuePair<string, string>(m.Id, m.FullName)).ToList();
+        if (qualified.Count == 0)
+        {
+            DetailNotice.Show(Severity.Informational, "No one else can chair",
+                "No other member of this board is qualified to chair. Replace someone with a qualified chair, or promote a member on the admin tables.");
+            return;
+        }
+
+        var dialog = new AppDialog(this, "Change the chair?", "Change chair");
+        var pick = dialog.AddChoice("New chair", qualified, null);
+        if (dialog.ShowDialog() && pick.SelectedValue is string chair)
+        {
+            ChangeMembers(scout, board.Members.Select(m => m.Id), chair);
+        }
+    }
+
+    private void Report(ActionResult result, string failure)
+    {
+        if (!result.Ok)
+        {
+            DetailNotice.Show(Severity.Error, failure, Plain(result.Message));
+        }
+
+        RefreshAll();
+    }
+
+    /// <summary>The server's refusals start "ERROR: " for the check-in pages; the window says it once, in the title.</summary>
+    private static string Plain(string message) => message.StartsWith("ERROR: ", StringComparison.Ordinal) ? message[7..] : message;
+
+    // ------------------------------------------------------------------
+    // People
+    // ------------------------------------------------------------------
+
+    private void OnAdultSelected(object sender, SelectionChangedEventArgs e) => UpdatePeopleButtons();
+
+    private void UpdatePeopleButtons()
+    {
+        var adult = AdultGrid.SelectedItem as AdultRow;
+        EnableButton.IsEnabled = adult is { IsDisabled: true };
+        DisableButton.IsEnabled = adult is { Room: "" };
+    }
+
+    /// <summary>Gone home. No confirmation: Back undoes it.</summary>
     private void OnDisableAdult(object sender, RoutedEventArgs e)
     {
-        if (AdultGrid.SelectedItem is not AdultRow a)
-        {
-            return;
-        }
-
-        if (a.Room.Length > 0)
-        {
-            Notify("Disable", $"{a.FullName} is {(a.IsDisabled ? "already disabled" : "currently in room " + a.Room)}.", ToastKind.Error);
-            return;
-        }
-
-        if (Ask.Confirm(this, "Disable", $"{a.FullName} has gone home for tonight?\n\nThey won't be offered for boards until enabled again."))
+        if (AdultGrid.SelectedItem is AdultRow { Room: "" } a)
         {
             if (a.Sel)
             {
@@ -490,342 +906,10 @@ public partial class MainWindow : Window
 
     private void OnEnableAdult(object sender, RoutedEventArgs e)
     {
-        if (AdultGrid.SelectedItem is not AdultRow { IsDisabled: true } a)
-        {
-            return;
-        }
-
-        if (Ask.Confirm(this, "Enable", $"{a.FullName} is back and available for boards?"))
+        if (AdultGrid.SelectedItem is AdultRow { IsDisabled: true } a)
         {
             _svc.SaveRow(DataTable.Adults, "updated", a.Id, new Dictionary<string, string> { ["Room"] = "" });
         }
-    }
-
-    // ------------------------------------------------------------------
-    // Board lifecycle
-    // ------------------------------------------------------------------
-
-    private ScoutRow? RequireScout()
-    {
-        if (SelectedScout is { } s)
-        {
-            return s;
-        }
-
-        Notify("Error", "No youth selected.", ToastKind.Error);
-        return null;
-    }
-
-    /// <summary>
-    /// Registered → Seated. Everything the server refuses is caught here
-    /// first with an explanation; the same-unit rule is caught ONLY here,
-    /// because it is a judgement call the operator may override down to the
-    /// national floor. Order: who (unit), how many, chair, room.
-    /// </summary>
-    private void OnSeat(object sender, RoutedEventArgs e)
-    {
-        if (RequireScout() is not { } scout)
-        {
-            return;
-        }
-
-        var name = $"{scout.First} {scout.Last}";
-        switch (scout.Status)
-        {
-            case BoardStatus.Seated:
-                Notify("Seat", $"{name}'s board is already seated.", ToastKind.Error);
-                return;
-            case BoardStatus.InProgress:
-                Notify("Seat", $"{name} is in a board now, in room {scout.Room}.", ToastKind.Error);
-                return;
-            case BoardStatus.Completed or BoardStatus.Postponed:
-                Notify("Seat", $"{name}'s {scout.BoardType} board is already {scout.Status.ToLowerInvariant()}.", ToastKind.Error);
-                return;
-            case BoardStatus.Registered or BoardStatus.Verified:
-                break;
-            default:
-                Notify("Seat", "Unknown status: " + scout.Status, ToastKind.Error);
-                return;
-        }
-
-        if (scout.BoardType is not (BoardTypes.Final or BoardTypes.Project))
-        {
-            Notify("Seat", $"No board type (Final or Project) is set for {name}. Fix it on the Admin tables.", ToastKind.Error);
-            return;
-        }
-
-        var picked = _adults.Where(a => a.Sel).ToList();
-        if (picked.Count == 0)
-        {
-            Notify("Seat", "No board members picked. Tick them in the Adult Board Members list.", ToastKind.Error);
-            return;
-        }
-
-        foreach (var a in picked)
-        {
-            if (a.IsDisabled)
-            {
-                Notify("Seat", $"**{a.Last}, {a.First}** has been disabled for tonight.\nUse Enable if they are back.", ToastKind.Error);
-                return;
-            }
-
-            if (a.Room.Length > 0)
-            {
-                Notify("Seat", $"**{a.Last}, {a.First}** is already on the board in room {a.Room}.", ToastKind.Error);
-                return;
-            }
-
-            if (a.Info.RoleFor(scout.BoardType) == BoardRoles.Unavailable)
-            {
-                Notify("Seat", $"**{a.Last}, {a.First}** is Unavailable for {scout.BoardType} boards. Untick them and pick someone else.", ToastKind.Error);
-                return;
-            }
-        }
-
-        var names = string.Join(", ", picked.Select(a => a.FullName));
-        var candidates = picked.Select(a => new BoardCandidate(a.Id, a.Last, a.First, a.UnitName)).ToList();
-
-        // Who: the council forbids adults from the youth's own unit; the
-        // operator may fall back to the national rule, which still needs one
-        // member from outside the unit (GTA 8.0.3.0 #2).
-        var conflicts = BoardRules.FindUnitConflicts(scout.UnitName, candidates);
-        if (conflicts.Count > 0)
-        {
-            var list = string.Join("\n", conflicts.Select(c => $"    {c.Last}, {c.First}"));
-            if (!BoardRules.HasNonUnitMember(scout.UnitName, candidates))
-            {
-                Notify("Seat", $"**Every picked member is in {scout.UnitName}, the same unit as {name}:**\n{list}\n\n"
-                    + "A board must include at least one member who is not affiliated with the unit (Guide to Advancement 8.0.3.0). "
-                    + $"Add someone from outside {scout.UnitName}.", ToastKind.Error, 15000);
-                return;
-            }
-
-            var n = conflicts.Count;
-            if (!Ask.Confirm(this, "Unit conflict",
-                    $"{n} picked member{(n == 1 ? " is" : "s are")} in {scout.UnitName}, the same unit as {name}:\n{list}\n\n"
-                    + "This council does not permit adults from the youth's own unit on a board of review.\n\n"
-                    + $"Continuing falls back to the national requirement, which this board still meets: at least one member is not affiliated with {scout.UnitName}.\n\n"
-                    + "Seat this board anyway?", MessageBoxImage.Warning))
-            {
-                return;
-            }
-        }
-
-        // Chair: binding. If no picked member may chair this board type, the
-        // fix is to promote someone on the Admin tables -- not to seat a Member.
-        var chairs = picked.Where(a => a.Info.RoleFor(scout.BoardType) == BoardRoles.Chair).ToList();
-        if (chairs.Count == 0)
-        {
-            var col = scout.BoardType == BoardTypes.Project ? "Project" : "Final";
-            Notify("Seat", $"**None of the picked members may chair a {scout.BoardType} board:**\n    {names}\n\n"
-                + $"Pick someone whose {col} role is Chair, or, if someone here should be chairing, promote them on the Admin tables "
-                + $"(Adults tab: set {col} to Chair) first.", ToastKind.Error, 15000);
-            return;
-        }
-
-        // How many: GTA 8.0.0.3 for a board of review; two for a project review.
-        var min = BoardRules.MinMembers(scout.BoardType);
-        var kind = scout.BoardType == BoardTypes.Project ? "project review" : "board of review";
-        switch (BoardRules.CheckSize(scout.BoardType, picked.Count))
-        {
-            case SizeVerdict.TooFew:
-                Notify("Seat", $"Only {picked.Count} member(s) picked:\n    {names}\n\n{min} required for a {kind}. Pick {min - picked.Count} more.", ToastKind.Error);
-                return;
-            case SizeVerdict.TooMany:
-                Notify("Seat", $"{picked.Count} members picked:\n    {names}\n\nA {kind} may have no more than six (Guide to Advancement 8.0.0.3). "
-                    + $"Untick {picked.Count - BoardRules.BoardMaxMembers}.", ToastKind.Error);
-                return;
-            case SizeVerdict.OverPreferred:
-                if (!Ask.Confirm(this, "Seat", $"{picked.Count} members picked:\n\n    {names}\n\nOnly {min} are required. Is this correct?"))
-                {
-                    return;
-                }
-
-                break;
-        }
-
-        // Where.
-        if (SelectedRoom is not { } room)
-        {
-            Notify("Seat", "No room selected. Click a room card, then Seat Board again.", ToastKind.Error);
-            return;
-        }
-
-        if (!room.IsFree)
-        {
-            Notify("Seat", $"Room {room.Room} is in use. Pick a different room.", ToastKind.Error);
-            return;
-        }
-
-        if (room.BoardType != scout.BoardType
-            && !Ask.Confirm(this, "Seat", $"Room {room.Room} is a {room.BoardType} room and this is a {scout.BoardType} board.\n\nIs this correct?"))
-        {
-            return;
-        }
-
-        // Confirm the chair among the qualified ones.
-        var dialog = new FormDialog(this, "Seat Board: " + name, "Seat");
-        dialog.AddNote($"Room **{room.Room}**, {scout.BoardType} board.\nMembers: {names}");
-        var chairBox = dialog.AddChoice("Chair:", chairs.Select(c => new KeyValuePair<string, string>(c.Id, c.FullName)), chairs[0].Id);
-        if (!dialog.ShowDialog())
-        {
-            return;
-        }
-
-        var result = _svc.SeatBoard(room.Id, scout.Id, chairBox.SelectedValue as string, string.Join(",", picked.Select(a => a.Id)));
-        if (result.Ok)
-        {
-            Notify("Seated", $"**{name}**'s board is convening in room {room.Room}.", ToastKind.Ok);
-            SetFocusRoom(room.Room);
-        }
-        else
-        {
-            Notify("Seat failed", result.Message, ToastKind.Error);
-        }
-
-        RefreshAll();
-    }
-
-    /// <summary>Seated → InProgress: the members have read the paperwork; bring the youth in.</summary>
-    private void OnStart(object sender, RoutedEventArgs e)
-    {
-        if (RequireScout() is not { } scout)
-        {
-            return;
-        }
-
-        var name = $"{scout.First} {scout.Last}";
-        if (scout.Status != BoardStatus.Seated)
-        {
-            Notify("Start Review", scout.Status == BoardStatus.InProgress
-                ? $"{name}'s review has already started in room {scout.Room}."
-                : $"{name}'s board has not been seated yet. Use Seat Board first.\n\nCurrent status: {scout.Status}", ToastKind.Error);
-            return;
-        }
-
-        if (!Ask.Confirm(this, "Start Review", $"Bring {name} in to room {scout.Room} and start the review?\n\n"
-                + "Do this once the board members have finished reading the application, references and project workbook."))
-        {
-            return;
-        }
-
-        var result = _svc.StartReview(scout.Id);
-        Notify(result.Ok ? "Review Started" : "Start failed", result.Ok ? $"{name}: review started." : result.Message,
-            result.Ok ? ToastKind.Ok : ToastKind.Error);
-        RefreshAll();
-    }
-
-    /// <summary>InProgress → Completed, with the result and notes.</summary>
-    private void OnComplete(object sender, RoutedEventArgs e)
-    {
-        if (RequireScout() is not { } scout)
-        {
-            return;
-        }
-
-        var name = $"{scout.First} {scout.Last}";
-        if (scout.Status != BoardStatus.InProgress)
-        {
-            Notify("Complete", scout.Status == BoardStatus.Completed ? $"{name}'s board is already completed."
-                : $"{name}'s review has not started yet.", ToastKind.Error);
-            return;
-        }
-
-        var dialog = new FormDialog(this, "Complete Board: " + name, "Complete");
-        var resultBox = dialog.AddChoice("Result:", BoardResults.All.Select(r => new KeyValuePair<string, string>(r, r == BoardResults.NotApproved ? "Not Approved" : r)),
-            BoardResults.Approved);
-        var notesBox = dialog.AddMultiline("Notes:");
-        if (!dialog.ShowDialog())
-        {
-            return;
-        }
-
-        var result = _svc.CompleteBoard(scout.Id, resultBox.SelectedValue as string, notesBox.Text.Trim());
-        if (result.Ok)
-        {
-            Notify("Completed", $"**{name}**: {resultBox.SelectedValue}.", ToastKind.Ok);
-
-            // Whoever brings the youth back out needs to know where their people are.
-            ShowLocate(scout, includeParents: true);
-        }
-        else
-        {
-            Notify("Complete failed", result.Message, ToastKind.Error);
-        }
-
-        RefreshAll();
-    }
-
-    private void OnPostpone(object sender, RoutedEventArgs e)
-    {
-        if (RequireScout() is not { } scout)
-        {
-            return;
-        }
-
-        var name = $"{scout.First} {scout.Last}";
-        if (!BoardStatus.IsWaiting(scout.Status))
-        {
-            Notify("Postpone", $"Only a waiting youth can be postponed; {name} is {scout.Status}.", ToastKind.Error);
-            return;
-        }
-
-        if (Ask.Confirm(this, "Postpone", $"Postpone the board for {name}?"))
-        {
-            var result = _svc.PostponeBoard(scout.Id);
-            Notify(result.Ok ? "Postponed" : "Postpone failed", result.Ok ? name : result.Message, result.Ok ? ToastKind.Ok : ToastKind.Error);
-            RefreshAll();
-        }
-    }
-
-    private void OnReset(object sender, RoutedEventArgs e)
-    {
-        if (RequireScout() is not { } scout)
-        {
-            return;
-        }
-
-        var name = $"{scout.First} {scout.Last}";
-        if (scout.Status is not (BoardStatus.Seated or BoardStatus.InProgress or BoardStatus.Verified))
-        {
-            Notify("Reset", $"There is no board to reset for {name} ({scout.Status}).", ToastKind.Error);
-            return;
-        }
-
-        if (Ask.Confirm(this, "Reset", $"Reset the board for {name}?\n\nThey go back to Registered and room {scout.Room} and its members are freed."))
-        {
-            var result = _svc.ResetBoard(scout.Id);
-            Notify(result.Ok ? "Reset" : "Reset failed", result.Ok ? name : result.Message, result.Ok ? ToastKind.Ok : ToastKind.Error);
-            SetFocusRoom(null);
-            RefreshAll();
-        }
-    }
-
-    private void OnLocate(object sender, RoutedEventArgs e)
-    {
-        if (RequireScout() is { } scout)
-        {
-            ShowLocate(scout, includeParents: true);
-        }
-    }
-
-    private void ShowLocate(ScoutRow scout, bool includeParents)
-    {
-        var found = SchedulerLogic.Locate(scout.Info, _adults.Select(a => a.Info), includeParents);
-        if (found.Count == 0)
-        {
-            Notify("Cannot Locate", $"Youth: **{scout.First} {scout.Last}**\nLeader(s) '{scout.Leader}' **not signed in.**", ToastKind.Warn, 5000);
-            return;
-        }
-
-        var text = new StringBuilder($"Youth: **{scout.First} {scout.Last}** [{scout.Room}]");
-        foreach (var f in found)
-        {
-            var where = f.Adult.Room.Length == 0 ? "Main" : f.Adult.Room;
-            text.Append($"\n{(f.IsLeader ? "Leader" : "Parent")}: **{f.Adult.First} {f.Adult.Last}** [{where}]");
-        }
-
-        Notify("Located", text.ToString(), ToastKind.Info, 60000);
     }
 
     // ------------------------------------------------------------------
@@ -834,62 +918,62 @@ public partial class MainWindow : Window
 
     private static readonly KeyValuePair<string, string>[] BoardTypeChoices =
     [
-        new(BoardTypes.Final, "Final Board"),
-        new(BoardTypes.Project, "Proposal Review"),
+        new(BoardTypes.Final, Display.BoardType(BoardTypes.Final)),
+        new(BoardTypes.Project, Display.BoardType(BoardTypes.Project)),
     ];
+
+    private RoomCard? SelectedRoom => RoomList.SelectedItem as RoomCard;
 
     private void OnAddRoom(object sender, RoutedEventArgs e)
     {
-        var dialog = new FormDialog(this, "Add Room", "Add");
-        var roomBox = dialog.AddText("Room #:");
-        var typeBox = dialog.AddChoice("Board type:", BoardTypeChoices, BoardTypes.Final);
-        dialog.AddNote("For project reviews sharing one room, add one entry per table, e.g. 200A and 200B.");
+        var dialog = new AppDialog(this, "Add a room", "Add room");
+        var roomBox = dialog.AddText("Room number");
+        var typeBox = dialog.AddChoice("Used for", BoardTypeChoices, BoardTypes.Final);
+        dialog.AddMessage("For project reviews sharing one room, add one entry per table, like 200A and 200B.");
         dialog.Validate = () =>
         {
             var room = roomBox.Text.Trim();
             if (room.Length == 0)
             {
-                return "Room # is required.";
+                return "Enter a room number.";
             }
 
-            return _rooms.Any(r => r.Room == room) ? $"Room '{room}' already exists." : null;
+            return _rooms.Any(r => r.Room == room) ? $"There's already a room {room}." : null;
         };
         if (dialog.ShowDialog())
         {
             var result = _svc.AddRoom(roomBox.Text.Trim(), (string)typeBox.SelectedValue);
             if (!result.Ok)
             {
-                Notify("Add Room", result.Message, ToastKind.Error);
+                Notice.Show(Severity.Error, "Couldn't add the room", Plain(result.Message));
             }
 
             RefreshAll();
         }
     }
 
+    /// <summary>No confirmation: a free room is added back just as easily.</summary>
     private void OnRemoveRoom(object sender, RoutedEventArgs e)
     {
         if (SelectedRoom is not { } room)
         {
-            Notify("Remove Room", "No room selected. Click a room card first.", ToastKind.Error);
+            Notice.Show(Severity.Informational, "Select a room first", "Click the room to remove, then Remove room.");
             return;
         }
 
         if (!room.IsFree)
         {
-            Notify("Remove Room", $"Room '{room.Room}' is in use and can't be removed.", ToastKind.Error);
+            Notice.Show(Severity.Warning, $"Room {room.Room} is in use", "Complete, reset or move its board first.");
             return;
         }
 
-        if (Ask.Confirm(this, "Remove Room", $"Remove room '{room.Room}'?"))
+        var result = _svc.RemoveRoom(room.Id);
+        if (!result.Ok)
         {
-            var result = _svc.RemoveRoom(room.Id);
-            if (!result.Ok)
-            {
-                Notify("Remove Room", result.Message, ToastKind.Error);
-            }
-
-            RefreshAll();
+            Notice.Show(Severity.Error, "Couldn't remove the room", Plain(result.Message));
         }
+
+        RefreshAll();
     }
 
     /// <summary>Move the selected room's board to another room, or swap two boards.</summary>
@@ -897,23 +981,23 @@ public partial class MainWindow : Window
     {
         if (SelectedRoom is not { } first)
         {
-            Notify("Change Room", "No room selected. Click the room card to move from.", ToastKind.Error);
+            Notice.Show(Severity.Informational, "Select a room first", "Click the room whose board you want to move.");
             return;
         }
-
-        static string Label(RoomCard r) => r.IsFree ? $"{r.Room} ({r.BoardType})" : $"{r.Room} ({r.BoardType}) [{r.Scout}]";
 
         var others = _rooms.Where(r => !ReferenceEquals(r, first)).ToList();
         if (others.Count == 0)
         {
-            Notify("Change Room", "There is no other room to move to.", ToastKind.Error);
+            Notice.Show(Severity.Informational, "There's no other room", "Add a room to move this board to.");
             return;
         }
 
-        var dialog = new FormDialog(this, "Change / Swap Rooms", "Change");
-        dialog.AddText("From room:", Label(first), readOnly: true);
-        var target = dialog.AddChoice("To room:", others.Select(r => new KeyValuePair<string, string>(r.Id, Label(r))), null);
-        dialog.AddNote("If the other room has a board too, the two boards swap rooms.");
+        static string Label(RoomCard r) => r.IsFree ? $"{r.Room} · {r.BoardTypeText} · free" : $"{r.Room} · {r.BoardTypeText} · {r.Scout}";
+
+        var dialog = new AppDialog(this, $"Move room {first.Room}'s board", "Move");
+        dialog.AddMessage(first.IsFree ? $"Room {first.Room} is free." : $"**{first.Scout}**'s board is in room {first.Room}.");
+        var target = dialog.AddChoice("Move to", others.Select(r => new KeyValuePair<string, string>(r.Id, Label(r))), null);
+        dialog.AddMessage("If that room has a board too, the two boards swap rooms.");
         if (!dialog.ShowDialog() || target.SelectedValue is not string secondId)
         {
             return;
@@ -921,7 +1005,9 @@ public partial class MainWindow : Window
 
         var second = _rooms.First(r => r.Id == secondId);
         if (first.BoardType != second.BoardType
-            && !Ask.Confirm(this, "Change Room", $"Room {first.Room} is a {first.BoardType} room and room {second.Room} is a {second.BoardType} room.\n\nIs this OK?"))
+            && !AppDialog.Confirm(this, "Use a room set up for the other board type?",
+                $"Room {first.Room} is for {first.BoardTypeText.ToLowerInvariant()}s and room {second.Room} is for {second.BoardTypeText.ToLowerInvariant()}s.",
+                "Move anyway", Severity.Warning))
         {
             return;
         }
@@ -929,35 +1015,21 @@ public partial class MainWindow : Window
         var result = _svc.ChangeRoom(first.Id, second.Id);
         if (!result.Ok)
         {
-            Notify("Change Room", result.Message, ToastKind.Error);
-        }
-        else if (_focusRoom == first.Room || _focusRoom == second.Room)
-        {
-            SetFocusRoom(null);
+            Notice.Show(Severity.Error, "Couldn't move the board", Plain(result.Message));
         }
 
         RefreshAll();
     }
 
     // ------------------------------------------------------------------
-    // Menus and toolbar
+    // Other commands
     // ------------------------------------------------------------------
-
-    private void OnRefresh(object sender, RoutedEventArgs e) => RefreshAll();
-
-    private void OnSettings(object sender, RoutedEventArgs e)
-    {
-        if (new SettingsWindow(_svc) { Owner = this }.ShowDialog() == true)
-        {
-            RefreshAll();
-        }
-    }
 
     private void OnReport(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog
         {
-            Title = "Save the board results",
+            Title = "Save the event's results",
             Filter = "CSV (opens in Excel) (*.csv)|*.csv",
             FileName = "Board_Results_" + Path.GetFileName(_session.Plan.DataDirectory.TrimEnd('\\', '/')) + ".csv",
             InitialDirectory = _session.Plan.DataDirectory,
@@ -971,11 +1043,13 @@ public partial class MainWindow : Window
         {
             // With a byte-order mark so Excel reads accented names correctly.
             File.WriteAllText(dialog.FileName, _svc.ExportCsv(DataTable.Scouts, ReportColumns), new UTF8Encoding(true));
-            Notify("Report", "Saved " + Path.GetFileName(dialog.FileName), ToastKind.Ok);
+            var path = dialog.FileName;
+            Notice.Show(Severity.Success, "Report saved", Path.GetFileName(path), "Show in folder",
+                () => OpenUrl("explorer.exe", $"/select,\"{path}\""));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Notify("Report", "Couldn't save it: " + ex.Message, ToastKind.Error);
+            Notice.Show(Severity.Error, "Couldn't save the report", ex.Message);
         }
     }
 
@@ -991,11 +1065,7 @@ public partial class MainWindow : Window
         _admin.Show();
     }
 
-    private void OnOpenCheckIn(object sender, RoutedEventArgs e) => OpenUrl(_session.LocalUrl);
-
     private void OnHelp(object sender, RoutedEventArgs e) => new HelpWindow { Owner = this }.Show();
-
-    private void OnExit(object sender, RoutedEventArgs e) => Close();
 
     private void OnUrlClicked(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
@@ -1008,15 +1078,17 @@ public partial class MainWindow : Window
         if (sender is MenuItem { Tag: string url })
         {
             Clipboard.SetText(url);
-            Notify("Copied", url, ToastKind.Info, 2500);
+            CopiedText.Text = "Copied";
+            _copied.Stop();
+            _copied.Start();
         }
     }
 
-    private static void OpenUrl(string url)
+    internal static void OpenUrl(string target, string? arguments = null)
     {
         try
         {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true, Arguments = arguments ?? "" });
         }
         catch (Win32Exception)
         {
@@ -1025,45 +1097,15 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (!Ask.Confirm(this, "Close the scheduler", "Closing the scheduler also stops the check-in website.\n\nClose it now?"))
+        if (!AppDialog.Confirm(this, "Close the scheduler?",
+                "Closing also stops the check-in website. Stations can't sign anyone in until the scheduler is started again.", "Close"))
         {
             e.Cancel = true;
             return;
         }
 
-        _poll.Stop();
+        _minute.Stop();
         _admin?.Close();
-    }
-
-    // ------------------------------------------------------------------
-    // Notices
-    // ------------------------------------------------------------------
-
-    /// <summary>Show a notice top-right. Errors stay 8s by default, others 6s; click to dismiss sooner.</summary>
-    private void Notify(string title, string body, ToastKind kind, int expireMs = 0)
-    {
-        var toast = new Toast(title, body, kind);
-        _toasts.Add(toast);
-        while (_toasts.Count > 6)
-        {
-            _toasts.RemoveAt(0);
-        }
-
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(expireMs > 0 ? expireMs : kind == ToastKind.Error ? 8000 : 6000) };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            _toasts.Remove(toast);
-        };
-        timer.Start();
-    }
-
-    private void OnToastClicked(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: Toast t })
-        {
-            _toasts.Remove(t);
-        }
     }
 }
 

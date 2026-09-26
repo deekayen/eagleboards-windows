@@ -2,7 +2,7 @@ Review Board Scheduler for Windows
 Copyright 2026 David Norman
 
 This product is a C#/.NET port of the Review Board Scheduler
-(github.com/deekayen/eagleboards), a Java application reconstructed by
+(github.com/deekayen/eagleboards-java), a Java application reconstructed by
 decompiling a pre-existing application received only as a compiled JAR. The
 board-scheduling logic, data file formats and check-in web pages here derive
 from that project and, through it, from the original author's work. The Java
