@@ -17,7 +17,16 @@ public sealed class RoomRecord : DataRecord
 
     public static string IdFor(string room) => "ROOM:" + room;
 
-    public string Room => GetValue("Room");
+    /// <summary>
+    /// The room number or name shown on screen and matched against
+    /// <c>ScoutRecord.Room</c>/<c>AdultRecord.Room</c>. The ID stays what it
+    /// was assigned at creation even after this changes.
+    /// </summary>
+    public string Room
+    {
+        get => GetValue("Room");
+        set => Put("Room", value);
+    }
 
     public string BoardType => GetValue("BoardType");
 

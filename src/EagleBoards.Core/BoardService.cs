@@ -1282,6 +1282,85 @@ public sealed class BoardService
             : ActionResult.Error("Remove Room '" + roomId + "' Failed.");
     }
 
+    /// <summary>
+    /// Rename a room, on the room card itself rather than only the Admin
+    /// tables. The room keeps its ID; every scout and adult currently in it
+    /// moves to the new name with it, so a board in progress isn't stranded
+    /// looking for a room that no longer matches.
+    /// </summary>
+    public ActionResult RenameRoom(string? roomId, string? newName)
+    {
+        ActionResult result;
+        lock (_lock)
+        {
+            result = RenameRoomLocked(roomId, newName);
+        }
+
+        if (result.Ok)
+        {
+            OnChanged(DataTable.Rooms, DataTable.Scouts, DataTable.Adults);
+        }
+
+        return result;
+    }
+
+    private ActionResult RenameRoomLocked(string? roomId, string? newName)
+    {
+        var room = Rooms.Get(roomId);
+        if (room == null)
+        {
+            return ActionResult.Error("ERROR: No Such Room" + roomId);
+        }
+
+        newName = (newName ?? "").Trim();
+        if (newName.Length == 0)
+        {
+            return ActionResult.Error("ERROR: Room # is required.");
+        }
+
+        var oldName = room.Room;
+        if (newName == oldName)
+        {
+            return ActionResult.Success;
+        }
+
+        if (Rooms.Records.Any(r => r != room && r.Room == newName))
+        {
+            return ActionResult.Error("ERROR: Room '" + newName + "' already exists.");
+        }
+
+        var scouts = Scouts.Where("Room", oldName);
+        var adults = Adults.Where("Room", oldName);
+        var roomSnap = Snap(room);
+        var scoutSnaps = scouts.Select(s => (Scout: s, Snap: Snap(s))).ToList();
+        var adultSnaps = adults.Select(a => (Adult: a, Snap: Snap(a))).ToList();
+
+        room.Room = newName;
+        scouts.ForEach(s => s.Room = newName);
+        adults.ForEach(a => a.Room = newName);
+        Rooms.Store();
+        Scouts.Store();
+        Adults.Store();
+        PushUndo($"renaming room {oldName} to {newName}", [DataTable.Rooms, DataTable.Scouts, DataTable.Adults], () =>
+        {
+            Restore(room, roomSnap);
+            foreach (var (scout, snap) in scoutSnaps)
+            {
+                Restore(scout, snap);
+            }
+
+            foreach (var (adult, snap) in adultSnaps)
+            {
+                Restore(adult, snap);
+            }
+
+            Rooms.Store();
+            Scouts.Store();
+            Adults.Store();
+        });
+        return ActionResult.Success;
+    }
+
     // ------------------------------------------------------------------
     // Generic record edits (the Admin tables) and settings
     // ------------------------------------------------------------------

@@ -444,6 +444,57 @@ public class BoardServiceTests
     }
 
     // ------------------------------------------------------------------
+    // Rename room
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void RenamingARoomMovesItsBoardMembersWithIt()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+
+        Assert.True(s.RenameRoom("ROOM:101", "101 Annex").Ok);
+        Assert.Equal("101 Annex", s.Snapshot(DataTable.Rooms).Single()["Room"]);
+        Assert.Equal("101 Annex", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101 Annex", AdultRow(s, id)["Room"]));
+
+        // The room's ID -- what Seat/Move/Remove address it by -- doesn't change.
+        Assert.True(s.StartReview(scout).Ok);
+    }
+
+    [Fact]
+    public void RenamingARoomRefusesADuplicateOrBlankName()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+        s.AddRoom("102", BoardTypes.Final);
+
+        Assert.Contains("already exists", s.RenameRoom("ROOM:101", "102").Message);
+        Assert.Contains("required", s.RenameRoom("ROOM:101", "  ").Message);
+        Assert.False(s.RenameRoom("ROOM:404", "103").Ok);
+
+        // Renaming a room to the name it already has is a harmless no-op.
+        Assert.True(s.RenameRoom("ROOM:101", "101").Ok);
+        Assert.Equal("101", s.Snapshot(DataTable.Rooms).Single(r => r["ID"] == "ROOM:101")["Room"]);
+    }
+
+    [Fact]
+    public void UndoReversesARoomRename()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.True(s.RenameRoom("ROOM:101", "101 Annex").Ok);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("101", s.Snapshot(DataTable.Rooms).Single()["Room"]);
+        Assert.Equal("101", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+    }
+
+    // ------------------------------------------------------------------
     // Undo (O-2)
     // ------------------------------------------------------------------
 

@@ -1070,6 +1070,39 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
+    /// <summary>Rename the selected room, on the room card itself rather than only the Admin tables.</summary>
+    private void OnRenameRoom(object sender, RoutedEventArgs e)
+    {
+        if (SelectedRoom is not { } room)
+        {
+            Notice.Show(Severity.Informational, "Select a room first", "Click the room to rename, then Rename.");
+            return;
+        }
+
+        var dialog = new AppDialog(this, $"Rename room {room.Room}", "Rename");
+        var roomBox = dialog.AddText("Room number", room.Room);
+        dialog.Validate = () =>
+        {
+            var value = roomBox.Text.Trim();
+            if (value.Length == 0)
+            {
+                return "Enter a room number.";
+            }
+
+            return value != room.Room && _rooms.Any(r => r.Room == value) ? $"There's already a room {value}." : null;
+        };
+        if (dialog.ShowDialog())
+        {
+            var result = _svc.RenameRoom(room.Id, roomBox.Text.Trim());
+            if (!result.Ok)
+            {
+                Notice.Show(Severity.Error, "Couldn't rename the room", Plain(result.Message));
+            }
+
+            RefreshAll();
+        }
+    }
+
     /// <summary>Move the selected room's board to another room, or swap two boards.</summary>
     private void OnChangeRoom(object sender, RoutedEventArgs e)
     {
