@@ -34,7 +34,8 @@
       </List>
 
       <Paragraph Style="{StaticResource H}">The Event page</Paragraph>
-      <Paragraph><Bold>Youth</Bold> on the left lists everyone who has signed in: who's waiting, who's on a board, and (with <Bold>Show finished</Bold>) who's done.
+      <Paragraph><Bold>Youth</Bold> on the left lists everyone who has signed in. The list next to the title narrows it to one group -- <Bold>Waiting</Bold>,
+        <Bold>On boards</Bold> or <Bold>Finished</Bold> -- without leaving this page; <Bold>Active</Bold> is waiting and on boards together.
         Sign-in numbers start with P for pre-registered (matched a SignUpGenius sign-up) or W for walk-in; pre-registered youth are listed first.</Paragraph>
       <Paragraph><Bold>Rooms</Bold> in the middle show who's in each room and for how long. A room's time turns to caution, then overdue, at the times in Settings. They're prompts, not limits.</Paragraph>
       <Paragraph>The pane on the right shows the youth you've selected, or the board in the room you've clicked.</Paragraph>

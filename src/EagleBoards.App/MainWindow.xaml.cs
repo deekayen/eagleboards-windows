@@ -293,8 +293,21 @@ public partial class MainWindow : Window
         filter.Length == 0 || fields.Any(f => f.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
     private bool QueueVisible(ScoutRow s) =>
-        (ShowFinishedCheck.IsChecked == true || !BoardStatus.IsFinished(s.Status))
+        QueueScopeMatches(s.Status)
         && Matches(QueueFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.FullName, s.UnitName, s.UnitLabel, s.Room, s.Leader);
+
+    /// <summary>
+    /// Mac's Waiting/On Boards/Finished lists, as a filter over this one view
+    /// rather than separate destinations (SPEC.md O-3). "Active" (the
+    /// default) blends Waiting and On boards, as the queue always used to.
+    /// </summary>
+    private bool QueueScopeMatches(string status) => ((QueueScopeBox.SelectedItem as ComboBoxItem)?.Tag as string) switch
+    {
+        "Waiting" => BoardStatus.IsWaiting(status),
+        "OnBoards" => BoardStatus.IsActive(status),
+        "Finished" => BoardStatus.IsFinished(status),
+        _ => !BoardStatus.IsFinished(status),
+    };
 
     private bool BoardVisible(ScoutRow s) =>
         !BoardStatus.IsWaiting(s.Status)
@@ -305,7 +318,7 @@ public partial class MainWindow : Window
 
     private void OnQueueFilter(object sender, TextChangedEventArgs e) => _queueView?.Refresh();
 
-    private void OnQueueViewChanged(object sender, RoutedEventArgs e) => _queueView.Refresh();
+    private void OnQueueViewChanged(object sender, SelectionChangedEventArgs e) => _queueView?.Refresh();
 
     private void OnBoardFilter(object sender, TextChangedEventArgs e) => _boardView?.Refresh();
 
@@ -361,10 +374,9 @@ public partial class MainWindow : Window
         if (BoardGrid.SelectedItem is ScoutRow row)
         {
             MainNav.SelectedIndex = 0;
-            if (BoardStatus.IsFinished(row.Status))
+            if (!QueueScopeMatches(row.Status))
             {
-                ShowFinishedCheck.IsChecked = true;
-                _queueView.Refresh();
+                QueueScopeBox.SelectedIndex = BoardStatus.IsFinished(row.Status) ? 3 : 0;   // Finished, else Active
             }
 
             Open(row);

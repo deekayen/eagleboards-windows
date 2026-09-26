@@ -336,8 +336,13 @@
             <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12,12,4,12">
               <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,8,8">
-                  <CheckBox x:Name="ShowFinishedCheck" DockPanel.Dock="Right" Content="Show finished" MinWidth="0" Click="OnQueueViewChanged"
-                            ToolTip="Also list youth whose board is completed or postponed" />
+                  <ComboBox x:Name="QueueScopeBox" DockPanel.Dock="Right" Width="112" SelectionChanged="OnQueueViewChanged"
+                            AutomationProperties.Name="Show" ToolTip="Narrow the youth list to one group, without leaving this page">
+                    <ComboBoxItem Content="Active" Tag="Active" IsSelected="True" />
+                    <ComboBoxItem Content="Waiting" Tag="Waiting" />
+                    <ComboBoxItem Content="On boards" Tag="OnBoards" />
+                    <ComboBoxItem Content="Finished" Tag="Finished" />
+                  </ComboBox>
                   <TextBlock Style="{StaticResource CardTitle}" Text="Youth" />
                 </DockPanel>
                 <TextBox x:Name="QueueFilter" app:Placeholder.Text="Find a youth" DockPanel.Dock="Top" Margin="0,0,8,8" TextChanged="OnQueueFilter"
