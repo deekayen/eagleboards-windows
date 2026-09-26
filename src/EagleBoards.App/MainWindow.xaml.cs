@@ -153,6 +153,7 @@ public partial class MainWindow : Window
             CopiedText.Text = "";
         };
 
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => OnUndo(this, new RoutedEventArgs())), Key.Z, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(RefreshAll), Key.F5, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnHelp(this, new RoutedEventArgs())), Key.F1, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 0), Key.D1, ModifierKeys.Control));
@@ -190,6 +191,8 @@ public partial class MainWindow : Window
         UpdateRoomTimers();
         ShowDetails();
         UpdatePeopleButtons();
+        UndoButton.IsEnabled = _svc.CanUndo;
+        UndoButton.ToolTip = _svc.UndoDescription is { } what ? $"Undo {what} (Ctrl+Z)" : "Nothing to undo (Ctrl+Z)";
     }
 
     /// <summary>Times are stamped to the minute, so counts change on the clock's minute: tick just after it.</summary>
@@ -974,17 +977,12 @@ public partial class MainWindow : Window
         DisableButton.IsEnabled = adult is { Room: "" };
     }
 
-    /// <summary>Gone home. No confirmation: Back undoes it.</summary>
+    /// <summary>Gone home. No confirmation: Undo (or Back) reverses it.</summary>
     private void OnDisableAdult(object sender, RoutedEventArgs e)
     {
         if (AdultGrid.SelectedItem is AdultRow { Room: "" } a)
         {
-            if (a.Sel)
-            {
-                a.Sel = false;
-            }
-
-            _svc.SaveRow(DataTable.Adults, "updated", a.Id, new Dictionary<string, string> { ["Room"] = AdultRoom.Disabled });
+            Report(_svc.DisableAdult(a.Id), "Couldn't mark them gone home");
         }
     }
 
@@ -992,7 +990,7 @@ public partial class MainWindow : Window
     {
         if (AdultGrid.SelectedItem is AdultRow { IsDisabled: true } a)
         {
-            _svc.SaveRow(DataTable.Adults, "updated", a.Id, new Dictionary<string, string> { ["Room"] = "" });
+            Report(_svc.EnableAdult(a.Id), "Couldn't mark them back");
         }
     }
 
@@ -1134,6 +1132,20 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Notice.Show(Severity.Error, "Couldn't save the report", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Reverses the most recent board step, room change, Disable/Enable or
+    /// Link/Unlink (Ctrl+Z). No message on success: the screen already shows
+    /// the result. Reset and Postpone keep their own confirmation dialog
+    /// rather than relying on this.
+    /// </summary>
+    private void OnUndo(object sender, RoutedEventArgs e)
+    {
+        if (_svc.CanUndo)
+        {
+            Report(_svc.Undo(), "Couldn't undo");
         }
     }
 

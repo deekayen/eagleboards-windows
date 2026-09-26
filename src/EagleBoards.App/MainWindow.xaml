@@ -287,6 +287,9 @@
              No clock: the taskbar has one. -->
         <DockPanel DockPanel.Dock="Bottom" Margin="16,6,16,8" LastChildFill="True">
           <TextBlock x:Name="ImportText" DockPanel.Dock="Right" Style="{StaticResource Secondary}" Margin="16,0,0,0" VerticalAlignment="Center" />
+          <Button x:Name="UndoButton" DockPanel.Dock="Right" Click="OnUndo" Padding="8,2" Margin="16,0,0,0" VerticalAlignment="Center" IsEnabled="False">
+            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE7A7;" Margin="0,0,6,0" /><TextBlock Text="Undo" /></StackPanel>
+          </Button>
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock x:Name="UrlLabel" Text="Check-in address: " VerticalAlignment="Center" />
             <ItemsControl x:Name="UrlList" VerticalAlignment="Center" Focusable="False">

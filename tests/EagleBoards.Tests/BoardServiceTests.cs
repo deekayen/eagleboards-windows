@@ -442,4 +442,189 @@ public class BoardServiceTests
         Assert.False(s.SetSupporting(m1, "SCOUT:Nobody:Here:0", linked: true).Ok);
         Assert.True(s.SetSupporting(m1, "SCOUT:Nobody:Here:0", linked: false).Ok);   // clearing a stale link is fine
     }
+
+    // ------------------------------------------------------------------
+    // Undo (O-2)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void NothingToUndoAtTheStart()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        Assert.False(s.CanUndo);
+        Assert.Null(s.UndoDescription);
+        Assert.False(s.Undo().Ok);
+    }
+
+    [Fact]
+    public void UndoReversesSeatingABoard()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.True(s.CanUndo);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(BoardStatus.Registered, Status(s, scout));
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+        Assert.Equal("", s.Snapshot(DataTable.Rooms).Single()["Scout"]);
+        Assert.False(s.CanUndo);
+    }
+
+    [Fact]
+    public void UndoReversesStartingTheReview()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.True(s.StartReview(scout).Ok);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(BoardStatus.Seated, Status(s, scout));
+
+        // The stack goes back further: undo again reverses the seating, too.
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(BoardStatus.Registered, Status(s, scout));
+        Assert.False(s.CanUndo);
+    }
+
+    [Fact]
+    public void UndoReversesCompletingABoard()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = UnderReview(box);
+        Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "fine").Ok);
+
+        Assert.True(s.Undo().Ok);
+        var row = s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout);
+        Assert.Equal(BoardStatus.InProgress, row["Status"]);
+        Assert.Equal("", row["Result"]);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.NotEqual("", s.Snapshot(DataTable.Rooms).Single()["Scout"]);
+    }
+
+    [Fact]
+    public void UndoReversesPostponing()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        var scout = Seed.ScoutId("Aldridge", "Alex", "1001");
+        Assert.True(s.PostponeBoard(scout).Ok);
+        Assert.Equal(BoardStatus.Postponed, Status(s, scout));
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(BoardStatus.Registered, Status(s, scout));
+    }
+
+    [Fact]
+    public void UndoReversesResettingABoard()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = UnderReview(box);
+        Assert.True(s.ResetBoard(scout).Ok);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(BoardStatus.InProgress, Status(s, scout));
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+    }
+
+    [Fact]
+    public void UndoReversesChangingBoardMembers()
+    {
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+        Assert.True(s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("B1")},{Id("A3")}").Ok);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("101", AdultRow(s, Id("A2"))["Room"]);
+        Assert.Equal("", AdultRow(s, Id("B1"))["Room"]);
+        Assert.Contains("X A2", s.Snapshot(DataTable.Scouts).Single(x => x["ID"] == scout)["BoardMembers"]);
+    }
+
+    [Fact]
+    public void UndoReversesLinkingAndUnlinking()
+    {
+        using var box = new Sandbox();
+        var (s, scout, _, m1, _) = SeatableEvening(box);
+        Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("", AdultRow(s, m1)["Supporting"]);
+    }
+
+    [Fact]
+    public void UndoReversesMovingARoomsBoard()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        s.AddRoom("102", BoardTypes.Final);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+
+        Assert.True(s.ChangeRoom("ROOM:101", "ROOM:102").Ok);
+        Assert.Equal("102", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
+
+        Assert.True(s.Undo().Ok);
+        var rooms = s.Snapshot(DataTable.Rooms).ToDictionary(r => r["ID"]);
+        Assert.Equal("101", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
+        Assert.NotEqual("", rooms["ROOM:101"]["Scout"]);
+        Assert.Equal("", rooms["ROOM:102"]["Scout"]);
+    }
+
+    [Fact]
+    public void UndoReversesGoingHomeAndBack()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Member"));
+        var id = Seed.AdultId("Able", "Ann", "2001");
+
+        Assert.True(s.DisableAdult(id).Ok);
+        Assert.Equal(AdultRoom.Disabled, AdultRow(s, id)["Room"]);
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("", AdultRow(s, id)["Room"]);
+
+        Assert.True(s.DisableAdult(id).Ok);
+        Assert.True(s.EnableAdult(id).Ok);
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(AdultRoom.Disabled, AdultRow(s, id)["Room"]);
+    }
+
+    [Fact]
+    public void DisableAdultRefusesWhoIsOnABoard()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.False(s.DisableAdult(chair).Ok);
+    }
+
+    [Fact]
+    public void EnableAdultRefusesWhoIsntDisabled()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Member"));
+        Assert.False(s.EnableAdult(Seed.AdultId("Able", "Ann", "2001")).Ok);
+    }
+
+    [Fact]
+    public void UndoPopsInLifoOrderWithADescriptionForEach()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Member"));
+        var id = Seed.AdultId("Able", "Ann", "2001");
+        Assert.True(s.DisableAdult(id).Ok);
+        Assert.True(s.EnableAdult(id).Ok);
+
+        Assert.Contains("back", s.UndoDescription);
+        Assert.True(s.Undo().Ok);
+        Assert.Equal(AdultRoom.Disabled, AdultRow(s, id)["Room"]);
+
+        Assert.Contains("gone home", s.UndoDescription);
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("", AdultRow(s, id)["Room"]);
+        Assert.False(s.CanUndo);
+    }
 }

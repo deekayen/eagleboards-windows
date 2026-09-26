@@ -66,8 +66,14 @@ public sealed class BoardService
     private static readonly string[] ScoutRegFields = ["First", "Last", "DOB", "Unit", "UnitType", "Email", "Phone", "Leader"];
     private static readonly string[] AdultRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Phone", "ProjectReview", "FinalBoard"];
 
+    /// <summary>How to reverse one change, captured before it was made.</summary>
+    private sealed record UndoEntry(string Description, IReadOnlyList<DataTable> Tables, Action Restore);
+
+    private const int MaxUndoEntries = 50;
+
     private readonly Lock _lock = new();
     private readonly Action<string> _log;
+    private readonly List<UndoEntry> _undo = [];
 
     private BoardService(EventOptions options, Action<string> log, string adultHistoryPath, string configPath)
     {
@@ -100,6 +106,77 @@ public sealed class BoardService
     public event EventHandler<DataChangedEventArgs>? Changed;
 
     public bool Verbose { get; set; }
+
+    // ------------------------------------------------------------------
+    // Undo
+    // ------------------------------------------------------------------
+
+    /// <summary>Whether <see cref="Undo"/> has anything to reverse.</summary>
+    public bool CanUndo
+    {
+        get { lock (_lock) return _undo.Count > 0; }
+    }
+
+    /// <summary>What <see cref="Undo"/> would reverse, for the button's label. Null when there's nothing.</summary>
+    public string? UndoDescription
+    {
+        get { lock (_lock) return _undo.Count > 0 ? _undo[^1].Description : null; }
+    }
+
+    /// <summary>
+    /// Reverse the most recent board step, room change, Disable/Enable or
+    /// Link/Unlink. Each of those operations records how to put back every
+    /// field it touched before it touched it; undoing restores those fields
+    /// and re-stores the affected files. Picks (<c>Sel</c>) and Admin-table
+    /// edits are not on this stack -- the operator's picks survive clicking
+    /// around by design, and Reset/Postpone keep their own confirmation
+    /// rather than relying on Undo.
+    /// </summary>
+    public ActionResult Undo()
+    {
+        IReadOnlyList<DataTable> tables;
+        lock (_lock)
+        {
+            if (_undo.Count == 0)
+            {
+                return ActionResult.Error("Nothing to undo.");
+            }
+
+            var entry = _undo[^1];
+            _undo.RemoveAt(_undo.Count - 1);
+            entry.Restore();
+            tables = entry.Tables;
+        }
+
+        OnChanged(tables.ToArray());
+        return ActionResult.Success;
+    }
+
+    /// <summary>A copy of a record's raw fields, taken just before it's changed.</summary>
+    private static Dictionary<string, string> Snap(DataRecord record) => new(record.Fields, StringComparer.Ordinal);
+
+    /// <summary>Put a record's fields back exactly as <see cref="Snap"/> found them.</summary>
+    private static void Restore(DataRecord record, IReadOnlyDictionary<string, string> snapshot)
+    {
+        foreach (var (field, value) in snapshot)
+        {
+            record.Put(field, value);
+        }
+    }
+
+    /// <summary>
+    /// Remember how to reverse the change an operation is about to make. Call
+    /// under <see cref="_lock"/>, after the change has succeeded, with
+    /// <paramref name="restore"/> closing over snapshots taken before it.
+    /// </summary>
+    private void PushUndo(string description, IReadOnlyList<DataTable> tables, Action restore)
+    {
+        _undo.Add(new UndoEntry(description, tables, restore));
+        if (_undo.Count > MaxUndoEntries)
+        {
+            _undo.RemoveAt(0);
+        }
+    }
 
     /// <summary>
     /// Open (creating where missing) tonight's files. Throws if an explicitly
@@ -369,8 +446,89 @@ public sealed class BoardService
             }
             else
             {
+                var adultSnap = Snap(adult);
                 adult.Supporting = SchedulerLogic.WithSupportLink(adult.Supporting, scoutId, linked);
                 Adults.Store();
+                PushUndo(linked ? $"linking {adult.FullName}" : $"unlinking {adult.FullName}", [DataTable.Adults], () =>
+                {
+                    Restore(adult, adultSnap);
+                    Adults.Store();
+                });
+                result = ActionResult.Success;
+            }
+        }
+
+        if (result.Ok)
+        {
+            OnChanged(DataTable.Adults);
+        }
+
+        return result;
+    }
+
+    /// <summary>An adult has gone home: freed from any pick, unavailable for the rest of the event.</summary>
+    public ActionResult DisableAdult(string? adultId)
+    {
+        ActionResult result;
+        lock (_lock)
+        {
+            var adult = Adults.Get(adultId);
+            if (adult == null)
+            {
+                result = ActionResult.Error("ERROR: Invalid Adult ID" + adultId);
+            }
+            else if (adult.Room.Length > 0)
+            {
+                result = ActionResult.Error("ERROR: " + adult.FullName + " is on a board or already gone home");
+            }
+            else
+            {
+                var adultSnap = Snap(adult);
+                adult.Room = AdultRoom.Disabled;
+                adult.Sel = "0";
+                Adults.Store();
+                PushUndo($"marking {adult.FullName} gone home", [DataTable.Adults], () =>
+                {
+                    Restore(adult, adultSnap);
+                    Adults.Store();
+                });
+                result = ActionResult.Success;
+            }
+        }
+
+        if (result.Ok)
+        {
+            OnChanged(DataTable.Adults);
+        }
+
+        return result;
+    }
+
+    /// <summary>An adult who had gone home is back and available again.</summary>
+    public ActionResult EnableAdult(string? adultId)
+    {
+        ActionResult result;
+        lock (_lock)
+        {
+            var adult = Adults.Get(adultId);
+            if (adult == null)
+            {
+                result = ActionResult.Error("ERROR: Invalid Adult ID" + adultId);
+            }
+            else if (adult.Room != AdultRoom.Disabled)
+            {
+                result = ActionResult.Error("ERROR: " + adult.FullName + " isn't marked gone home");
+            }
+            else
+            {
+                var adultSnap = Snap(adult);
+                adult.Room = "";
+                Adults.Store();
+                PushUndo($"marking {adult.FullName} back", [DataTable.Adults], () =>
+                {
+                    Restore(adult, adultSnap);
+                    Adults.Store();
+                });
                 result = ActionResult.Success;
             }
         }
@@ -479,6 +637,10 @@ public sealed class BoardService
 
         var (members, chair, names) = board;
         var leaders = names;
+        var roomSnap = Snap(room);
+        var scoutSnap = Snap(scout);
+        var memberSnaps = members.Select(m => (Adult: m, Snap: Snap(m))).ToList();
+
         room.Scout = scout.FullName;
         room.Leaders = leaders;
         scout.Room = room.Room;
@@ -501,6 +663,19 @@ public sealed class BoardService
         Scouts.Store();
         Rooms.Store();
         Adults.Store();
+        PushUndo($"seating {scout.FullName}'s board", [DataTable.Scouts, DataTable.Rooms, DataTable.Adults], () =>
+        {
+            Restore(room, roomSnap);
+            Restore(scout, scoutSnap);
+            foreach (var (adult, snap) in memberSnaps)
+            {
+                Restore(adult, snap);
+            }
+
+            Rooms.Store();
+            Scouts.Store();
+            Adults.Store();
+        });
         return ActionResult.Success;
     }
 
@@ -521,9 +696,15 @@ public sealed class BoardService
             }
             else
             {
+                var scoutSnap = Snap(scout);
                 scout.Status = BoardStatus.InProgress;
                 scout.UpdateFields(true);
                 Scouts.Store();
+                PushUndo($"starting {scout.FullName}'s review", [DataTable.Scouts], () =>
+                {
+                    Restore(scout, scoutSnap);
+                    Scouts.Store();
+                });
                 result = ActionResult.Success;
             }
         }
@@ -598,6 +779,11 @@ public sealed class BoardService
         // released by the room name the scout holds. Refusing here used to lose
         // the result and leave every member committed to a vanished room.
         var room = FindBoardRoom(scout);
+        var releasedAdults = ReleasableAdults(scout.Room);
+        var scoutSnap = Snap(scout);
+        var roomSnap = room != null ? Snap(room) : null;
+        var adultSnaps = releasedAdults.Select(a => (Adult: a, Snap: Snap(a))).ToList();
+
         ReleaseAdults(scout.Room);
         scout.Status = BoardStatus.Completed;
         scout.Room = AdultRoom.Disabled;
@@ -612,6 +798,23 @@ public sealed class BoardService
         Scouts.Store();
         Rooms.Store();
         Adults.Store();
+        PushUndo($"completing {scout.FullName}'s board", [DataTable.Scouts, DataTable.Rooms, DataTable.Adults], () =>
+        {
+            Restore(scout, scoutSnap);
+            if (room != null && roomSnap != null)
+            {
+                Restore(room, roomSnap);
+            }
+
+            foreach (var (adult, snap) in adultSnaps)
+            {
+                Restore(adult, snap);
+            }
+
+            Scouts.Store();
+            Rooms.Store();
+            Adults.Store();
+        });
         return ActionResult.Success;
     }
 
@@ -632,9 +835,15 @@ public sealed class BoardService
             }
             else
             {
+                var scoutSnap = Snap(scout);
                 scout.Status = BoardStatus.Postponed;
                 scout.UpdateFields(true);
                 Scouts.Store();
+                PushUndo($"postponing {scout.FullName}'s board", [DataTable.Scouts], () =>
+                {
+                    Restore(scout, scoutSnap);
+                    Scouts.Store();
+                });
                 result = ActionResult.Success;
             }
         }
@@ -667,6 +876,11 @@ public sealed class BoardService
                 // Released by the scout's room name, as in Complete: a room renamed
                 // or deleted under the board must not strand its members.
                 var room = FindBoardRoom(scout);
+                var releasedAdults = ReleasableAdults(scout.Room);
+                var scoutSnap = Snap(scout);
+                var roomSnap = room != null ? Snap(room) : null;
+                var adultSnaps = releasedAdults.Select(a => (Adult: a, Snap: Snap(a))).ToList();
+
                 ReleaseAdults(scout.Room);
                 if (room != null)
                 {
@@ -684,6 +898,23 @@ public sealed class BoardService
                 Scouts.Store();
                 Rooms.Store();
                 Adults.Store();
+                PushUndo($"resetting {scout.FullName}'s board", [DataTable.Scouts, DataTable.Rooms, DataTable.Adults], () =>
+                {
+                    Restore(scout, scoutSnap);
+                    if (room != null && roomSnap != null)
+                    {
+                        Restore(room, roomSnap);
+                    }
+
+                    foreach (var (adult, snap) in adultSnaps)
+                    {
+                        Restore(adult, snap);
+                    }
+
+                    Scouts.Store();
+                    Rooms.Store();
+                    Adults.Store();
+                });
                 result = ActionResult.Success;
             }
         }
@@ -833,6 +1064,14 @@ public sealed class BoardService
             else
             {
                 var (members, chair, names) = board;
+
+                // Everyone whose Room or Sel is about to change: those leaving the
+                // room and those joining it (already there or not).
+                var touched = Adults.Records.Where(a => a.Room == room.Room).Concat(members).Distinct().ToList();
+                var adultSnaps = touched.Select(a => (Adult: a, Snap: Snap(a))).ToList();
+                var scoutSnap = Snap(scout);
+                var roomSnap = Snap(room);
+
                 foreach (var adult in Adults.Records.Where(a => a.Room == room.Room && !members.Contains(a)))
                 {
                     adult.Room = "";
@@ -852,6 +1091,19 @@ public sealed class BoardService
                 Scouts.Store();
                 Rooms.Store();
                 Adults.Store();
+                PushUndo($"changing {scout.FullName}'s board members", [DataTable.Scouts, DataTable.Rooms, DataTable.Adults], () =>
+                {
+                    Restore(scout, scoutSnap);
+                    Restore(room, roomSnap);
+                    foreach (var (adult, snap) in adultSnaps)
+                    {
+                        Restore(adult, snap);
+                    }
+
+                    Scouts.Store();
+                    Rooms.Store();
+                    Adults.Store();
+                });
                 result = ActionResult.Success;
             }
         }
@@ -874,20 +1126,18 @@ public sealed class BoardService
 
     private void ReleaseAdults(string room)
     {
-        // "" and "N/A" are never a board's room ("N/A" marks adults gone home).
-        if (room.Length == 0 || room == AdultRoom.Disabled)
+        foreach (var adult in ReleasableAdults(room))
         {
-            return;
-        }
-
-        foreach (var adult in Adults.Records)
-        {
-            if (adult.Room == room)
-            {
-                adult.Room = "";
-            }
+            adult.Room = "";
         }
     }
+
+    /// <summary>The adults <see cref="ReleaseAdults"/> would free, snapshotted before it runs.</summary>
+    private List<AdultRecord> ReleasableAdults(string room) =>
+        // "" and "N/A" are never a board's room ("N/A" marks adults gone home).
+        room.Length == 0 || room == AdultRoom.Disabled
+            ? []
+            : Adults.Records.Where(a => a.Room == room).ToList();
 
     // ------------------------------------------------------------------
     // Rooms
@@ -951,6 +1201,12 @@ public sealed class BoardService
 
         var adults1 = Adults.Where("Room", room1.Room);
         var adults2 = Adults.Where("Room", room2.Room);
+
+        var room1Snap = Snap(room1);
+        var room2Snap = Snap(room2);
+        var scoutSnaps = scouts1.Concat(scouts2).Select(s => (Scout: s, Snap: Snap(s))).ToList();
+        var adultSnaps = adults1.Concat(adults2).Select(a => (Adult: a, Snap: Snap(a))).ToList();
+
         (room1.Leaders, room2.Leaders) = (room2.Leaders, room1.Leaders);
         (room1.Scout, room2.Scout) = (room2.Scout, room1.Scout);
         scouts1.ForEach(s => s.Room = room2.Room);
@@ -960,6 +1216,24 @@ public sealed class BoardService
         Rooms.Store();
         Scouts.Store();
         Adults.Store();
+        PushUndo($"moving room {room1.Room}'s board", [DataTable.Rooms, DataTable.Scouts, DataTable.Adults], () =>
+        {
+            Restore(room1, room1Snap);
+            Restore(room2, room2Snap);
+            foreach (var (scout, snap) in scoutSnaps)
+            {
+                Restore(scout, snap);
+            }
+
+            foreach (var (adult, snap) in adultSnaps)
+            {
+                Restore(adult, snap);
+            }
+
+            Rooms.Store();
+            Scouts.Store();
+            Adults.Store();
+        });
         return ActionResult.Success;
     }
 
