@@ -5,7 +5,7 @@ Guidance for anyone (human or AI) making changes here. Read this before editing.
 ## What this is
 
 The Windows version of the Review Board Scheduler: a C#/.NET 10 port of the
-Java project `deekayen/eagleboards` (which was reconstructed from an inherited
+Java project `deekayen/eagleboards-java` (which was reconstructed from an inherited
 binary). Check-in stations still sign in through a website; the admin computer
 runs a native WPF app instead of the Java app's browser pages.
 

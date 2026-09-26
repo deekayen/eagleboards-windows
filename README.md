@@ -5,7 +5,7 @@ Youth and adults sign in on a **website** from any tablet or laptop at the
 venue; the person running the evening uses a **native Windows app** on the
 admin computer to seat boards, start reviews, record results and manage rooms.
 
-This is a Windows port of the Java [Eagle Board Scheduler](https://github.com/deekayen/eagleboards)
+This is a Windows port of the Java [Eagle Board Scheduler](https://github.com/deekayen/eagleboards-java)
 (itself reconstructed from an inherited binary). The server logic was ported
 to C#, the check-in pages are the same, and the browser admin pages were
 replaced by a WPF app. It reads and writes the **same data files** as the Java
