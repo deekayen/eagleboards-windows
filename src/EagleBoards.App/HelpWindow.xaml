@@ -45,9 +45,15 @@
         choose another room, add or remove members, or pick a different chair. Anything wrong is listed above the <Bold>Seat board</Bold> button as you go.
         When something is allowed but unusual (a member from the youth's own unit, a larger board, a room set up for the other board type), the button says <Bold>Seat anyway</Bold>.
         Seating sends the members to the room to read the paperwork; the youth waits outside.</Paragraph>
+      <Paragraph>The proposal has the whole waiting line in mind: it keeps adults who can chair free for the boards still to come, uses adults whose unit rules them out for youth still waiting,
+        favours adults who came to serve on any board (not for one particular youth, or counting the event toward a Wood Badge ticket item), and then those who have waited longest.
+        If there aren't enough adults for all of that, it still proposes the best board it can.</Paragraph>
       <Paragraph>Your picks are kept while you click around. <Bold>Start over</Bold> clears them and proposes a fresh board.</Paragraph>
       <Paragraph><Bold>Start.</Bold> When the members have finished reading, fetch the youth (and their leader or coach to introduce them; <Bold>Leaders and parents</Bold> shows where they are) and press <Bold>Start review</Bold>.</Paragraph>
       <Paragraph><Bold>Complete.</Bold> Choose the result, add any notes, and press <Bold>Complete</Bold>. The room and members are freed, and the pane still shows where the youth's leaders and parents are.</Paragraph>
+      <Paragraph><Bold>At adult sign-in</Bold> people can say "No thanks" to one kind of board (they are never seated on it), whether the event counts toward a Wood Badge ticket item,
+        and which youth they came to support. Those they came to support are listed under <Bold>Leaders and parents</Bold>, with where to find them.
+        If someone came with a youth but didn't say so, select the youth and press <Bold>Link an adult</Bold>; <Bold>Unlink</Bold> undoes it.</Paragraph>
       <Paragraph><Bold>Someone has to leave mid-board.</Bold> Select the board (the youth, or their room). Under <Bold>Board members</Bold>, press <Bold>Replace</Bold> next to them and choose who takes their place,
         or remove them, or <Bold>Add member</Bold>. <Bold>Change chair</Bold> hands the chair to another qualified member. The same rules as seating apply, and the board's time isn't reset.</Paragraph>
       <Paragraph><Bold>Reset</Bold> undoes a seating: the youth goes back to waiting and the room and members are freed. <Bold>Move</Bold> moves the selected room's board to another room, or swaps two boards.</Paragraph>

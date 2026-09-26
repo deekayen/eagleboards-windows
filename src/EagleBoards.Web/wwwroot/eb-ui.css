@@ -593,6 +593,44 @@ body.eb-public .reg-pair > .reg-field { flex: 1 1 200px; }
 body.eb-public .reg-pair > .reg-field.reg-narrow { flex: 0 1 150px; }
 body.eb-public .reg-pair > .reg-field.reg-grow   { flex: 3 1 200px; }
 
+/* A checkbox with its text beside it, the whole row tappable at the touch
+   target height. The .reg-field label rule above would stack it; this undoes
+   that for the adult form's "Tonight" answers. */
+body.eb-public .reg-check,
+body.eb-public .reg-field label.reg-check {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   gap: 10px;
+   min-height: var(--eb-target-touch);
+   margin: 0 0 8px;
+   font-size: 17px;
+   font-weight: 400;
+   color: var(--eb-dark-gray);
+}
+body.eb-public .reg-check input[type="checkbox"],
+body.eb-public .reg-field .reg-check input[type="checkbox"] {
+   width: 22px;
+   height: 22px;
+   flex: 0 0 auto;
+}
+body.eb-public .reg-hint {
+   margin: 0 0 8px;
+   font-size: 15px;
+   color: var(--eb-warm-gray);
+}
+/* The scout checklist scrolls inside itself, so a long RSVP list does not
+   push the Register button off the tablet's screen. */
+body.eb-public .reg-scouts {
+   margin-top: 8px;
+   max-height: 14em;
+   overflow-y: auto;
+   border: 1px solid var(--eb-line);
+   border-radius: 4px;
+   padding: 4px 10px;
+}
+body.eb-public .reg-scouts .reg-check { margin: 0; }
+
 body.eb-public .reg-buttons {
    display: flex;
    flex-wrap: wrap;

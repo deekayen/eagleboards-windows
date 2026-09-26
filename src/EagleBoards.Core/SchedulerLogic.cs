@@ -2,13 +2,30 @@ using EagleBoards.Core.Records;
 
 namespace EagleBoards.Core;
 
-/// <summary>What the scheduler needs to know about an adult to pick or locate them.</summary>
-public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview)
+/// <summary>
+/// What the scheduler needs to know about an adult to pick or locate them.
+/// FreeSince is when they last became free to volunteer (see
+/// <see cref="SchedulerLogic.FreeSinceTimes"/>); blank sorts first. WoodBadge
+/// is "Y" or blank, and Supporting the "|"-separated IDs of the scouts they
+/// came to support, as said at sign-in.
+/// </summary>
+public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview,
+    string FreeSince = "", string WoodBadge = "", string Supporting = "")
 {
     public string RoleFor(string boardType) => boardType == BoardTypes.Project ? ProjectReview : FinalBoard;
 
     /// <summary>Not on a board and not stood down for the night.</summary>
     public bool IsFree => Room is "" or "-";
+
+    /// <summary>Said at sign-in they came to support this scout.</summary>
+    public bool Supports(string scoutId) => Supporting.Split('|').Contains(scoutId);
+
+    /// <summary>
+    /// Came to serve on any board: not here for a particular scout, or
+    /// counting tonight toward a Wood Badge ticket item (who is then a
+    /// volunteer first, whoever else they came with).
+    /// </summary>
+    public bool CameForAnyBoard => WoodBadge == "Y" || Supporting.Length == 0;
 }
 
 public sealed record ScoutInfo(string Id, string Last, string First, string UnitName, string BoardType, string Room, string Status, string Leader);
@@ -21,7 +38,12 @@ public sealed record AutoSelection(IReadOnlyList<string> ChairIds, IReadOnlyList
     public IEnumerable<string> AllAdultIds => ChairIds.Concat(MemberIds);
 }
 
-public sealed record LocatedAdult(AdultInfo Adult, bool IsLeader);
+/// <summary>
+/// An adult found for a scout: one who said at sign-in they came to support
+/// them (<paramref name="IsSupporting"/>), else a leader guessed from the
+/// scout's Leader field, else a parent.
+/// </summary>
+public sealed record LocatedAdult(AdultInfo Adult, bool IsLeader, bool IsSupporting = false);
 
 /// <summary>Toolbar actions on the Youth panel.</summary>
 [Flags]
@@ -59,59 +81,117 @@ public static class SchedulerLogic
     };
 
     /// <summary>
-    /// Up to <paramref name="count"/> free adults whose role for the board
-    /// type is one of <paramref name="roles"/>, skipping the scout's own unit
-    /// and anyone in <paramref name="omit"/>. Adults are taken in list order.
+    /// Propose a board for a waiting scout: one qualified chair, the
+    /// working-size complement of members (two for a Final board, one for a
+    /// project review), none from the scout's unit, and the first empty room
+    /// of the right type.
     /// </summary>
-    public static List<string> FindBoardMembers(IEnumerable<AdultInfo> adults, string scoutUnitName, string boardType,
-        IReadOnlyCollection<string> roles, int count, IReadOnlyCollection<string> omit)
+    /// <remarks>
+    /// It used to take the first qualified chair and the first adults whose
+    /// role for the board type was Member, in sign-in order. A Final board's
+    /// Member is often a project chair, so the first Final board of the night
+    /// could take both project chairs and leave every project review without
+    /// one; and it ignored the troops of the scouts still waiting.
+    ///
+    /// Now every legal board is considered and the one chosen is, in order:
+    /// the one leaving the most of the <paramref name="waiting"/> scouts (the
+    /// OTHER waiting scouts, in queue order) able to get a full board at once
+    /// from the adults left over, so chairs and troop conflicts both count;
+    /// then the one using up the fewest chair qualifications, so member-only
+    /// adults fill member seats and a single-type chair is used before one who
+    /// can chair either; then the one whose adults could serve the fewest
+    /// other waiting scouts; then volunteers who came for any board (not linked
+    /// to a scout, or Wood Badge), so they are not the ones left idle; then the
+    /// adults who have waited longest to volunteer since they were last free,
+    /// and sign-in order within a minute. With no full board to be had
+    /// it proposes what it can, in the same preference order, and says what
+    /// is short.
+    ///
+    /// The same algorithm, with the same test cases, is proposeBoard in the
+    /// Java version's process_seat.js and BoardSuggestion in the Mac version.
+    /// </remarks>
+    public static AutoSelection AutoSelect(ScoutInfo scout, IReadOnlyList<AdultInfo> adults, IEnumerable<RoomInfo> rooms,
+        IReadOnlyList<ScoutInfo>? waiting = null)
     {
-        var picked = new List<string>();
-        foreach (var a in adults)
-        {
-            if (picked.Count >= count)
-            {
-                break;
-            }
+        IReadOnlyList<ScoutInfo> queue = waiting ?? [];
+        var problems = new List<string>();
+        var need = MembersBesideChair(scout.BoardType);
 
-            if (omit.Contains(a.Id) || !a.IsFree || a.UnitName == scoutUnitName)
+        var pool = RankFreeAdults(adults, queue);
+        var chairs = pool.Where(c => CanChairFor(c.Adult, scout)).ToList();
+        var sitters = pool.Where(c => CanSitFor(c.Adult, scout)).ToList();
+
+        List<Candidate>? best = null;
+        var bestScore = (Seatable: -1, ChairsKept: 0, Flexibility: 0);
+        var triedChairs = new HashSet<string>();
+        foreach (var chair in chairs)
+        {
+            if (!triedChairs.Add(Profile(chair.Adult)))
             {
                 continue;
             }
 
-            if (roles.Contains(a.RoleFor(boardType)))
+            var others = sitters.Where(c => c.Adult.Id != chair.Adult.Id).ToList();
+            var combo = new List<Candidate>();
+
+            void Visit(int start)
             {
-                picked.Add(a.Id);
+                if (combo.Count == need)
+                {
+                    var board = new List<Candidate> { chair };
+                    board.AddRange(combo);
+                    var taken = board.Select(c => c.Adult.Id).ToHashSet();
+                    var score = (CountSeatable(pool.Where(c => !taken.Contains(c.Adult.Id)).ToList(), queue),
+                        -board.Sum(c => c.Chairs), -board.Sum(c => c.Useful));
+                    if (best == null || score.CompareTo(bestScore) > 0)
+                    {
+                        bestScore = score;
+                        best = board;
+                    }
+
+                    return;
+                }
+
+                // Adults from the same unit with the same roles are
+                // interchangeable here, so only the first is tried in each
+                // seat: the same answer from a far smaller search.
+                var tried = new HashSet<string>();
+                for (var n = start; n < others.Count; n++)
+                {
+                    if (!tried.Add(Profile(others[n].Adult)))
+                    {
+                        continue;
+                    }
+
+                    combo.Add(others[n]);
+                    Visit(n + 1);
+                    combo.RemoveAt(combo.Count - 1);
+                }
             }
+
+            Visit(0);
         }
 
-        return picked;
-    }
-
-    /// <summary>
-    /// Propose a board for a waiting scout: one qualified chair, then the
-    /// working-size complement of members (two for a Final board, one for a
-    /// project review), topped up from spare chairs if members run short,
-    /// and the first empty room of the right type.
-    /// </summary>
-    public static AutoSelection AutoSelect(ScoutInfo scout, IReadOnlyList<AdultInfo> adults, IEnumerable<RoomInfo> rooms)
-    {
-        var problems = new List<string>();
-        var chairs = FindBoardMembers(adults, scout.UnitName, scout.BoardType, [BoardRoles.Chair], 1, []);
-        if (chairs.Count == 0)
+        List<string> chairIds;
+        List<string> memberIds;
+        if (best != null)
         {
-            problems.Add($"No {scout.BoardType} Chairs Available.");
+            chairIds = [best[0].Adult.Id];
+            memberIds = best.Skip(1).Select(c => c.Adult.Id).ToList();
         }
-
-        var wanted = BoardRules.MinMembers(scout.BoardType) - 1;
-        var members = FindBoardMembers(adults, scout.UnitName, scout.BoardType, [BoardRoles.Member], wanted, chairs);
-        if (members.Count < wanted)
+        else
         {
-            members.AddRange(FindBoardMembers(adults, scout.UnitName, scout.BoardType,
-                [BoardRoles.Member, BoardRoles.Chair], wanted - members.Count, chairs.Concat(members).ToList()));
-            if (members.Count < wanted)
+            // No full board: what there is, best first, and what is short.
+            chairIds = chairs.Take(1).Select(c => c.Adult.Id).ToList();
+            if (chairIds.Count == 0)
             {
-                problems.Add($"Only {members.Count} {scout.BoardType} Members Available");
+                problems.Add($"No {scout.BoardType} Chairs Available.");
+            }
+
+            memberIds = sitters.Where(c => !chairIds.Contains(c.Adult.Id)).Take(need).Select(c => c.Adult.Id).ToList();
+            if (memberIds.Count < need)
+            {
+                problems.Add($"Only {memberIds.Count} {scout.BoardType} Members Available");
             }
         }
 
@@ -121,48 +201,153 @@ public static class SchedulerLogic
             problems.Add($"No {scout.BoardType} Rooms Available");
         }
 
-        return new AutoSelection(chairs, members, room?.Id, problems);
+        return new AutoSelection(chairIds, memberIds, room?.Id, problems);
+    }
+
+    /// <summary>
+    /// When each adult last became free to volunteer, for the waited-longest
+    /// tie-break: when they signed in, or when the last board they sat on was
+    /// completed, whichever is later. Nothing stores the second, so it is read
+    /// from the Completed scouts, whose LastUpdateTime is when the result was
+    /// recorded and whose member list names who sat. A reset board never
+    /// happened and keeps no member list, so the adult's earlier wait stands.
+    /// </summary>
+    /// <remarks>
+    /// Times are the records' <c>yyyy-MM-dd_HH:mm±hhmm</c> stamps, which sort
+    /// ordinally within one event night. The member list is comma-joined and
+    /// read back from the CSV with '~'; an ID whose name had a comma also holds
+    /// a '~', so each whole ID is looked for between separators rather than
+    /// splitting the list. The same helper is freeSinceTimes in the Java
+    /// version and BoardSuggestion.freeSinceTimes on the Mac.
+    /// </remarks>
+    public static Dictionary<string, string> FreeSinceTimes(
+        IEnumerable<(string Id, string RegTime)> adults,
+        IEnumerable<(string Status, string MemberIds, string LastUpdate)> scouts)
+    {
+        var boards = scouts
+            .Where(s => s.Status == BoardStatus.Completed && s.MemberIds.Length > 0 && s.LastUpdate.Length > 0)
+            .Select(s => (List: "~" + s.MemberIds.Replace(',', '~') + "~", s.LastUpdate))
+            .ToList();
+        var since = new Dictionary<string, string>();
+        foreach (var (id, regTime) in adults)
+        {
+            var latest = regTime;
+            var needle = "~" + id + "~";
+            foreach (var (list, lastUpdate) in boards)
+            {
+                if (list.Contains(needle, StringComparison.Ordinal) && string.CompareOrdinal(lastUpdate, latest) > 0)
+                {
+                    latest = lastUpdate;
+                }
+            }
+
+            since[id] = latest;
+        }
+
+        return since;
+    }
+
+    private sealed record Candidate(AdultInfo Adult, int Chairs, int Useful, string Since, int Order);
+
+    private static string Profile(AdultInfo a) => a.UnitName + "|" + a.FinalBoard + "|" + a.ProjectReview;
+
+    /// <summary>Same test as <see cref="BoardRules.FindUnitConflicts"/>: a blank unit on either side is no match.</summary>
+    private static bool SharesUnit(AdultInfo a, ScoutInfo s) =>
+        !string.IsNullOrEmpty(s.UnitName) && !string.IsNullOrEmpty(a.UnitName) && a.UnitName == s.UnitName;
+
+    private static bool CanSitFor(AdultInfo a, ScoutInfo s) =>
+        a.RoleFor(s.BoardType) is BoardRoles.Chair or BoardRoles.Member && !SharesUnit(a, s);
+
+    private static bool CanChairFor(AdultInfo a, ScoutInfo s) =>
+        a.RoleFor(s.BoardType) == BoardRoles.Chair && !SharesUnit(a, s);
+
+    private static int ChairQualifications(AdultInfo a) =>
+        (a.FinalBoard == BoardRoles.Chair ? 1 : 0) + (a.ProjectReview == BoardRoles.Chair ? 1 : 0);
+
+    /// <summary>Members beside the chair at the district's working size.</summary>
+    private static int MembersBesideChair(string boardType) => BoardRules.MinMembers(boardType) - 1;
+
+    /// <summary>
+    /// How many of <paramref name="waiting"/>, in queue order, can each still
+    /// get a full board at once from <paramref name="pool"/> (sorted by preference).
+    /// </summary>
+    private static int CountSeatable(List<Candidate> pool, IReadOnlyList<ScoutInfo> waiting)
+    {
+        var used = new HashSet<string>();
+        var seated = 0;
+        foreach (var t in waiting)
+        {
+            var chair = pool.FirstOrDefault(c => !used.Contains(c.Adult.Id) && CanChairFor(c.Adult, t));
+            if (chair == null)
+            {
+                continue;
+            }
+
+            var need = MembersBesideChair(t.BoardType);
+            var members = pool.Where(c => !used.Contains(c.Adult.Id) && c != chair && CanSitFor(c.Adult, t)).Take(need).ToList();
+            if (members.Count == need)
+            {
+                used.Add(chair.Adult.Id);
+                used.UnionWith(members.Select(c => c.Adult.Id));
+                seated++;
+            }
+        }
+
+        return seated;
     }
 
     /// <summary>
     /// Complete a board around the adults the operator has already chosen:
     /// a qualified chair if none of them can chair, then members up to the
-    /// minimum, by the same preferences as <see cref="AutoSelect"/>. Returns
-    /// only the adults to add; the operator's choices are never replaced.
+    /// minimum, taken in <see cref="AutoSelect"/>'s order of preference
+    /// (<see cref="RankFreeAdults"/>). Returns only the adults to add; the
+    /// operator's choices are never replaced.
     /// </summary>
-    public static AutoSelection FillBoard(ScoutInfo scout, IReadOnlyList<AdultInfo> adults, IReadOnlyCollection<string> pickedIds)
+    public static AutoSelection FillBoard(ScoutInfo scout, IReadOnlyList<AdultInfo> adults, IReadOnlyCollection<string> pickedIds,
+        IReadOnlyList<ScoutInfo>? waiting = null)
     {
         var problems = new List<string>();
+        var pool = RankFreeAdults(adults, waiting ?? []).Where(c => !pickedIds.Contains(c.Adult.Id)).ToList();
         var picked = adults.Where(a => pickedIds.Contains(a.Id)).ToList();
+
         var chairs = new List<string>();
         if (picked.All(a => a.RoleFor(scout.BoardType) != BoardRoles.Chair))
         {
-            chairs = FindBoardMembers(adults, scout.UnitName, scout.BoardType, [BoardRoles.Chair], 1, pickedIds);
-            if (chairs.Count == 0)
+            if (pool.FirstOrDefault(c => CanChairFor(c.Adult, scout)) is { } chair)
+            {
+                chairs.Add(chair.Adult.Id);
+            }
+            else
             {
                 problems.Add($"No {scout.BoardType} Chairs Available.");
             }
         }
 
-        var wanted = BoardRules.MinMembers(scout.BoardType) - pickedIds.Count - chairs.Count;
-        var members = new List<string>();
-        if (wanted > 0)
+        var wanted = Math.Max(0, BoardRules.MinMembers(scout.BoardType) - pickedIds.Count - chairs.Count);
+        var members = pool.Where(c => !chairs.Contains(c.Adult.Id) && CanSitFor(c.Adult, scout))
+            .Take(wanted).Select(c => c.Adult.Id).ToList();
+        if (members.Count < wanted)
         {
-            var omit = pickedIds.Concat(chairs).ToList();
-            members = FindBoardMembers(adults, scout.UnitName, scout.BoardType, [BoardRoles.Member], wanted, omit);
-            if (members.Count < wanted)
-            {
-                members.AddRange(FindBoardMembers(adults, scout.UnitName, scout.BoardType,
-                    [BoardRoles.Member, BoardRoles.Chair], wanted - members.Count, omit.Concat(members).ToList()));
-                if (members.Count < wanted)
-                {
-                    problems.Add($"Only {members.Count} {scout.BoardType} Members Available");
-                }
-            }
+            problems.Add($"Only {members.Count} {scout.BoardType} Members Available");
         }
 
         return new AutoSelection(chairs, members, null, problems);
     }
+
+    /// <summary>
+    /// The free adults in order of preference for a seat: fewest chair
+    /// qualifications first (keep chairs for boards to come), then those who
+    /// could serve the fewest other <paramref name="queue"/> scouts, then
+    /// volunteers who came for any board, then the longest since last free,
+    /// then sign-in order.
+    /// </summary>
+    private static List<Candidate> RankFreeAdults(IReadOnlyList<AdultInfo> adults, IReadOnlyList<ScoutInfo> queue) =>
+        adults
+            .Select((a, order) => new Candidate(a, ChairQualifications(a), queue.Count(w => CanSitFor(a, w)), a.FreeSince, order))
+            .Where(c => c.Adult.IsFree)
+            .OrderBy(c => c.Chairs).ThenBy(c => c.Useful).ThenBy(c => c.Adult.CameForAnyBoard ? 0 : 1)
+            .ThenBy(c => c.Since, StringComparer.Ordinal).ThenBy(c => c.Order)
+            .ToList();
 
     /// <summary>
     /// Find a scout's leaders (an adult whose last name appears in the
@@ -206,9 +391,37 @@ public static class SchedulerLogic
             parents.Clear();
         }
 
-        return leaders.Select(a => new LocatedAdult(a, true))
-            .Concat(parents.Where(p => !leaders.Contains(p)).Select(a => new LocatedAdult(a, false)))
+        // Those who linked themselves to this scout at sign-in come first and
+        // are not guessed at again.
+        var supporting = SupportingAdults(scout.Id, adults);
+        return supporting.Select(a => new LocatedAdult(a, true, IsSupporting: true))
+            .Concat(leaders.Where(l => !supporting.Contains(l)).Select(a => new LocatedAdult(a, true)))
+            .Concat(parents.Where(p => !leaders.Contains(p) && !supporting.Contains(p)).Select(a => new LocatedAdult(a, false)))
             .ToList();
+    }
+
+    /// <summary>
+    /// The adults who said at sign-in that they came to support this scout --
+    /// often their Scoutmaster, who may be on another board and has to be
+    /// fetched to introduce them when their review starts.
+    /// </summary>
+    public static List<AdultInfo> SupportingAdults(string scoutId, IEnumerable<AdultInfo> adults) =>
+        adults.Where(a => a.Supports(scoutId)).ToList();
+
+    /// <summary>
+    /// An adult's Supporting list ("|"-separated scout IDs) with one scout
+    /// linked or unlinked. Order is kept and a scout is never listed twice.
+    /// The same as withSupportLink in the Java version's process_seat.js.
+    /// </summary>
+    public static string WithSupportLink(string supporting, string scoutId, bool linked)
+    {
+        var ids = supporting.Split('|').Where(id => id.Length > 0 && id != scoutId).ToList();
+        if (linked)
+        {
+            ids.Add(scoutId);
+        }
+
+        return string.Join('|', ids);
     }
 
     /// <summary>

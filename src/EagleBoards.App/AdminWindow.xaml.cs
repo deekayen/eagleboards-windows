@@ -81,6 +81,7 @@ public partial class AdminWindow : Window
     // A board's three decisions only. Not "Postponed": that is the Status of a
     // scout sent away unprepared before any board met them, who has no Result.
     private static readonly KeyValuePair<string, string>[] ResultChoices = [new("", ""), .. BoardResults.All.Select(v => new KeyValuePair<string, string>(v, Display.Result(v)))];
+    private static readonly KeyValuePair<string, string>[] WoodBadgeChoices = [new("", "No"), new("Y", "Yes")];
     private static readonly KeyValuePair<string, string>[] RoleChoices = Same(["", .. BoardRoles.All]);
 
     private static readonly TabSpec[] Specs =
@@ -114,6 +115,7 @@ public partial class AdminWindow : Window
             new("Unit", "Unit", 70), new("Email", "Email", 190), new("Phone", "Phone", 110),
             new("FinalBoard", "Final role", 100, Kind.Choice, RoleChoices), new("ProjectReview", "Project role", 110, Kind.Choice, RoleChoices),
             new("Room", "Room", 70),
+            new("WoodBadge", "Wood Badge", 95, Kind.Choice, WoodBadgeChoices),
         ], "Adults"),
         new("Adult history", DataTable.AdultHistory,
         [

@@ -389,4 +389,57 @@ public class BoardServiceTests
         s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
         Assert.Contains("no board", s.ChangeBoardMembers(Seed.ScoutId("Aldridge", "Alex", "1001"), "x", "x").Message);
     }
+
+    private static Dictionary<string, string> HistoryRow(BoardService s, string id) =>
+        s.Snapshot(DataTable.AdultHistory).Single(r => r["ID"] == id);
+
+    [Fact]
+    public void WoodBadgeAndWhomTheyCameToSupportAreForTonightOnly()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        var form = Seed.Adult("Hargrove", "Ines", "3401", "Member", "Member");
+        form["WoodBadge"] = "Y";
+        form["Supporting"] = "SCOUT:Galloway:Tobias:3401|SCOUT:Other:Oli:3402";
+        s.RegisterAdult(form);
+        var id = Seed.AdultId("Hargrove", "Ines", "3401");
+        Assert.Equal("Y", AdultRow(s, id)["WoodBadge"]);
+        Assert.Equal("SCOUT:Galloway:Tobias:3401|SCOUT:Other:Oli:3402", AdultRow(s, id)["Supporting"]);
+        Assert.Equal(("", ""), (HistoryRow(s, id)["WoodBadge"], HistoryRow(s, id)["Supporting"]));
+
+        form["WoodBadge"] = "yes";   // anything but Y is no
+        form["Supporting"] = "";
+        s.RegisterAdult(form);
+        Assert.Equal(("", ""), (AdultRow(s, id)["WoodBadge"], AdultRow(s, id)["Supporting"]));
+    }
+
+    [Fact]
+    public void ScoutChoicesAreRsvpsAndWalkInsWhoseEveningIsNotOver()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Rsvp:Only:3999",
+            new Dictionary<string, string> { ["Last"] = "Rsvp", ["First"] = "Only", ["UnitType"] = "Troop", ["Unit"] = "3999" });
+        s.RegisterScout(Seed.Scout("Bram", "Beau", "1002", BoardTypes.Final));
+        s.RegisterScout(Seed.Scout("Carrington", "Cormac", "1003", BoardTypes.Final));
+        Assert.True(s.PostponeBoard(Seed.ScoutId("Carrington", "Cormac", "1003")).Ok);
+        Assert.Equal(["SCOUT:Bram:Beau:1002", "SCOUT:Rsvp:Only:3999"], s.ScoutChoices().Select(c => c.Id));
+    }
+
+    [Fact]
+    public void AnOperatorLinksAnAdultToAScoutAfterBothSignedIn()
+    {
+        using var box = new Sandbox();
+        var (s, scout, _, m1, _) = SeatableEvening(box);
+        Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
+        Assert.Equal(scout, AdultRow(s, m1)["Supporting"]);
+        Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);   // pressing it twice links once
+        Assert.Equal(scout, AdultRow(s, m1)["Supporting"]);
+        Assert.True(s.SetSupporting(m1, scout, linked: false).Ok);
+        Assert.Equal("", AdultRow(s, m1)["Supporting"]);
+
+        Assert.False(s.SetSupporting("ADULT:Nobody:Here:0", scout, linked: true).Ok);
+        Assert.False(s.SetSupporting(m1, "SCOUT:Nobody:Here:0", linked: true).Ok);
+        Assert.True(s.SetSupporting(m1, "SCOUT:Nobody:Here:0", linked: false).Ok);   // clearing a stale link is fine
+    }
 }

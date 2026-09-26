@@ -6,6 +6,10 @@ public sealed class AdultRecord : PersonRecord
     [
         "Type", "ID", "Last", "First", "Email", "Phone", "UnitType", "Unit", "UnitName",
         "ProjectReview", "FinalBoard", "RegTime", "Room", "Flags", "Sel", "BoardHistory",
+
+        // Per night, set at sign-in and never carried into the adult history.
+        // Appended, as in the Java version, so older files still line up.
+        "WoodBadge", "Supporting",
     ];
 
     public AdultRecord()
@@ -40,6 +44,26 @@ public sealed class AdultRecord : PersonRecord
         get => GetValue("Sel");
         set => SetValue("Sel", value);
     }
+
+    /// <summary>"Y" when tonight counts toward a Wood Badge ticket item.</summary>
+    public string WoodBadge
+    {
+        get => GetValue("WoodBadge");
+        set => SetValue("WoodBadge", value);
+    }
+
+    /// <summary>
+    /// IDs of the scouts this adult came to support (their Scoutmaster, say),
+    /// separated by "|" because the data files turn commas into "~".
+    /// </summary>
+    public string Supporting
+    {
+        get => GetValue("Supporting");
+        set => SetValue("Supporting", value);
+    }
+
+    /// <summary>The scouts this adult came to support.</summary>
+    public IReadOnlyList<string> SupportingIds => Supporting.Split('|', StringSplitOptions.RemoveEmptyEntries);
 
     public AdultRecord Clone() => new(Fields);
 

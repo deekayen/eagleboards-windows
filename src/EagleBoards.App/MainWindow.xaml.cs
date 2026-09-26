@@ -180,6 +180,13 @@ public partial class MainWindow : Window
             _current = null;
         }
 
+        var youthNames = _scouts.ToDictionary(s => s.Id, s => s.FullName, StringComparer.Ordinal);
+        foreach (var a in _adults)
+        {
+            a.SupportingNames = string.Join(", ", a.Supporting.Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => youthNames.GetValueOrDefault(id, "")).Where(n => n.Length > 0));
+        }
+
         UpdateRoomTimers();
         ShowDetails();
         UpdatePeopleButtons();
@@ -411,7 +418,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        var pick = SchedulerLogic.AutoSelect(scout.Info, _adults.Select(a => a.Info).ToList(), _rooms.Select(r => r.Info));
+        var (adults, waiting) = SelectionContext(scout);
+        var pick = SchedulerLogic.AutoSelect(scout.Info, adults, _rooms.Select(r => r.Info), waiting);
         foreach (var id in pick.AllAdultIds)
         {
             if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
@@ -422,6 +430,27 @@ public partial class MainWindow : Window
 
         _chairId = pick.ChairIds.FirstOrDefault();
         _builderRoomId = pick.RoomId ?? free.FirstOrDefault()?.Id;
+    }
+
+    /// <summary>
+    /// What the proposal weighs beside this youth: the other waiting youth in
+    /// queue order (pre-registered first), so chairs and adults are kept for
+    /// the boards to come, and how long each adult has waited to volunteer
+    /// (since sign-in, or since their last board was completed).
+    /// </summary>
+    private (List<AdultInfo> Adults, List<ScoutInfo> Waiting) SelectionContext(ScoutRow scout)
+    {
+        var waiting = _scouts
+            .Where(s => s.Id != scout.Id && BoardStatus.IsWaiting(s.Status))
+            .OrderBy(s => s.RegNumSort, StringComparer.Ordinal)
+            .Select(s => s.Info)
+            .ToList();
+        var since = SchedulerLogic.FreeSinceTimes(
+            _svc.Snapshot(DataTable.Adults).Select(r => (r.GetValueOrDefault("ID", ""), r.GetValueOrDefault("RegTime", ""))),
+            _svc.Snapshot(DataTable.Scouts).Select(r => (r.GetValueOrDefault("Status", ""),
+                r.GetValueOrDefault("BoardMembersIDs", ""), r.GetValueOrDefault("LastUpdateTime", ""))));
+        var adults = _adults.Select(a => a.Info with { FreeSince = since.GetValueOrDefault(a.Id, "") }).ToList();
+        return (adults, waiting);
     }
 
     // ------------------------------------------------------------------
@@ -560,12 +589,66 @@ public partial class MainWindow : Window
     {
         var found = SchedulerLogic.Locate(scout.Info, _adults.Select(a => a.Info), includeParents: true);
         LocateList.ItemsSource = found.Select(f => new KeyValuePair<string, string>(
-            f.IsLeader ? "Leader" : "Parent",
+            f.IsSupporting ? "Came to support them" : f.IsLeader ? "Leader" : "Parent",
             $"{f.Adult.First} {f.Adult.Last} · {(f.Adult.Room == AdultRoom.Disabled ? "gone home" : f.Adult.Room.Length == 0 ? "main room" : "room " + f.Adult.Room)}")).ToList();
         LocateNone.Text = found.Count > 0 ? ""
             : scout.Leader.Length > 0 ? $"{scout.Leader} hasn't signed in, and no parent has."
             : "No leader was given at sign-in, and no parent has signed in.";
         LocateNone.Visibility = found.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+        UnlinkButton.Visibility = _adults.Any(a => a.Info.Supports(scout.Id)) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Link an adult to this youth as someone who came to support them, for
+    /// the adult who didn't say so at sign-in. They're listed under Leaders
+    /// and parents from then on, with where to find them. Works for an adult
+    /// on a board too: a Scoutmaster often is by then.
+    /// </summary>
+    private void OnLinkAdult(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout)
+        {
+            return;
+        }
+
+        var choices = _adults.Where(a => !a.Info.Supports(scout.Id))
+            .OrderBy(a => a.Last, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.First, StringComparer.OrdinalIgnoreCase)
+            .Select(a => new KeyValuePair<string, string>(a.Id, $"{a.FullName} · {a.UnitLabel}")).ToList();
+        if (choices.Count == 0)
+        {
+            return;
+        }
+
+        var dialog = new AppDialog(this, $"Link an adult to {scout.FullName}?", "Link");
+        dialog.AddMessage($"For someone who came to support **{scout.FullName}** but didn't say so at sign-in. "
+            + "They'll be listed here, with where to find them, when it's time to bring the youth in.");
+        var pick = dialog.AddChoice("Adult", choices, null);
+        if (dialog.ShowDialog() && pick.SelectedValue is string adultId)
+        {
+            Report(_svc.SetSupporting(adultId, scout.Id, linked: true), "Couldn't link them");
+        }
+    }
+
+    private void OnUnlinkAdult(object sender, RoutedEventArgs e)
+    {
+        if (_current is not { } scout)
+        {
+            return;
+        }
+
+        var linked = _adults.Where(a => a.Info.Supports(scout.Id))
+            .Select(a => new KeyValuePair<string, string>(a.Id, a.FullName)).ToList();
+        if (linked.Count == 0)
+        {
+            return;
+        }
+
+        var dialog = new AppDialog(this, $"Unlink an adult from {scout.FullName}?", "Unlink");
+        var pick = dialog.AddChoice("Adult", linked, null);
+        if (dialog.ShowDialog() && pick.SelectedValue is string adultId)
+        {
+            Report(_svc.SetSupporting(adultId, scout.Id, linked: false), "Couldn't unlink them");
+        }
     }
 
     private void OnChairChosen(PickRow row)
@@ -629,7 +712,8 @@ public partial class MainWindow : Window
         }
 
         var picked = _adults.Where(IsPicked).Select(a => a.Id).ToList();
-        var fill = SchedulerLogic.FillBoard(scout.Info, _adults.Select(a => a.Info).ToList(), picked);
+        var (adults, waiting) = SelectionContext(scout);
+        var fill = SchedulerLogic.FillBoard(scout.Info, adults, picked, waiting);
         foreach (var id in fill.AllAdultIds)
         {
             if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)

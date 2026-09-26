@@ -100,6 +100,10 @@
                      <select id="FinalBoard" name="FinalBoard" required>
                         <option value="Member">Member</option>
                         <option value="Chair">Chair</option>
+                        <!-- Stored as the role "Unavailable", which the
+                             scheduler and the server already keep off that
+                             kind of board. -->
+                        <option value="Unavailable">No thanks</option>
                      </select>
                   </div>
                   <div class="reg-field">
@@ -107,7 +111,28 @@
                      <select id="ProjectReview" name="ProjectReview" required>
                         <option value="Member">Member</option>
                         <option value="Chair">Chair</option>
+                        <option value="Unavailable">No thanks</option>
                      </select>
+                  </div>
+               </div>
+            </fieldset>
+
+            <!-- Tonight only: neither answer is kept in the adult history, so
+                 next month's form does not pre-fill last month's. -->
+            <fieldset>
+               <legend>Tonight</legend>
+               <label class="reg-check">
+                  <input type="checkbox" id="WoodBadge">
+                  I'm volunteering toward a Wood Badge ticket item
+               </label>
+               <div class="reg-field">
+                  <label for="scoutFilter">I'm here supporting a scout</label>
+                  <p class="reg-hint">Their Scoutmaster, coach or parent? Check each scout you came
+                     with, so we can find you when their review starts. Leave it empty if
+                     you're here to serve on any board.</p>
+                  <input type="text" id="scoutFilter" placeholder="Type a name to narrow the list">
+                  <div id="scoutList" class="reg-scouts" role="group" aria-label="Scouts">
+                     <span class="reg-hint">Loading scouts...</span>
                   </div>
                </div>
             </fieldset>
@@ -192,12 +217,71 @@
             statusMsg.className = cls;
          }
 
+         // The scouts an adult may say they came to support: everyone who
+         // RSVP'd on SignUpGenius, plus tonight's walk-ins, leaving out anyone
+         // whose evening is over. The one place this page differs from the
+         // Java version's: there the RSVP list is readable from the door, here
+         // only /scout-choices is, and it answers with names and units alone,
+         // already merged and sorted (BoardService.ScoutChoices).
+         var scoutList = document.getElementById("scoutList");
+         var scoutFilter = document.getElementById("scoutFilter");
+
+         function unitLabel(uname) {
+            return (uname || "").replace(/^([A-Za-z]+)(\d)/, "$1 $2");
+         }
+
+         ebFetchRows("/scout-choices", ["First", "Last", "UnitName"]).then(function (scouts) {
+            scoutList.textContent = "";
+            if (scouts.length === 0) {
+               var none = document.createElement("span");
+               none.className = "reg-hint";
+               none.textContent = "No scouts are signed up yet.";
+               scoutList.appendChild(none);
+               return;
+            }
+            scouts.forEach(function (s) {
+               var label = document.createElement("label");
+               label.className = "reg-check";
+               var box = document.createElement("input");
+               box.type = "checkbox";
+               box.value = s.id;
+               label.appendChild(box);
+               label.appendChild(document.createTextNode(
+                  " " + s.First + " " + s.Last + (s.UnitName ? " (" + unitLabel(s.UnitName) + ")" : "")));
+               scoutList.appendChild(label);
+            });
+         }).catch(function () {
+            scoutList.textContent = "Could not load the scouts. You can still sign in.";
+         });
+
+         scoutFilter.addEventListener("input", function () {
+            var needle = scoutFilter.value.trim().toLowerCase();
+            Array.prototype.forEach.call(scoutList.querySelectorAll("label"), function (label) {
+               var box = label.querySelector("input");
+               // A checked scout stays visible, so narrowing never hides a choice.
+               label.style.display = (!needle || box.checked
+                  || label.textContent.toLowerCase().indexOf(needle) >= 0) ? "" : "none";
+            });
+         });
+
+         function supportingIds() {
+            return Array.prototype.map.call(
+               scoutList.querySelectorAll("input:checked"), function (box) { return box.value; });
+         }
+
          form.addEventListener("submit", function (ev) {
             ev.preventDefault();
             var fields = {};
             ["Email", "ID", "Last", "First", "Phone", "UnitType", "Unit", "FinalBoard", "ProjectReview"].forEach(function (name) {
                fields[name] = form.elements[name].value;
             });
+            if (fields.FinalBoard === "Unavailable" && fields.ProjectReview === "Unavailable") {
+               setStatus("Please choose at least one kind of board you can serve on.", "err");
+               return;
+            }
+            fields.WoodBadge = document.getElementById("WoodBadge").checked ? "Y" : "";
+            // "|" rather than ",": the data files turn commas into "~".
+            fields.Supporting = supportingIds().join("|");
             var btn = document.getElementById("registerBtn");
             btn.disabled = true;
             setStatus("Registering...", "");

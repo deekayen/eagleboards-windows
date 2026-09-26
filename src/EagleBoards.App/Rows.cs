@@ -265,7 +265,7 @@ public sealed class PickRow : Row
 /// <summary>An adult on the People page and the source of the builder's rows.</summary>
 public sealed class AdultRow : Row
 {
-    private string _last = "", _first = "", _unitName = "", _room = "", _final = "", _project = "";
+    private string _last = "", _first = "", _unitName = "", _room = "", _final = "", _project = "", _woodBadge = "", _supporting = "";
     private bool _sel, _highlighted;
 
     public AdultRow(IReadOnlyDictionary<string, string> r)
@@ -338,6 +338,20 @@ public sealed class AdultRow : Row
 
     public string ProjectReview { get => _project; private set => Set(ref _project, value); }
 
+    /// <summary>"Y" when tonight counts toward a Wood Badge ticket item.</summary>
+    public string WoodBadge { get => _woodBadge; private set { if (Set(ref _woodBadge, value)) Raise(nameof(WoodBadgeMark)); } }
+
+    /// <summary>What the WB column shows.</summary>
+    public string WoodBadgeMark => WoodBadge == "Y" ? "\u2713" : "";
+
+    /// <summary>IDs of the scouts this adult came to support, "|"-separated.</summary>
+    public string Supporting { get => _supporting; private set => Set(ref _supporting, value); }
+
+    private string _supportingNames = "";
+
+    /// <summary>Who they came to support, by name; set by the window, which knows the youth.</summary>
+    public string SupportingNames { get => _supportingNames; set => Set(ref _supportingNames, value); }
+
     public bool IsDisabled => Room == AdultRoom.Disabled;
 
     /// <summary>On a board now.</summary>
@@ -352,7 +366,7 @@ public sealed class AdultRow : Row
     public string? PickTip => IsDisabled ? "Gone home. Mark them back first."
         : Room.Length > 0 ? "On the board in room " + Room : null;
 
-    public AdultInfo Info => new(Id, Last, First, UnitName, Room, FinalBoard, ProjectReview);
+    public AdultInfo Info => new(Id, Last, First, UnitName, Room, FinalBoard, ProjectReview, WoodBadge: WoodBadge, Supporting: Supporting);
 
     public void Update(IReadOnlyDictionary<string, string> r)
     {
@@ -363,6 +377,8 @@ public sealed class AdultRow : Row
         Room = V(r, "Room");
         FinalBoard = V(r, "FinalBoard");
         ProjectReview = V(r, "ProjectReview");
+        WoodBadge = V(r, "WoodBadge");
+        Supporting = V(r, "Supporting");
     }
 }
 

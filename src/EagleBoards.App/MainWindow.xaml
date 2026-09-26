@@ -511,6 +511,16 @@
                     <TextBlock Style="{StaticResource SectionLabel}" Text="Leaders and parents" Margin="0,24,0,8" />
                     <ItemsControl x:Name="LocateList" ItemTemplate="{StaticResource FactTemplate}" Focusable="False" />
                     <TextBlock x:Name="LocateNone" Style="{StaticResource Hint}" />
+                    <!-- For the adult who came with this youth but didn't say so at sign-in. -->
+                    <WrapPanel Margin="0,8,0,0">
+                      <Button Style="{StaticResource CommandButton}" Click="OnLinkAdult"
+                              ToolTip="Someone who came to support this youth but didn't say so at sign-in">
+                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE71B;" Margin="0,0,8,0" /><TextBlock Text="Link an adult..." /></StackPanel>
+                      </Button>
+                      <Button x:Name="UnlinkButton" Style="{StaticResource CommandButton}" Click="OnUnlinkAdult" ToolTip="Remove a supporting adult's link to this youth">
+                        <TextBlock Text="Unlink..." />
+                      </Button>
+                    </WrapPanel>
                   </StackPanel>
                 </StackPanel>
               </ScrollViewer>
@@ -583,7 +593,10 @@
                   <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="110" />
                   <DataGridTextColumn Header="Room" Binding="{Binding RoomText}" SortMemberPath="Room" Width="110" />
                   <DataGridTextColumn Header="Final board role" Binding="{Binding FinalBoard}" Width="140" />
-                  <DataGridTextColumn Header="Project review role" Binding="{Binding ProjectReview}" Width="*" />
+                  <DataGridTextColumn Header="Project review role" Binding="{Binding ProjectReview}" Width="160" />
+                  <!-- Volunteering toward a Wood Badge ticket item. -->
+                  <DataGridTextColumn Header="Wood Badge" Binding="{Binding WoodBadgeMark}" SortMemberPath="WoodBadge" Width="104" />
+                  <DataGridTextColumn Header="Came to support" Binding="{Binding SupportingNames}" Width="*" MinWidth="160" />
                 </DataGrid.Columns>
               </DataGrid>
             </Border>

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security;
 using System.Text;
 using EagleBoards.Core;
 using Microsoft.AspNetCore.Builder;
@@ -62,6 +63,8 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/register-adult"] = new(RegisterAdult, true),
             ["/youth-cells"] = new(Cells(DataTable.Scouts), true),
             ["/adult-cells"] = new(Cells(DataTable.Adults), true),
+            // Who an adult may say they came to support: names and units only.
+            ["/scout-choices"] = new(ScoutChoices, true),
             ["/adult-autofill"] = new(AutoFill(DataTable.AdultHistory, "Email"), true),
             ["/youth-autofill"] = new(AutoFill(DataTable.ScoutsScheduled, "Email"), true),
             ["/config-autofill"] = new(AutoFill(DataTable.Config, "Name"), true),
@@ -348,6 +351,30 @@ public sealed class CheckInServer : IAsyncDisposable
 
         return SendAsync(context, 200, contentType, sb.ToString());
     };
+
+    /// <summary>
+    /// The adult sign-in page's "I'm here supporting" list, in the same
+    /// rows format as the other lists: First, Last, UnitName for each RSVP
+    /// and walk-in whose evening is not over (<see cref="BoardService.ScoutChoices"/>).
+    /// Its own endpoint because the RSVP list is otherwise admin-only.
+    /// </summary>
+    private Task ScoutChoices(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
+    {
+        var sb = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rows>");
+        foreach (var (id, first, last, unitName) in _service.ScoutChoices())
+        {
+            sb.Append("<row id=\"").Append(SecurityElement.Escape(id)).Append("\">");
+            foreach (var value in new[] { first, last, unitName })
+            {
+                sb.Append("<cell>").Append(SecurityElement.Escape(value)).Append("</cell>");
+            }
+
+            sb.Append("</row>\n");
+        }
+
+        sb.Append("</rows>");
+        return SendAsync(context, 200, "text/xml", sb.ToString());
+    }
 
     /// <summary>
     /// Insert, update or delete a record: <c>!nativeeditor_status</c>,
