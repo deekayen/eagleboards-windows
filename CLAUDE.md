@@ -2,6 +2,11 @@
 
 Guidance for anyone (human or AI) making changes here. Read this before editing.
 
+**Read `SPEC.md` in `deekayen/eagleboards-shared` before changing the
+operator screen, the check-in pages, the board rules or the data files.**
+It is the source of truth for anything more than one version of Eagle
+Boards does; this repo does not decide shared behavior on its own.
+
 ## What this is
 
 The Windows version of the Review Board Scheduler: a C#/.NET 10 port of the
