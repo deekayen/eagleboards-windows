@@ -451,7 +451,7 @@ public sealed class RoomCard : Row
         {
             if (Set(ref _timerState, value))
             {
-                Raise(nameof(ShowWarning));
+                Raise(nameof(HasTimerTip));
                 Raise(nameof(TimerTip));
                 Raise(nameof(AccessibleName));
             }
@@ -465,7 +465,8 @@ public sealed class RoomCard : Row
         _ => null,
     };
 
-    public bool ShowWarning => TimerState is TimerState.Warning or TimerState.Overdue;
+    /// <summary>Running long or overdue: the card's tooltip says which, in words.</summary>
+    public bool HasTimerTip => TimerState is TimerState.Warning or TimerState.Overdue;
 
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
 

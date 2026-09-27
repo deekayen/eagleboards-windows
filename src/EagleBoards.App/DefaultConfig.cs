@@ -21,27 +21,15 @@ internal static class DefaultConfig
         ConveneRedMins=30
 
         # Room-card warning thresholds, in minutes since the scout was brought in
-        # ("Start Review"). The card turns yellow at the "Yellow" time and red at the
-        # "Red" time. Set per board type.
+        # ("Start Review"). The card's timer shows running long at the "Yellow" time
+        # and overdue at the "Red" time. Set per board type.
         ProjectYellowMins=25
         ProjectRedMins=40
         FinalYellowMins=30
         FinalRedMins=45
 
-        # Youth row colors by board status (hex). "Hi" colors are used for the
-        # selected row.
-        RegisteredColor=#ffcccc
-        VerifiedColor=#ffffcc
-        SeatedColor=#ccffff
-        InProgressColor=#ccffcc
-        CompletedColor=#ffffff
-        PostponedColor=#909090
-        RegisteredHiColor=#ff6666
-        VerifiedHiColor=#ffff66
-        SeatedHiColor=#66ffff
-        InProgressHiColor=#66ff66
-        CompletedHiColor=#eeeeee
-        PostponedHiColor=#9f7f7f
+        # Status colors are not settings: every version draws them from one
+        # palette, readable with color blindness, in light and dark.
 
         """;
 }

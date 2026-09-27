@@ -10,8 +10,8 @@ namespace EagleBoards.App;
 
 /// <summary>
 /// Room timers and the refresh interval (the CONFIG record in
-/// config.properties), and About. The status colour keys the Java version
-/// reads stay in the file untouched; this app draws status from the theme.
+/// config.properties), and About. Status colours aren't settings: they come
+/// from the shared palette (<see cref="StatusPalette"/>, SPEC.md D-13, D-19).
 /// </summary>
 public partial class SettingsPage : UserControl
 {
@@ -131,9 +131,9 @@ public partial class SettingsPage : UserControl
             }
         }
 
-        // Start from what's saved so the keys this page doesn't show (the
-        // Java version's status colours and refresh interval) are written
-        // back unchanged.
+        // Start from what's saved so the key this page doesn't show (the
+        // refresh interval, kept for the Java version) is written back
+        // unchanged.
         var fields = new Dictionary<string, string>(_svc.GetConfig().Fields, StringComparer.Ordinal);
         foreach (var (key, box) in _fields)
         {

@@ -145,14 +145,25 @@ runs a native WPF app instead of the Java app's browser pages.
   experimental: WPF0001 is suppressed in the csproj) and then `Theme.xaml`,
   whose styles are `BasedOn` Fluent's; a style that isn't falls back to the
   old look. Colours only from theme resources (`{DynamicResource ...}`),
-  never hex, so light, dark, high contrast and the accent colour work.
+  never hex, so light, dark, high contrast and the accent colour work. The
+  one exception is the status palette (SPEC.md D-13): the status pills' and
+  room timers' colours are the same in all three versions, in
+  `StatusPalette.cs` as the spec's table has them (measured there for colour
+  blindness by `check-palette.js`; Fluent's caution and critical colours turn
+  the same olive for deuteranopia). Change the spec first. `StatusPalette`
+  installs them as `Status*Brush` / `Timer*Brush` resources for light or
+  dark and gives way to system colours in a contrast theme. The timers' clocks
+  (stopwatch, timer clock, alarm clock) are Segoe UI Symbol glyphs, since
+  Segoe Fluent Icons has no timer or alarm clock.
   Spacing in multiples of 4; the Windows type ramp (Semibold, never Bold);
   sentence case; no abbreviations on screen (the files keep "InProgress",
   "N/A": show `Display.*` words). Messages go in an `InfoBar` where they're
   about, not pop-ups; success needs no message when the screen already shows
   it. Dialogs (`AppDialog`) only for the irreversible or an override, with
   verb buttons that answer the title. Status is text plus an icon, never
-  colour alone.
+  colour alone. Status colours are not settings (SPEC.md D-19): the
+  `*Color` keys are gone from `ConfigRecord`, and an older file's are dropped
+  on save.
 - User-facing text says **event**, not "tonight" or "evening": boards happen
   in the daytime too.
 - Values read back from the files carry the format's escapes (a comma saved as

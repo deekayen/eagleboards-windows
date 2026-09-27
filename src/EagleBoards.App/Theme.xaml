@@ -4,7 +4,8 @@
   <!-- The app's own styles, layered on WPF's Fluent theme (App.ThemeMode).
        Colours come from the theme's resources only, never hex values, so
        light, dark and high-contrast modes and the accent colour all follow
-       Windows. Sizes follow the Windows guidance: multiples of 4, 8px corners
+       Windows; the one exception is the shared status palette, installed by
+       StatusPalette.cs (SPEC.md D-13). Sizes follow the Windows guidance: multiples of 4, 8px corners
        on surfaces, 4px on controls, the Windows type ramp. -->
 
   <!-- A content surface on the window's base layer. -->

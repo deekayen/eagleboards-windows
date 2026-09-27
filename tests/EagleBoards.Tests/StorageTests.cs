@@ -96,14 +96,14 @@ public class StorageTests
             RefreshTimeSecs = 15
             FinalRedMins:50
             Name  DEFAULT
-            RegisteredColor=#ff\
-              cccc
+            ConveneRedMins=3\
+              5
             Escaped=a\tbA
             """);
         Assert.Equal("15", parsed["RefreshTimeSecs"]);
         Assert.Equal("50", parsed["FinalRedMins"]);
         Assert.Equal("DEFAULT", parsed["Name"]);
-        Assert.Equal("#ffcccc", parsed["RegisteredColor"]);
+        Assert.Equal("35", parsed["ConveneRedMins"]);
         Assert.Equal("a\tbA", parsed["Escaped"]);
         Assert.False(parsed.ContainsKey("# comment"));
     }
@@ -118,8 +118,25 @@ public class StorageTests
         Assert.Equal(50, config.FinalRedMins);
         Assert.Equal(30, config.RefreshTimeSecs);
         Assert.Equal("DEFAULT", config.Id);
-        Assert.Equal("#ccffcc", config.ColorFor("InProgress", highlighted: false));
-        Assert.Equal("#66ff66", config.ColorFor("InProgress", highlighted: true));
+    }
+
+    [Fact]
+    public void RetiredColourKeysLoadAndAreDroppedOnSave()
+    {
+        // SPEC.md D-19: an older config.properties with the status colours
+        // still loads, and the next save leaves them out.
+        using var box = new Sandbox();
+        File.WriteAllText(box.ConfigPath, "Type=CONFIG\nID=DEFAULT\nName=DEFAULT\nFinalRedMins=50\n"
+            + "RegisteredColor=#ffcccc\nInProgressHiColor=#66ff66\n");
+        var file = new DataRecordFile<ConfigRecord>(box.ConfigPath, ConfigRecord.Factory);
+        var config = Assert.Single(file.Records);
+        Assert.Equal(50, config.FinalRedMins);
+        Assert.DoesNotContain(ConfigRecord.AllColumns, c => c.EndsWith("Color", StringComparison.Ordinal));
+
+        file.Store();
+        var saved = File.ReadAllText(box.ConfigPath);
+        Assert.Contains("FinalRedMins=50\n", saved);
+        Assert.DoesNotContain("Color", saved);
     }
 
     [Fact]

@@ -14,31 +14,33 @@
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-    <!-- Status as a tinted label with an icon: the words carry the meaning,
-         the icon and tint help scanning, and none of it relies on colour alone. -->
+    <!-- Status as a tinted label with an icon, in the shared status palette
+         (StatusPalette, SPEC.md D-13): the words carry the meaning, the icon
+         and tint help scanning, and none of it relies on colour alone. -->
     <DataTemplate x:Key="StatusCell" DataType="{x:Type app:ScoutRow}">
-      <Border x:Name="Pill" CornerRadius="{DynamicResource ControlCornerRadius}" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
-              Background="{DynamicResource SystemFillColorNeutralBackgroundBrush}">
+      <Border x:Name="Pill" CornerRadius="{DynamicResource ControlCornerRadius}" Padding="7,1" HorizontalAlignment="Left" VerticalAlignment="Center"
+              BorderThickness="1" BorderBrush="{DynamicResource StatusBorderBrush}"
+              Background="{DynamicResource StatusNeutralBackgroundBrush}"
+              TextElement.Foreground="{DynamicResource StatusNeutralForegroundBrush}">
         <StackPanel Orientation="Horizontal">
-          <TextBlock x:Name="Icon" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,6,0" Text="&#xE823;"
-                     Foreground="{DynamicResource SystemFillColorNeutralBrush}" />
+          <TextBlock x:Name="Icon" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,6,0" Text="&#xE823;" />
           <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
         </StackPanel>
       </Border>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Status}" Value="Seated">
-          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
-          <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource StatusSeatedBackgroundBrush}" />
+          <Setter TargetName="Pill" Property="TextElement.Foreground" Value="{DynamicResource StatusSeatedForegroundBrush}" />
           <Setter TargetName="Icon" Property="Text" Value="&#xE716;" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Status}" Value="InProgress">
-          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
-          <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorAttentionBrush}" />
+          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource StatusReviewBackgroundBrush}" />
+          <Setter TargetName="Pill" Property="TextElement.Foreground" Value="{DynamicResource StatusReviewForegroundBrush}" />
           <Setter TargetName="Icon" Property="Text" Value="&#xE768;" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Status}" Value="Completed">
-          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
-          <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+          <Setter TargetName="Pill" Property="Background" Value="{DynamicResource StatusCompletedBackgroundBrush}" />
+          <Setter TargetName="Pill" Property="TextElement.Foreground" Value="{DynamicResource StatusCompletedForegroundBrush}" />
           <Setter TargetName="Icon" Property="Text" Value="&#xE73E;" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Status}" Value="Postponed">
@@ -87,7 +89,7 @@
       <Setter Property="VerticalContentAlignment" Value="Top" />
       <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleName}" />
       <Setter Property="ToolTip" Value="{Binding TimerTip}" />
-      <Setter Property="ToolTipService.IsEnabled" Value="{Binding ShowWarning}" />
+      <Setter Property="ToolTipService.IsEnabled" Value="{Binding HasTimerTip}" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListBoxItem">
@@ -115,12 +117,18 @@
     <DataTemplate x:Key="RoomCardTemplate" DataType="{x:Type app:RoomCard}">
       <StackPanel>
         <DockPanel>
-          <StackPanel x:Name="Timer" DockPanel.Dock="Right" Orientation="Horizontal"
-                      TextElement.Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-            <TextBlock Style="{StaticResource Glyph}" FontSize="14" Text="&#xE7BA;" Margin="0,0,4,0"
-                       Visibility="{Binding ShowWarning, Converter={StaticResource BoolToVis}}" />
-            <TextBlock Text="{Binding TimerText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          </StackPanel>
+          <!-- The minutes with a clock per state (SPEC.md D-13): a stopwatch on
+               time, a timer clock on an orange tint running long, an alarm
+               clock on a solid fill overdue. Segoe Fluent Icons has no timer or
+               alarm clock; Segoe UI Symbol's monochrome ones take the palette. -->
+          <Border x:Name="Timer" DockPanel.Dock="Right" VerticalAlignment="Top" Padding="5,0" Margin="8,0,0,0"
+                  CornerRadius="{DynamicResource ControlCornerRadius}" BorderThickness="1" BorderBrush="Transparent"
+                  TextElement.Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="Clock" FontFamily="Segoe UI Symbol" FontSize="13" Text="&#x23F1;" Margin="0,0,4,0" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding TimerText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
           <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}">
             <Run Text="Room" /> <Run Text="{Binding Room, Mode=OneWay}" />
           </TextBlock>
@@ -134,11 +142,20 @@
         <DataTrigger Binding="{Binding IsFree}" Value="True">
           <Setter TargetName="Scout" Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
         </DataTrigger>
+        <DataTrigger Binding="{Binding TimerState}" Value="None">
+          <Setter TargetName="Timer" Property="Visibility" Value="Collapsed" />
+        </DataTrigger>
         <DataTrigger Binding="{Binding TimerState}" Value="Warning">
-          <Setter TargetName="Timer" Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+          <Setter TargetName="Timer" Property="Background" Value="{DynamicResource TimerLongBackgroundBrush}" />
+          <Setter TargetName="Timer" Property="BorderBrush" Value="{DynamicResource StatusBorderBrush}" />
+          <Setter TargetName="Timer" Property="TextElement.Foreground" Value="{DynamicResource TimerLongForegroundBrush}" />
+          <Setter TargetName="Clock" Property="Text" Value="&#x23F2;" />
         </DataTrigger>
         <DataTrigger Binding="{Binding TimerState}" Value="Overdue">
-          <Setter TargetName="Timer" Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+          <Setter TargetName="Timer" Property="Background" Value="{DynamicResource TimerOverdueBackgroundBrush}" />
+          <Setter TargetName="Timer" Property="BorderBrush" Value="{DynamicResource StatusBorderBrush}" />
+          <Setter TargetName="Timer" Property="TextElement.Foreground" Value="{DynamicResource TimerOverdueForegroundBrush}" />
+          <Setter TargetName="Clock" Property="Text" Value="&#x23F0;" />
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>

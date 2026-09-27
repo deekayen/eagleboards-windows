@@ -23,6 +23,7 @@ internal static class ThemeSetup
         {
             Source = new Uri("pack://application:,,,/EagleBoards;component/Theme.xaml"),
         });
+        StatusPalette.Install(app, mode);
     }
 }
 

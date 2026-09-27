@@ -7,12 +7,15 @@ public sealed class ConfigRecord : DataRecord
 {
     public const string DefaultId = "DEFAULT";
 
+    /// <summary>
+    /// The status colour keys that followed these (RegisteredColor through
+    /// PostponedHiColor) are retired (SPEC.md D-19): a file that still has
+    /// them loads, since only these keys are read, and saving drops them.
+    /// </summary>
     public static readonly IReadOnlyList<string> AllColumns =
     [
         "Type", "ID", "Name", "RefreshTimeSecs", "ConveneRedMins",
         "ProjectYellowMins", "ProjectRedMins", "FinalYellowMins", "FinalRedMins",
-        "RegisteredColor", "VerifiedColor", "SeatedColor", "InProgressColor", "CompletedColor", "PostponedColor",
-        "RegisteredHiColor", "VerifiedHiColor", "SeatedHiColor", "InProgressHiColor", "CompletedHiColor", "PostponedHiColor",
     ];
 
     /// <summary>Defaults, and where they come from, are documented on the Settings window.</summary>
@@ -26,18 +29,6 @@ public sealed class ConfigRecord : DataRecord
         ["ProjectRedMins"] = "40",
         ["FinalYellowMins"] = "30",
         ["FinalRedMins"] = "45",
-        ["RegisteredColor"] = "#ffcccc",
-        ["VerifiedColor"] = "#ffffcc",
-        ["SeatedColor"] = "#ccffff",
-        ["InProgressColor"] = "#ccffcc",
-        ["CompletedColor"] = "#ffffff",
-        ["PostponedColor"] = "#909090",
-        ["RegisteredHiColor"] = "#ff6666",
-        ["VerifiedHiColor"] = "#ffff66",
-        ["SeatedHiColor"] = "#66ffff",
-        ["InProgressHiColor"] = "#66ff66",
-        ["CompletedHiColor"] = "#eeeeee",
-        ["PostponedHiColor"] = "#9f7f7f",
     };
 
     public ConfigRecord()
@@ -73,13 +64,6 @@ public sealed class ConfigRecord : DataRecord
     public int FinalYellowMins => Int("FinalYellowMins");
 
     public int FinalRedMins => Int("FinalRedMins");
-
-    /// <summary>Row color for a status; <paramref name="highlighted"/> picks the "Hi" variant.</summary>
-    public string ColorFor(string status, bool highlighted)
-    {
-        var key = status + (highlighted ? "HiColor" : "Color");
-        return AllColumns.Contains(key) ? GetValue(key) : "";
-    }
 
     /// <summary>
     /// Integer setting, falling back to the default when blank, zero or
