@@ -1248,6 +1248,16 @@ public partial class MainWindow : Window
 
     private void OnHelp(object sender, RoutedEventArgs e) => new HelpWindow { Owner = this }.Show();
 
+    /// <summary>Open Settings at its Support card (SPEC.md D-17).</summary>
+    private void OnDonate(object sender, RoutedEventArgs e)
+    {
+        FooterNav.SelectedIndex = 0;
+        if (SettingsHost.Content is SettingsPage settings)
+        {
+            settings.ShowSupport();
+        }
+    }
+
     private void OnUrlClicked(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
         OpenUrl(e.Uri.ToString());

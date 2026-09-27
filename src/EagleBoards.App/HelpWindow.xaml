@@ -73,6 +73,7 @@
       <Paragraph><Bold>People</Bold> lists the adults signed in. Mark someone <Bold>Gone home</Bold> when they leave, and <Bold>Back</Bold> if they return.</Paragraph>
       <Paragraph><Bold>Admin tables</Bold> (from Results or People) shows every record, including the pre-registered youth and the adult history. Double-click a cell to change it. This is where you change someone's roles.</Paragraph>
       <Paragraph><Bold>Settings</Bold> has the times at which a room turns to caution and to overdue.</Paragraph>
+      <Paragraph><Bold>Donate</Bold>, at the foot of the sidebar, opens Settings at the ways to support the scheduler's development.</Paragraph>
       <Paragraph>Keyboard: Ctrl+1, Ctrl+2 and Ctrl+3 open Event, Results and People. F5 refreshes. F1 opens this help.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Where the data is</Paragraph>

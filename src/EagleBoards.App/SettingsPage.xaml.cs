@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;
 
@@ -65,6 +66,10 @@ public partial class SettingsPage : UserControl
         Fill(_svc.GetConfig().Fields);
         SaveNotice.Close();
     }
+
+    /// <summary>Scroll the Support card into view, once the page has been laid out.</summary>
+    public void ShowSupport() =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => SupportCard.BringIntoView());
 
     private UIElement Card(string key, string title, string description, string unit)
     {

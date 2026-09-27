@@ -254,6 +254,12 @@
     <!-- Sidebar -->
     <DockPanel Grid.Column="0" Margin="8,8,8,12">
       <StackPanel DockPanel.Dock="Bottom">
+        <!-- SPEC.md D-17: the way to the Support card from the event, in the
+             sidebar's foot, never in the queue, the rooms or the details pane. -->
+        <Button Click="OnDonate" Padding="12,0" Height="40" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
+                ToolTip="Ways to support this project">
+          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xEB51;" Margin="0,0,16,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" /><TextBlock Text="Donate" /></StackPanel>
+        </Button>
         <Button Click="OnHelp" Padding="12,0" Height="40" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
                 ToolTip="How to run an event (F1)">
           <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE897;" Margin="0,0,16,0" /><TextBlock Text="Help" /></StackPanel>
