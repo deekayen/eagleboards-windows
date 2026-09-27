@@ -138,6 +138,11 @@ runs a native WPF app instead of the Java app's browser pages.
   for the other versions, written empty; sign-in and imports drop it, and
   nothing shows, pre-fills or exports it. Values already on file are left
   alone (O-5).
+- **No youth phone number** (SPEC.md D-8): the same for a youth's `Phone`.
+  `RegisterScout` and both imports drop it, and a repeat sign-in leaves one
+  on file alone (`ScoutRegFields`). `CheckInServer.IsWithheld` keeps it out
+  of the youth tables' lookups, `-cells`, `/youth-autofill` and `filter=`;
+  the adult tables share those handlers and still serve an adult's number.
 - `BoardService.Changed` fires on the thread that made the change (often a
   Kestrel thread). The window marshals to the dispatcher and debounces.
 - **The UI follows Microsoft's Windows (Fluent) guidance, not the Java app's
