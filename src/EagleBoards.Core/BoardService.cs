@@ -303,27 +303,28 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// Open (creating where missing) tonight's files. Throws if an explicitly
-    /// named adult history or config file does not exist.
+    /// Open (creating where missing) tonight's files. A missing adult history
+    /// is started empty (SPEC.md D-9); throws if an explicitly named config
+    /// file does not exist.
     /// </summary>
     public static BoardService Open(EventOptions options, Action<string>? log = null)
     {
         log ??= _ => { };
         Directory.CreateDirectory(options.DataDirectory);
 
-        string adultHistory;
-        if (options.AdultHistoryPath != null)
-        {
-            if (!File.Exists(options.AdultHistoryPath))
-            {
-                throw new FileNotFoundException($"error: adult history file '{options.AdultHistoryPath}' does not exist.");
-            }
+        var adultHistory = options.AdultHistoryPath ?? Path.Combine(options.DataDirectory, "adult_history.csv");
 
-            adultHistory = options.AdultHistoryPath;
-        }
-        else
+        // SPEC.md D-9: a new install has no adult history, and no release ships
+        // one (it would hold participant data), so a missing one is started
+        // with just the header row, as the startup window does, rather than
+        // refused. The full path is logged, so a mistyped -a shows up as a new
+        // history in an unexpected place.
+        if (!File.Exists(adultHistory))
         {
-            adultHistory = Path.Combine(options.DataDirectory, "adult_history.csv");
+            var fullPath = Path.GetFullPath(adultHistory);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            File.WriteAllText(fullPath, string.Join(',', AdultRecord.AllColumns) + "\n");
+            log($"\n   Started a new, empty adult history: {fullPath}\n");
         }
 
         string config;

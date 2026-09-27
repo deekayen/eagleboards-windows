@@ -177,6 +177,31 @@ public class BoardServiceTests
         Assert.Equal("Chair", again["FinalBoard"]);
     }
 
+    [Fact]
+    public void ANewInstallStartsAnEmptyAdultHistory()
+    {
+        // SPEC.md D-9: no release ships Master_AdultHistory.csv, so the first
+        // start names one that isn't there. It is started with the header row
+        // and its full path logged, not refused.
+        using var box = new Sandbox();
+        var history = Path.Combine(box.Root, "new", "Master_AdultHistory.csv");
+        var said = new List<string>();
+        var s = BoardService.Open(new EventOptions { DataDirectory = box.DataDir, AdultHistoryPath = history, ConfigPath = box.ConfigPath }, said.Add);
+
+        Assert.Equal(string.Join(',', AdultRecord.AllColumns) + "\n", File.ReadAllText(history));
+        Assert.Contains(said, m => m.Contains("Started a new, empty adult history: " + Path.GetFullPath(history)));
+        Assert.Empty(s.Snapshot(DataTable.AdultHistory));
+
+        s.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Chair", "Member"));
+        Assert.Contains("ADULT:Able:Ann:2001", File.ReadAllText(history));
+
+        // The next start keeps it, and says nothing about a new one.
+        said.Clear();
+        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "night2"), AdultHistoryPath = history, ConfigPath = box.ConfigPath }, said.Add);
+        Assert.Single(s2.Snapshot(DataTable.AdultHistory));
+        Assert.DoesNotContain(said, m => m.Contains("Started a new"));
+    }
+
     private static (BoardService Service, string Scout, string Chair, string M1, string M2) SeatableEvening(Sandbox box)
     {
         var s = box.Open();

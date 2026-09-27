@@ -96,6 +96,11 @@ district pre-registration CSV · `-sugkey`/`-sugid` SignUpGenius · `-port` ·
 verbose log. `EagleBoards.Server` (for tests, or a machine with no desktop)
 takes the same options and runs the check-in site with no window.
 
+If the `-a` file isn't there yet (a new install), a new, empty adult history is
+started at that path, and its full path is written to the log (`eagleboards.log`
+in the event's folder; the console for `EagleBoards.Server`). A start that
+fails exits with code 1.
+
 ## Support this project
 
 The scheduler is free, and built and kept up by a volunteer. If it helps your

@@ -45,6 +45,14 @@ public partial class App : Application
         if (cmd.DataDirectory != null || cmd.AdultHistory != null || cmd.Config != null)
         {
             _session = await StartFromCommandLineAsync(cmd);
+            if (_session == null)
+            {
+                // SPEC.md D-9: a command-line start that failed says so to
+                // whatever started it. Cancelling the startup window below
+                // is not a failure, and stays 0.
+                Shutdown(1);
+                return;
+            }
         }
         else
         {
