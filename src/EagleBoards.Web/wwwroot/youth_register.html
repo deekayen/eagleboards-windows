@@ -38,9 +38,7 @@
                              the @ keyboard on a tablet. -->
                         <input type="text" id="Email" name="Email" required
                                inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
-                               aria-describedby="Email-hint"
                                data-required="Enter your email, or NONE if you don't have one.">
-                        <p class="hint" id="Email-hint">Signed up ahead? We'll fill in the rest. No email? Type NONE.</p>
                      </div>
                      <div class="field">
                         <label for="Phone">Phone</label>
@@ -84,15 +82,21 @@
 
                <fieldset>
                   <legend>Your board</legend>
-                  <div class="field">
-                     <label for="BoardType">Which review are you here for?</label>
-                     <!-- The values stay "Final" and "Project": they are what is
-                          stored, and they match the rooms and the room timers. -->
-                     <select id="BoardType" name="BoardType" required>
-                        <option value="Final">Eagle board of review</option>
-                        <option value="Project">Project proposal review</option>
-                     </select>
-                  </div>
+                  <!-- Radio buttons, not a dropdown: two choices, both in view,
+                       one click, nothing to open with a trackpad. The values
+                       stay "Final" and "Project": they are what is stored, and
+                       they match the rooms and the room timers. -->
+                  <fieldset class="nested radios">
+                     <legend>Which review are you here for?</legend>
+                     <label class="check">
+                        <input type="radio" name="BoardType" value="Final" id="BoardType" checked>
+                        <span>Eagle board of review</span>
+                     </label>
+                     <label class="check">
+                        <input type="radio" name="BoardType" value="Project" id="BoardType-project">
+                        <span>Project proposal review</span>
+                     </label>
+                  </fieldset>
                   <div class="field">
                      <label for="Leader">Unit leader's name <span class="optional">(optional)</span></label>
                      <input type="text" id="Leader" name="Leader" autocomplete="off" aria-describedby="Leader-hint">

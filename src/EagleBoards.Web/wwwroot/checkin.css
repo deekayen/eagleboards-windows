@@ -242,6 +242,8 @@ fieldset.nested {
    border-radius: 0;
 }
 fieldset.nested > legend { padding: 0; font-size: 1rem; font-weight: 600; }
+fieldset.radios { margin: 0 0 0.75rem; }
+fieldset.radios .check { padding: 0.375rem 0; }
 
 .field { margin: 0 0 0.75rem; }
 .field:last-child { margin-bottom: 0; }
@@ -296,6 +298,8 @@ input[aria-invalid=true], select[aria-invalid=true] {
    cursor: pointer;
 }
 .check input { flex: 0 0 auto; width: 1.375rem; height: 1.375rem; margin: 0.125rem 0 0; }
+.check input[type=radio] { width: 1.5rem; height: 1.5rem; margin: 0; }
+.check:has(input[type=radio]) { align-items: center; }
 
 .choice-list {
    max-height: 8.5rem;
