@@ -15,8 +15,8 @@
         beside them. On a laptop the form spreads into columns so all of it,
         and Sign in, fits without scrolling; on a phone it is one column. The
         Sign in bar stays pinned to the bottom of the window either way, for
-        anyone who can't scroll with a trackpad. No birthdate: nothing uses
-        one (SPEC.md D-7). -->
+        anyone who can't scroll with a trackpad. No birthdate and no phone
+        number: nothing uses either (SPEC.md D-7, D-8). -->
    <body>
       <main class="page form-page">
          <h1>Youth sign-in</h1>
@@ -30,24 +30,14 @@
             <div class="form-columns">
                <fieldset>
                   <legend>About you</legend>
-                  <div class="pair">
-                     <div class="field">
-                        <label for="Email">Email</label>
-                        <!-- type="text", not "email": NONE is a legal answer and
-                             type="email" would refuse it. inputmode still brings up
-                             the @ keyboard on a tablet. -->
-                        <input type="text" id="Email" name="Email" required
-                               inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
-                               data-required="Enter your email, or NONE if you don't have one.">
-                     </div>
-                     <div class="field">
-                        <label for="Phone">Phone</label>
-                        <!-- type=tel brings up the number pad without limiting what
-                             may be typed: a phone number refused at a check-in table
-                             costs more than an inconsistent one. -->
-                        <input type="tel" id="Phone" name="Phone" required autocomplete="tel"
-                               data-required="Enter a phone number we can reach you or your family at.">
-                     </div>
+                  <div class="field">
+                     <label for="Email">Email</label>
+                     <!-- type="text", not "email": NONE is a legal answer and
+                          type="email" would refuse it. inputmode still brings up
+                          the @ keyboard on a tablet. -->
+                     <input type="text" id="Email" name="Email" required
+                            inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
+                            data-required="Enter your email, or NONE if you don't have one.">
                   </div>
                   <div class="pair">
                      <div class="field">
@@ -137,8 +127,8 @@
          ebSignInForm(document.getElementById("signInForm"), {
             registerPath: "/register-youth",
             lookupPath: "/api/youth-lookup",
-            prefill: ["ID", "Last", "First", "Phone", "UnitType", "Unit", "BoardType", "Leader"],
-            send: ["Email", "ID", "Last", "First", "Phone", "UnitType", "Unit", "BoardType", "Leader"]
+            prefill: ["ID", "Last", "First", "UnitType", "Unit", "BoardType", "Leader"],
+            send: ["Email", "ID", "Last", "First", "UnitType", "Unit", "BoardType", "Leader"]
          });
       </script>
    </body>

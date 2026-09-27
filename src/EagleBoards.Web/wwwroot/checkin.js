@@ -9,15 +9,16 @@
 //   GET  /api/scout-choices    -> [{ id, first, last, unitType, unit }], the youth
 //                                 an adult may say they came to support
 //   POST /api/youth-lookup     email=... -> the pre-registration it matches
-//                                 (ID, Last, First, Phone, UnitType, Unit,
-//                                 BoardType, Leader), or {}
+//                                 (ID, Last, First, UnitType, Unit, BoardType,
+//                                 Leader), or {}
 //   POST /api/adult-lookup     email=... -> the adult history it matches
 //                                 (ID, Last, First, Phone, UnitType, Unit,
 //                                 FinalBoard, ProjectReview), or {}
 //   POST /register-youth       form fields -> 200 on success, else the reason
 //   POST /register-adult       form fields -> 200 on success, else the reason
 //
-// No birthdate is asked for, looked up or sent (SPEC.md D-7).
+// No birthdate is asked for, looked up or sent (SPEC.md D-7), and no youth
+// phone number (D-8).
 //
 // Accessibility (WCAG 2.2 AA) lives here as much as in the markup: errors
 // are named in words beside their field and in a summary (3.3.1, 3.3.3),
