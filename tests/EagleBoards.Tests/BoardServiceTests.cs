@@ -746,6 +746,101 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void UndoIsRefusedOnceSomethingElseChangedWhatItWouldPutBack()
+    {
+        // The Java version's restore refuses the same way (evening section 20):
+        // putting the old value back would silently undo the correction too.
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.True(s.StartReview(scout).Ok);
+        s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["Status"] = BoardStatus.Seated });
+
+        var refusal = s.Undo();
+        Assert.False(refusal.Ok);
+        Assert.Contains("Alex Aldridge", refusal.Message);
+        Assert.Equal(BoardStatus.Seated, Status(s, scout));
+
+        // Everything older sits behind the change that can't be taken back.
+        Assert.False(s.CanUndo);
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+    }
+
+    [Fact]
+    public void UndoIsRefusedOnceARecordItWouldPutBackIsGone()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+        Assert.True(s.SetRoomType("ROOM:101", BoardTypes.Project).Ok);
+        s.SaveRow(DataTable.Rooms, "deleted", "ROOM:101", new Dictionary<string, string>());
+
+        Assert.Contains("no longer", s.Undo().Message);
+        Assert.Empty(s.Snapshot(DataTable.Rooms));
+    }
+
+    [Fact]
+    public void UndoLeavesAloneWhatTheStepDidNotSet()
+    {
+        // A member signs in again mid-board with a new phone and whom they came
+        // to support; undoing the seat frees them without losing either.
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        var again = new Dictionary<string, string>(Seed.Adult("Baker", "Bob", "2002", "Member", "Member"))
+        {
+            ["Phone"] = "555-000-1234", ["Supporting"] = scout,
+        };
+        s.RegisterAdult(again);
+
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("", AdultRow(s, m1)["Room"]);
+        Assert.Equal("555-000-1234", AdultRow(s, m1)["Phone"]);
+        Assert.Equal(scout, AdultRow(s, m1)["Supporting"]);
+    }
+
+    [Fact]
+    public void RestoreBoardTakesBackTheLastActionOnceAsJavaDoes()
+    {
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+
+        Assert.True(s.RestoreBoard().Ok);
+        Assert.Equal(BoardStatus.Registered, Status(s, scout));
+
+        // Java holds one action; the window's Undo still goes further back.
+        Assert.False(s.RestoreBoard().Ok);
+        Assert.True(s.CanUndo);
+        Assert.True(s.Undo().Ok);
+        Assert.Equal("", AdultRow(s, m1)["Supporting"]);
+
+        Assert.True(s.DisableAdult(m2).Ok);
+        Assert.True(s.RestoreBoard().Ok);
+        Assert.Equal("", AdultRow(s, m2)["Room"]);
+    }
+
+    [Fact]
+    public void AnAdultEditOverHttpIsUndoneButAHandEditOrAPickIsNot()
+    {
+        // The Java Event page marks adults gone home through /adult-update.
+        using var box = new Sandbox();
+        var (s, _, _, m1, m2) = SeatableEvening(box);
+
+        s.SaveRow(DataTable.Adults, "updated", m1, new Dictionary<string, string> { ["Sel"] = "1" }, undoable: true);
+        Assert.False(s.CanUndo);
+        s.SaveRow(DataTable.Adults, "updated", m1, new Dictionary<string, string> { ["Room"] = AdultRoom.Disabled });
+        Assert.False(s.CanUndo);
+
+        s.SaveRow(DataTable.Adults, "updated", m2, new Dictionary<string, string> { ["Room"] = AdultRoom.Disabled }, undoable: true);
+        Assert.True(s.RestoreBoard().Ok);
+        Assert.Equal("", AdultRow(s, m2)["Room"]);
+        Assert.Equal(AdultRoom.Disabled, AdultRow(s, m1)["Room"]);
+        Assert.Equal("1", AdultRow(s, m1)["Sel"]);
+    }
+
+    [Fact]
     public void UndoPopsInLifoOrderWithADescriptionForEach()
     {
         using var box = new Sandbox();

@@ -75,6 +75,7 @@ public class CheckInServerTests
     [InlineData("POST", "/seat-board", "RoomID=ROOM:1&ScoutID=x&ChairID=y&MemberIDs=y")]
     [InlineData("POST", "/complete-board", "ScoutID=x&Result=Approved")]
     [InlineData("POST", "/reset-board", "ScoutID=x")]
+    [InlineData("POST", "/restore-board", null)]
     [InlineData("POST", "/room-update", "!nativeeditor_status=inserted&gr_id=ROOM:9&Room=9")]
     [InlineData("POST", "/adult-update", "!nativeeditor_status=updated&gr_id=x&Room=N/A")]
     [InlineData("POST", "/update-config", "RefreshTimeSecs=1")]

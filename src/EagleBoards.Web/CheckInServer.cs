@@ -89,6 +89,8 @@ public sealed class CheckInServer : IAsyncDisposable
             // The Java version's Event page changes a seated board's members
             // over HTTP; same parameters as /seat-board, without the room.
             ["/change-board-members"] = new(BoardAction(p => _service.ChangeBoardMembers(p.Get("ScoutID"), p.Get("ChairID"), p.Get("MemberIDs"))), false),
+            // The Java version's Undo (SPEC.md O-2): the last reversible action, once.
+            ["/restore-board"] = new(BoardAction(_ => _service.RestoreBoard()), false),
         };
     }
 
@@ -388,7 +390,7 @@ public sealed class CheckInServer : IAsyncDisposable
     {
         var status = p.Get("!nativeeditor_status");
         var id = p.Get("gr_id");
-        var action = _service.SaveRow(table, status, id, p);
+        var action = _service.SaveRow(table, status, id, p, undoable: true);
         var sb = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><data><action type=\"");
         Core.Records.DataRecord.AppendEscaped(sb, action);
         sb.Append("\" sid=\"");
@@ -460,8 +462,6 @@ public sealed class CheckInServer : IAsyncDisposable
         return SendAsync(context, 200, contentType, sb.ToString());
     };
 
-    // ------------------------------------------------------------------
-    // Static pages
     /// <summary>
     /// What a pre-fill sends back: every column but the birthdate, which an
     /// older event folder may still hold (SPEC.md D-7, O-5).
@@ -469,6 +469,8 @@ public sealed class CheckInServer : IAsyncDisposable
     private static IEnumerable<string> PrefillColumns(IEnumerable<string> columns) =>
         columns.Where(c => c != Core.Records.ScoutRecord.DobField);
 
+    // ------------------------------------------------------------------
+    // Static pages
     // ------------------------------------------------------------------
 
     private static readonly Dictionary<string, string> ContentTypes = new(StringComparer.OrdinalIgnoreCase)

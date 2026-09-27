@@ -33,13 +33,14 @@
 # So the evening is capped at five concurrent boards no matter how many rooms
 # are free -- which is the constraint the scheduler actually has to survive.
 #
-# Sections 9-19 then work through what goes wrong on the night: malformed
+# Sections 9-21 then work through what goes wrong on the night: malformed
 # and replayed requests, every out-of-order step, adults and scouts signing
 # in twice, boards moved between rooms, a room renamed or deleted under a
 # board, a name with a comma in it, two operators seating the same chair at
 # once, the server restarting mid-evening, a room switched between
-# Project and Final, a recorded result corrected on the Admin page, and
-# what an adult says at sign-in (Wood Badge, "no thanks", whom they support).
+# Project and Final, a recorded result corrected on the Admin page, what an
+# adult says at sign-in (Wood Badge, "no thanks", whom they support), undo,
+# and a seated board's members changed.
 # ------------------------------------------------------------------------
 
 set -u
@@ -984,6 +985,44 @@ post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=$NO
 chk "and can be undone" "$(adult_col "$NOPROJ" 18)" ""
 chk "nobody committed after section 19" "$(busy_adults)" "0"
 
+# ------------------------------------ 20. undo (O-2 / restore-board)
+echo
+echo "== 20. undo the last reversible action =="
+
+restore() { act /restore-board; }
+
+U1=$(xscout Prescott Odalys 3501 Final)
+seat 101 "$U1" "$FC1" "$M1" "$M2" >/dev/null
+chk "seated before undo" "$(status_of "$U1")" "Seated"
+accepted "undo the seat" "$(restore)"
+chk "undo puts the scout back to Registered" "$(status_of "$U1")" "Registered"
+chk "undo frees the room" "$(room_scout ROOM:101)" ""
+chk "undo frees the chair and members" \
+    "$(adult_room "$FC1")|$(adult_room "$M1")|$(adult_room "$M2")" "||"
+refused "undo again once it has already been used" "$(restore)"
+
+# Start Review, then undo back to Seated.
+seat 101 "$U1" "$FC1" "$M1" "$M2" >/dev/null
+start "$U1" >/dev/null
+chk "in progress before undo" "$(status_of "$U1")" "InProgress"
+accepted "undo start review" "$(restore)"
+chk "undo puts the scout back to Seated" "$(status_of "$U1")" "Seated"
+
+# Undo is refused, not guessed at, once something else has changed the same
+# field it would restore -- here, a correction made on the Admin page.
+start "$U1" >/dev/null
+admin_edit "$U1" Status "Seated"
+refused "undo refuses once something else changed the same field" "$(restore)"
+reset "$U1" >/dev/null
+
+# Disable an adult, then undo the disable.
+post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=$M1" \
+    --data-urlencode "Room=N/A" "$B/adult-update"
+chk "adult disabled before undo" "$(adult_room "$M1")" "N/A"
+accepted "undo the disable" "$(restore)"
+chk "undo re-enables the adult" "$(adult_room "$M1")" ""
+
+chk "nobody committed after section 20" "$(busy_adults)" "0"
 
 # ------------------------- 21. change the members of a board already seated
 # Someone on a seated board has to leave, or the chair changes hands. The
@@ -1007,9 +1046,6 @@ last_update() { awk -F, -v i="$1" 'NR>1 && $2==i {print $15}' "$SCOUTS"; }
 room_leaders() { awk -F, -v r="$1" 'NR>1 && $2==r {print $6}' "$ROOMS"; }
 
 C1=$(xscout Quennell Rosalind 3601 Final)
-# Section 20 (undo) is not in this copy yet: this server has no
-# /restore-board. A scout of its own stands in for the one it left waiting.
-U1=$(xscout Prescott Odalys 3501 Final)
 C2=$(xscout Ravenscroft Sebastian 3602 Final)
 accepted "a board to change" "$(seat 101 "$C1" "$FC1" "$M1" "$M2")"
 accepted "and one next door" "$(seat 102 "$C2" "$FC2" "$M4" "$M5")"
@@ -1037,9 +1073,8 @@ start "$C1" >/dev/null
 accepted "members can change during the review too" "$(change "$C1" "$FC3" "$FC3" "$M1" "$M3" "$M6")"
 chk "still in review" "$(status_of "$C1")" "InProgress"
 chk "the added member is in the room" "$(adult_room "$M6")" "101"
-# The Java copy undoes this change here; this server has no /restore-board.
-accepted "and taken back out the same way" "$(change "$C1" "$FC3" "$FC3" "$M1" "$M3")"
-chk "the member taken out is free again" "$(adult_room "$M6")" ""
+accepted "undo the change" "$(act /restore-board)"
+chk "undo takes the added member back out" "$(adult_room "$M6")" ""
 
 accepted "completing releases whoever is on the board now" "$(complete "$C1" Approved)"
 chk "the changed board's members are all free" \

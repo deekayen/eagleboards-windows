@@ -126,6 +126,11 @@ runs a native WPF app instead of the Java app's browser pages.
   `BoardService.ChangeBoardMembers`, from the details pane: the same member
   checks as seating (`CheckComposition`), leavers freed, timer not reset.
   Never ask the operator to hand-edit member lists in the admin tables.
+- **Undo** (SPEC.md O-2) is a stack in `BoardService`: each step records the
+  fields it set (`Snap` before, `PushUndo` after), and undoing puts back only
+  those, refusing (and clearing the stack) if anything has changed one since,
+  as the Java version's restore does. `/restore-board` is Java's single level:
+  the last action, once. Picks and Admin-window edits stay off the stack.
 - **No birthdate** (SPEC.md D-7): the `DOB` column stays in the youth file
   for the other versions, written empty; sign-in and imports drop it, and
   nothing shows, pre-fills or exports it. Values already on file are left
