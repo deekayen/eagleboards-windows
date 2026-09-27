@@ -196,3 +196,5 @@ runs a native WPF app instead of the Java app's browser pages.
 - Branch `main`, remote `origin` = `deekayen/eagleboards-windows` (private).
 - Fixes that also apply to the Java project are worth porting there (and vice
   versa); the two are separate repositories with no shared history.
+- **No AI attribution** in commits, issues, PR text, or anywhere in history,
+  as in every Eagle Boards repository.
