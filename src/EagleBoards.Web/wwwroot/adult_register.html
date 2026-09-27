@@ -9,73 +9,76 @@
       <script src="checkin.js"></script>
    </head>
    <!-- Shared by every version of Eagle Boards (eagleboards-shared/checkin).
-        Edit it there, not in a version's copy. Same one-column layout as the
-        youth form. -->
+        Edit it there, not in a version's copy. Laid out like the youth form:
+        columns on a laptop so it fits without scrolling, one column on a
+        phone, and Sign in pinned to the bottom of the window. -->
    <body>
       <main class="page form-page">
          <h1>Adult sign-in</h1>
-         <p class="lead">For board members, leaders and parents. Every field is needed unless it says optional.</p>
+         <p class="lead">For board members, leaders and parents. Fill in every box unless it says optional.</p>
 
          <div id="errorSummary" class="status error" role="alert"></div>
 
          <form id="signInForm">
             <input type="hidden" name="ID" value="">
 
-            <fieldset>
-               <legend>About you</legend>
-               <div class="field">
-                  <label for="Email">Email</label>
-                  <!-- type="text", not "email": NONE is a legal answer. -->
-                  <input type="text" id="Email" name="Email" required
-                         inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
-                         aria-describedby="Email-hint"
-                         data-required="Enter your email, or NONE if you don't have one.">
-                  <p class="hint" id="Email-hint">If you've been to Eagle Boards before, we'll fill in the rest. No email? Type NONE.</p>
-               </div>
-               <div class="pair">
-                  <div class="field">
-                     <label for="First">First name</label>
-                     <input type="text" id="First" name="First" required autocomplete="given-name">
+            <div class="form-columns three">
+               <fieldset>
+                  <legend>About you</legend>
+                  <div class="pair">
+                     <div class="field">
+                        <label for="Email">Email</label>
+                        <!-- type="text", not "email": NONE is a legal answer. -->
+                        <input type="text" id="Email" name="Email" required
+                               inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
+                               aria-describedby="Email-hint"
+                               data-required="Enter your email, or NONE if you don't have one.">
+                        <p class="hint" id="Email-hint">Been here before? We'll fill in the rest. No email? Type NONE.</p>
+                     </div>
+                     <div class="field">
+                        <label for="Phone">Phone</label>
+                        <input type="tel" id="Phone" name="Phone" required autocomplete="tel"
+                               data-required="Enter a phone number we can reach you at.">
+                     </div>
                   </div>
-                  <div class="field">
-                     <label for="Last">Last name</label>
-                     <input type="text" id="Last" name="Last" required autocomplete="family-name">
+                  <div class="pair">
+                     <div class="field">
+                        <label for="First">First name</label>
+                        <input type="text" id="First" name="First" required autocomplete="given-name">
+                     </div>
+                     <div class="field">
+                        <label for="Last">Last name</label>
+                        <input type="text" id="Last" name="Last" required autocomplete="family-name">
+                     </div>
                   </div>
-               </div>
-               <div class="field">
-                  <label for="Phone">Phone</label>
-                  <input type="tel" id="Phone" name="Phone" required autocomplete="tel"
-                         data-required="Enter a phone number we can reach you at.">
-               </div>
-               <div class="pair unit">
-                  <div class="field">
-                     <label for="UnitType">Unit type</label>
-                     <select id="UnitType" name="UnitType" required>
-                        <option value="Troop">Troop</option>
-                        <option value="Post">Post</option>
-                        <option value="Crew">Crew</option>
-                        <option value="Ship">Ship</option>
-                        <option value="Pack">Pack</option>
-                        <option value="District">District</option>
-                        <option value="Council">Council</option>
-                        <option value="Community">Community</option>
-                     </select>
+                  <div class="pair unit">
+                     <div class="field">
+                        <label for="UnitType">Unit type</label>
+                        <select id="UnitType" name="UnitType" required>
+                           <option value="Troop">Troop</option>
+                           <option value="Post">Post</option>
+                           <option value="Crew">Crew</option>
+                           <option value="Ship">Ship</option>
+                           <option value="Pack">Pack</option>
+                           <option value="District">District</option>
+                           <option value="Council">Council</option>
+                           <option value="Community">Community</option>
+                        </select>
+                     </div>
+                     <div class="field">
+                        <label for="Unit">Unit number</label>
+                        <input type="text" id="Unit" name="Unit" required inputmode="numeric" pattern="[0-9]+"
+                               aria-describedby="Unit-hint"
+                               data-required="Enter your unit number."
+                               data-pattern="Unit number takes digits only, like 1776.">
+                        <p class="hint" id="Unit-hint">Digits only, like 1776.</p>
+                     </div>
                   </div>
-                  <div class="field">
-                     <label for="Unit">Unit number</label>
-                     <input type="text" id="Unit" name="Unit" required inputmode="numeric" pattern="[0-9]+"
-                            aria-describedby="Unit-hint"
-                            data-required="Enter your unit number."
-                            data-pattern="Unit number takes digits only, like 1776.">
-                     <p class="hint" id="Unit-hint">Digits only, like 1776.</p>
-                  </div>
-               </div>
-            </fieldset>
+               </fieldset>
 
-            <fieldset aria-describedby="roles-hint">
-               <legend>Boards I can serve on</legend>
-               <p class="hint" id="roles-hint">Choose Member or Chair for at least one.</p>
-               <div class="pair">
+               <fieldset aria-describedby="roles-hint">
+                  <legend>Boards I can serve on</legend>
+                  <p class="hint" id="roles-hint">Choose Member or Chair for at least one.</p>
                   <div class="field">
                      <label for="FinalBoard">Eagle boards of review</label>
                      <!-- "No thanks" is stored as the role Unavailable, which
@@ -94,24 +97,21 @@
                         <option value="Unavailable">No thanks</option>
                      </select>
                   </div>
-               </div>
-            </fieldset>
+                  <!-- Today only, like the youth supported: neither answer is
+                       kept for next time, so a later event's form does not
+                       fill them in. -->
+                  <label class="check">
+                     <input type="checkbox" id="WoodBadge">
+                     <span>Today counts toward my Wood Badge ticket <span class="optional">(optional)</span></span>
+                  </label>
+               </fieldset>
 
-            <!-- Today only: neither answer is kept for next time, so a later
-                 event's form does not fill them in. -->
-            <fieldset>
-               <legend>Today <span class="optional">(optional)</span></legend>
-               <label class="check">
-                  <input type="checkbox" id="WoodBadge">
-                  <span>I'm volunteering toward a Wood Badge ticket item</span>
-               </label>
-               <fieldset class="nested" aria-describedby="support-hint">
-                  <legend>I'm here supporting a youth</legend>
-                  <p class="hint" id="support-hint">Their Scoutmaster, coach or parent? Check each youth you came with,
-                     so we can find you when their review starts. Leave them all unchecked if you're here to serve on
-                     any board.</p>
+               <fieldset aria-describedby="support-hint">
+                  <legend>Supporting a youth <span class="optional">(optional)</span></legend>
+                  <p class="hint" id="support-hint">Their leader, coach or parent? Check who you came with, so we can
+                     find you when their review starts.</p>
                   <div class="field">
-                     <label for="supportFind">Find a youth <span class="optional">(optional)</span></label>
+                     <label for="supportFind">Find a youth</label>
                      <input type="search" id="supportFind" autocomplete="off" aria-describedby="supportCount">
                      <p class="hint" id="supportCount" aria-live="polite"></p>
                   </div>
@@ -119,12 +119,14 @@
                      <p class="empty">Loading the youth…</p>
                   </div>
                </fieldset>
-            </fieldset>
+            </div>
 
-            <p id="formStatus" class="status" role="status"></p>
-            <div class="actions">
-               <button type="submit" class="primary" id="submitButton">Sign in</button>
-               <button type="button" id="cancelButton">Cancel</button>
+            <div class="action-bar">
+               <div class="actions">
+                  <button type="submit" class="primary" id="submitButton">Sign in</button>
+                  <button type="button" id="cancelButton">Cancel</button>
+               </div>
+               <p id="formStatus" class="status" role="status"></p>
             </div>
          </form>
 

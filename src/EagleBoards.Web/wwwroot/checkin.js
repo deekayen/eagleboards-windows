@@ -4,7 +4,8 @@
 //
 //   GET  /api/checked-in       -> { refreshSeconds, youth: [{ time, last, first, unitType, unit }],
 //                                   adults: [{ last, first, unitType, unit }] }
-//                                 names and units only, in sign-in order
+//                                 names and units only, in sign-in order;
+//                                 refreshSeconds is no longer read by these pages
 //   GET  /api/scout-choices    -> [{ id, first, last, unitType, unit }], the youth
 //                                 an adult may say they came to support
 //   POST /api/youth-lookup     email=... -> the pre-registration it matches
@@ -21,8 +22,8 @@
 // Accessibility (WCAG 2.2 AA) lives here as much as in the markup: errors
 // are named in words beside their field and in a summary (3.3.1, 3.3.3),
 // progress and results are announced (4.1.3), the page never leaves by
-// itself without a way to stop it (2.2.1), and the lists that update on
-// their own can be paused (2.2.2).
+// itself without a way to stop it (2.2.1), and nothing on it changes on its
+// own while someone is reading it (2.2.2).
 // ------------------------------------------------------------------------
 
 function ebFormBody(fields) {
@@ -78,17 +79,12 @@ function ebUnitText(unitType, unit) {
 }
 
 // ------------------------------------------------------------ welcome page
-// The two "who has signed in" lists. They refresh on their own every
-// refreshSeconds (the app's setting), newest first so nothing needs to
-// scroll; a Pause button stops that (2.2.2). Updates are not announced: a
-// screen reader reading the page should not be interrupted by strangers
-// signing in.
+// The two "who has signed in" lists, loaded when the welcome page opens,
+// which it does after every sign-in. They do not update on their own while
+// someone is reading them, so there is nothing to pause (WCAG 2.2.2), and
+// newest first, so nothing needs to scroll. A page brought back from the
+// browser's history is re-read, so it never shows an old list.
 function ebWelcomeLists() {
-   var pauseButton = document.getElementById("pauseLists");
-   var paused = false;
-   var timer = null;
-   var refreshSeconds = 30;
-
    function fill(tableId, countId, rows, cells) {
       var table = document.getElementById(tableId);
       var tbody = table.tBodies[0];
@@ -112,7 +108,6 @@ function ebWelcomeLists() {
 
    function load() {
       ebGetJson("/api/checked-in").then(function (lists) {
-         refreshSeconds = Math.max(5, parseInt(lists.refreshSeconds, 10) || refreshSeconds);
          fill("youthTable", "youthCount", lists.youth || [], function (y) {
             return [
                { text: y.time, className: "time" },
@@ -127,30 +122,16 @@ function ebWelcomeLists() {
             ];
          });
       }).catch(function () {
-         // This screen faces the people signing in; a failed refresh must
-         // never put an error in front of them. The next one retries.
-      }).then(schedule);
+         // This screen faces the people signing in; a failed read must never
+         // put an error in front of them. The lists just stay as they were.
+      });
    }
 
-   function schedule() {
-      clearTimeout(timer);
-      if (!paused) {
-         timer = setTimeout(load, refreshSeconds * 1000);
-      }
-   }
-
-   pauseButton.addEventListener("click", function () {
-      paused = !paused;
-      // The label says what pressing it will do; no pressed state as well,
-      // which a screen reader would read as "Resume updates, pressed".
-      pauseButton.textContent = paused ? "Resume updates" : "Pause updates";
-      if (paused) {
-         clearTimeout(timer);
-      } else {
+   window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
          load();
       }
    });
-
    load();
 }
 
@@ -286,7 +267,7 @@ function ebSignInForm(form, options) {
    // ---- pre-fill from a known email (3.3.7) ----
    var emailInput = form.elements.Email;
    var lastLookedUp = "";
-   var pauseTimer = null;
+   var typingTimer = null;
 
    function lookUp() {
       var email = emailInput.value.trim();
@@ -313,8 +294,8 @@ function ebSignInForm(form, options) {
 
    emailInput.addEventListener("change", lookUp);
    emailInput.addEventListener("input", function () {
-      clearTimeout(pauseTimer);
-      pauseTimer = setTimeout(lookUp, 700);
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(lookUp, 700);
    });
 
    // ---- sending ----
