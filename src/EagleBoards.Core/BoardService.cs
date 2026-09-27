@@ -664,19 +664,36 @@ public sealed class BoardService
     {
         lock (_lock)
         {
-            var done = Scouts.Records
-                .Where(s => s.Status is BoardStatus.Completed or BoardStatus.Postponed)
-                .Select(s => s.Id)
-                .ToHashSet();
-            return ScoutsScheduled.Records.Concat(Scouts.Records)
-                .Where(s => s.Last.Length > 0 && !done.Contains(s.Id))
-                .GroupBy(s => s.Id)
-                .Select(g => g.Last())
-                .OrderBy(s => s.Last, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(s => s.First, StringComparer.CurrentCultureIgnoreCase)
-                .Select(s => (s.Id, s.First, s.Last, s.UnitName))
-                .ToList();
+            return ScoutChoiceRecords().Select(s => (s.Id, s.First, s.Last, s.UnitName)).ToList();
         }
+    }
+
+    /// <summary>
+    /// The same youth with the unit type and number apart, for the shared
+    /// check-in pages' <c>/api/scout-choices</c> (SPEC.md D-18).
+    /// </summary>
+    public List<(string Id, string First, string Last, string UnitType, string Unit)> ScoutChoiceUnits()
+    {
+        lock (_lock)
+        {
+            return ScoutChoiceRecords().Select(s => (s.Id, s.First, s.Last, s.UnitType, s.Unit)).ToList();
+        }
+    }
+
+    /// <summary>Only called under _lock.</summary>
+    private List<ScoutRecord> ScoutChoiceRecords()
+    {
+        var done = Scouts.Records
+            .Where(s => s.Status is BoardStatus.Completed or BoardStatus.Postponed)
+            .Select(s => s.Id)
+            .ToHashSet();
+        return ScoutsScheduled.Records.Concat(Scouts.Records)
+            .Where(s => s.Last.Length > 0 && !done.Contains(s.Id))
+            .GroupBy(s => s.Id)
+            .Select(g => g.Last())
+            .OrderBy(s => s.Last, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(s => s.First, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
     }
 
     // ------------------------------------------------------------------

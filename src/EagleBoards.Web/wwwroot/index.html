@@ -1,145 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
    <head>
-      <title>Eagle Board Sign-In</title>
       <meta charset="UTF-8">
-      <!-- Without this a phone or tablet lays the page out at a notional
-           980px and then scales the result down, so nothing below responds to
-           the real screen no matter what the CSS says. -->
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="stylesheet" type="text/css" href="scheduler.css"/>
-      <script src="/eb-data.js"></script>
-      <!-- Relative, like scheduler.css above. "/eb-ui.css" resolves to
-           C:/eb-ui.css when this file is opened from disk, so the theme
-           silently would not load.
-
-           This page used to carry its own <style> block restating the sign-in
-           button and panel rules at fixed pixel widths, which is what made it
-           read as a second, desktop-only design sitting on top of the shared
-           one. There is now a single definition, in eb-ui.css, and it is
-           sized by the viewport. -->
-      <link rel="stylesheet" type="text/css" href="eb-ui.css"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="color-scheme" content="light dark">
+      <title>Sign in: Eagle Boards</title>
+      <link rel="stylesheet" href="checkin.css">
+      <script src="checkin.js"></script>
    </head>
-   <body class="eb-public">
+   <!-- The page the tablets at the door open on, shared by every version of
+        Eagle Boards (eagleboards-shared/checkin). Edit it there, not in a
+        version's copy. -->
+   <body>
+      <main class="page welcome">
+         <h1>Welcome to Eagle Boards</h1>
+         <p class="lead">Please sign in</p>
 
-      <h1>Welcome to Eagle Boards</h1>
-      <h1><u>Please Sign In</u></h1>
+         <!-- Links, not buttons: each goes to another page. Tapping "I am 21
+              or older" is how an adult attests their age. -->
+         <nav class="choices" aria-label="Sign in as">
+            <a class="choice primary" href="/youth_register">
+               <span class="choice-title">I am a youth</span>
+               <span class="choice-detail">Here for my board of review or project review</span>
+            </a>
+            <a class="choice" href="/adult_register">
+               <span class="choice-title">I am 21 or older</span>
+               <span class="choice-detail">A board member, leader or parent</span>
+            </a>
+         </nav>
 
-      <div class="signin-buttons">
-         <!-- Text labels rather than the ScoutButton/LeaderButton bitmaps: they
-              scale with the button, stay legible if an image fails to load, and
-              can be read by a screen reader. The PNGs remain in the jar (the
-              parity gate byte-compares them) but are no longer referenced.
-
-              The name attributes say Youth and Adult to match the labels. They
-              were Scout and Leader, and "Leader" in particular was doing double
-              duty -- youth_register.html has an unrelated Leader field for the
-              candidate's unit leader, so a stylesheet reaching for
-              input[name="Leader"] had to be scoped carefully to avoid it. The
-              routes below are server endpoints and keep their own names. -->
-         <input type="button" name="Youth" value="I am a Youth"
-                onclick="window.location.href = '/youth_register';">
-         <input type="button" name="Adult" value="I am 21+"
-                onclick="window.location.href = '/adult_register';">
-      </div>
-
-      <div class="reg-panels">
-         <div class="reg-panel">
-            <div class="reg-panel-title">Registered Youth</div>
-            <div class="reg-panel-body" id="scoutPanel"><table><tbody id="scoutRows"></tbody></table></div>
+         <div class="list-controls">
+            <h2>Already signed in</h2>
+            <button type="button" id="pauseLists">Pause updates</button>
          </div>
-         <div class="reg-panel">
-            <div class="reg-panel-title">Registered Adults</div>
-            <div class="reg-panel-body" id="adultPanel"><table><tbody id="adultRows"></tbody></table></div>
+         <div class="lists">
+            <section class="card" aria-labelledby="youthHeading">
+               <div class="card-head">
+                  <h3 id="youthHeading">Youth (<span id="youthCount">0</span>)</h3>
+               </div>
+               <div class="list-scroll" role="region" tabindex="0" aria-labelledby="youthHeading">
+                  <table id="youthTable" hidden>
+                     <thead><tr><th scope="col">Time</th><th scope="col">Name</th><th scope="col">Unit</th></tr></thead>
+                     <tbody></tbody>
+                  </table>
+                  <p class="empty">No one yet.</p>
+               </div>
+            </section>
+            <section class="card" aria-labelledby="adultHeading">
+               <div class="card-head">
+                  <h3 id="adultHeading">Adults (<span id="adultCount">0</span>)</h3>
+               </div>
+               <div class="list-scroll" role="region" tabindex="0" aria-labelledby="adultHeading">
+                  <table id="adultTable" hidden>
+                     <thead><tr><th scope="col">Name</th><th scope="col">Unit</th></tr></thead>
+                     <tbody></tbody>
+                  </table>
+                  <p class="empty">No one yet.</p>
+               </div>
+            </section>
          </div>
-      </div>
-
+      </main>
       <script>
-         var SCOUT_PANEL_COLS = ["RegTimeHM", "Last", "First", "UnitType", "Unit"];
-         var ADULT_PANEL_COLS = ["Last", "First", "UnitType", "Unit"];
-
-         // Poll interval comes from RefreshTimeSecs in config.properties, the
-         // same setting the scheduler and admin pages use, so the Settings page
-         // controls every auto-refreshing screen.
-         var autoRefreshSeconds = 30;
-         var loadInFlight = false;
-
-         function fillPanel(bodyId, panelId, rows, cols, centerCols, forceBottom) {
-            var tbody = document.getElementById(bodyId);
-            var panel = document.getElementById(panelId);
-            // A refresh repaints the list, so it has to be cleared first —
-            // appending would duplicate every row already on screen.
-            var wasAtBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 4;
-            tbody.textContent = "";
-            rows.forEach(function (rec) {
-               var tr = document.createElement("tr");
-               cols.forEach(function (col) {
-                  var td = document.createElement("td");
-                  if (centerCols.indexOf(col) >= 0) {
-                     td.className = "c";
-                  }
-                  td.textContent = rec[col] || "";
-                  tr.appendChild(td);
-               });
-               tbody.appendChild(tr);
-            });
-            // Match the old behavior: scroll so the most recent row is visible.
-            // On a poll, only do that if the list was already at the bottom, so
-            // the view isn't yanked away from someone scrolled up reading it.
-            if (forceBottom || wasAtBottom) {
-               panel.scrollTop = panel.scrollHeight;
-            }
-         }
-
-         function loadPanels(forceBottom) {
-            if (loadInFlight) {
-               return;
-            }
-            loadInFlight = true;
-            Promise.all([
-               ebFetchRows("/youth-cells", SCOUT_PANEL_COLS).then(function (rows) {
-                  fillPanel("scoutRows", "scoutPanel", rows, SCOUT_PANEL_COLS, ["RegTimeHM"], forceBottom);
-               }),
-               ebFetchRows("/adult-cells", ADULT_PANEL_COLS).then(function (rows) {
-                  fillPanel("adultRows", "adultPanel", rows, ADULT_PANEL_COLS, [], forceBottom);
-               })
-            ]).catch(function () {
-               // This screen faces the Scouts signing in; a failed poll must
-               // never put an error dialog in front of them. Next tick retries.
-            }).then(function () {
-               loadInFlight = false;
-            });
-         }
-
-         loadPanels(true);
-
-         function pollPanels() {
-            if (!document.hidden) {
-               loadPanels(false);
-            }
-            setTimeout(pollPanels, Math.max(1, autoRefreshSeconds) * 1000);
-         }
-
-         fetch("/config-autofill?Name=DEFAULT&fmt=json")
-            .then(function (response) { return response.text(); })
-            .then(function (text) {
-               var match = /RefreshTimeSecs"?\s*:\s*"?(\d+)/.exec(text);
-               var seconds = match ? parseInt(match[1], 10) : 0;
-               if (seconds > 0) {
-                  autoRefreshSeconds = seconds;
-               }
-            })
-            .catch(function () { /* unreachable config: keep the default */ })
-            .then(function () {
-               setTimeout(pollPanels, Math.max(1, autoRefreshSeconds) * 1000);
-            });
-
-         document.addEventListener("visibilitychange", function () {
-            if (!document.hidden) {
-               loadPanels(false);
-            }
-         });
+         ebWelcomeLists();
       </script>
    </body>
-
 </html>

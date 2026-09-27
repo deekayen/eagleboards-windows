@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security;
 using System.Text;
+using System.Text.Json;
 using EagleBoards.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -65,6 +66,13 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/adult-cells"] = new(Cells(DataTable.Adults), true),
             // Who an adult may say they came to support: names and units only.
             ["/scout-choices"] = new(ScoutChoices, true),
+            // The shared check-in pages' API (eagleboards-shared/checkin,
+            // SPEC.md D-18): names and units for the lists, a lookup's own
+            // fields for the forms, never a birthdate.
+            ["/api/checked-in"] = new(ApiCheckedIn, true),
+            ["/api/scout-choices"] = new(ApiScoutChoices, true),
+            ["/api/youth-lookup"] = new(ApiLookup(DataTable.ScoutsScheduled, YouthPrefill), true),
+            ["/api/adult-lookup"] = new(ApiLookup(DataTable.AdultHistory, AdultPrefill), true),
             ["/adult-autofill"] = new(AutoFill(DataTable.AdultHistory, "Email"), true),
             ["/youth-autofill"] = new(AutoFill(DataTable.ScoutsScheduled, "Email"), true),
             ["/config-autofill"] = new(AutoFill(DataTable.Config, "Name"), true),
@@ -287,6 +295,13 @@ public sealed class CheckInServer : IAsyncDisposable
         var userData = Fields(p.Get("data"), null);
         var columns = _service.Read(table, f => Fields(p.Get("cols"), f.Columns.ToArray())!);
 
+        // SPEC.md D-7 / O-5: a birthdate already on file stays there but is
+        // never served, here or in an export. Values are read through these
+        // copies, where DOB names a column that holds nothing; `columns` keeps
+        // the real names for the CSV header, so every column still lines up.
+        var valueColumns = WithholdBirthdate(columns)!;
+        var valueUserData = WithholdBirthdate(userData);
+
         if (!isLocal)
         {
             // A station needs names and units for the "who's here" lists, not
@@ -319,7 +334,7 @@ public sealed class CheckInServer : IAsyncDisposable
                     sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><data>");
                     foreach (var r in rows)
                     {
-                        r.ToDataView(sb, columns, userData);
+                        r.ToDataView(sb, valueColumns, valueUserData);
                         sb.Append('\n');
                     }
 
@@ -329,7 +344,7 @@ public sealed class CheckInServer : IAsyncDisposable
                     sb.AppendJoin(',', columns).Append('\n');
                     foreach (var r in rows)
                     {
-                        r.ToCsv(sb, ',', columns);
+                        r.ToCsv(sb, ',', valueColumns);
                         sb.Append('\n');
                     }
 
@@ -338,7 +353,7 @@ public sealed class CheckInServer : IAsyncDisposable
                     sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rows>");
                     foreach (var r in rows)
                     {
-                        r.ToCells(sb, columns, userData);
+                        r.ToCells(sb, valueColumns, valueUserData);
                         sb.Append('\n');
                     }
 
@@ -382,6 +397,130 @@ public sealed class CheckInServer : IAsyncDisposable
         sb.Append("</rows>");
         return SendAsync(context, 200, "text/xml", sb.ToString());
     }
+
+    // ------------------------------------------------------------------
+    // The shared check-in pages' API (SPEC.md D-18)
+    // ------------------------------------------------------------------
+
+    private static readonly string[] YouthPrefill = ["ID", "Last", "First", "Phone", "UnitType", "Unit", "BoardType", "Leader"];
+    private static readonly string[] AdultPrefill = ["ID", "Last", "First", "Phone", "UnitType", "Unit", "FinalBoard", "ProjectReview"];
+
+    /// <summary>
+    /// An email as the lookups compare it: trimmed, any case; NONE and blank
+    /// match nobody. The Mac version's matchableEmail.
+    /// </summary>
+    private static string? Matchable(string? email)
+    {
+        var cleaned = (email ?? "").Trim().ToLowerInvariant();
+        return cleaned.Length == 0 || cleaned == "none" ? null : cleaned;
+    }
+
+    /// <summary>Utf8JsonWriter rather than the serializer: no reflection, so it survives trimming.</summary>
+    private static Task SendJsonAsync(HttpContext context, Action<Utf8JsonWriter> write)
+    {
+        using var buffer = new MemoryStream();
+        using (var json = new Utf8JsonWriter(buffer))
+        {
+            write(json);
+        }
+
+        context.Response.Headers.CacheControl = "no-store";
+        return SendAsync(context, 200, "application/json; charset=utf-8", Encoding.UTF8.GetString(buffer.ToArray()));
+    }
+
+    /// <summary>Who has signed in, in sign-in order: names and units, and the youth's sign-in time.</summary>
+    private Task ApiCheckedIn(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
+    {
+        var refresh = _service.Read(DataTable.Config, f => f.AllRecords.FirstOrDefault()?.GetValue("RefreshTimeSecs"));
+        var youth = _service.Read(DataTable.Scouts, f => f.AllRecords
+            .Select(r => (Time: r.GetValue("RegTimeHM"), Last: r.GetValue("Last"), First: r.GetValue("First"),
+                UnitType: r.GetValue("UnitType"), Unit: r.GetValue("Unit")))
+            .ToList());
+        var adults = _service.Read(DataTable.Adults, f => f.AllRecords
+            .Select(r => (Last: r.GetValue("Last"), First: r.GetValue("First"), UnitType: r.GetValue("UnitType"), Unit: r.GetValue("Unit")))
+            .ToList());
+        return SendJsonAsync(context, json =>
+        {
+            json.WriteStartObject();
+            json.WriteNumber("refreshSeconds", int.TryParse(refresh, out var seconds) && seconds > 0 ? seconds : 30);
+            json.WriteStartArray("youth");
+            foreach (var y in youth)
+            {
+                json.WriteStartObject();
+                json.WriteString("time", y.Time);
+                json.WriteString("last", y.Last);
+                json.WriteString("first", y.First);
+                json.WriteString("unitType", y.UnitType);
+                json.WriteString("unit", y.Unit);
+                json.WriteEndObject();
+            }
+
+            json.WriteEndArray();
+            json.WriteStartArray("adults");
+            foreach (var a in adults)
+            {
+                json.WriteStartObject();
+                json.WriteString("last", a.Last);
+                json.WriteString("first", a.First);
+                json.WriteString("unitType", a.UnitType);
+                json.WriteString("unit", a.Unit);
+                json.WriteEndObject();
+            }
+
+            json.WriteEndArray();
+            json.WriteEndObject();
+        });
+    }
+
+    /// <summary>The youth an adult may say they came to support (<see cref="BoardService.ScoutChoiceUnits"/>).</summary>
+    private Task ApiScoutChoices(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
+    {
+        var choices = _service.ScoutChoiceUnits();
+        return SendJsonAsync(context, json =>
+        {
+            json.WriteStartArray();
+            foreach (var (id, first, last, unitType, unit) in choices)
+            {
+                json.WriteStartObject();
+                json.WriteString("id", id);
+                json.WriteString("first", first);
+                json.WriteString("last", last);
+                json.WriteString("unitType", unitType);
+                json.WriteString("unit", unit);
+                json.WriteEndObject();
+            }
+
+            json.WriteEndArray();
+        });
+    }
+
+    /// <summary>
+    /// The record an email matches, as the fields its form fills in, or {}.
+    /// A POST, so the address never lands in a URL on a shared tablet.
+    /// </summary>
+    private Handler ApiLookup(DataTable table, string[] columns) => (context, p, _) =>
+    {
+        var wanted = Matchable(p.Get("email"));
+        var match = wanted == null
+            ? null
+            : _service.Read<List<(string Column, string Value)>?>(table, f =>
+                f.AllRecords.FirstOrDefault(r => Matchable(r.GetValue("Email")) == wanted) is { } record
+                    ? columns.Select(c => (Column: c, Value: record.GetValue(c))).ToList()
+                    : null);
+        return SendJsonAsync(context, json =>
+        {
+            json.WriteStartObject();
+            if (match != null)
+            {
+                foreach (var (column, value) in match)
+                {
+                    json.WriteString(column, value);
+                }
+            }
+
+            json.WriteEndObject();
+        });
+    };
 
     /// <summary>
     /// Insert, update or delete a record: <c>!nativeeditor_status</c>,
@@ -463,6 +602,9 @@ public sealed class CheckInServer : IAsyncDisposable
 
         return SendAsync(context, 200, contentType, sb.ToString());
     };
+
+    private static string[]? WithholdBirthdate(string[]? columns) =>
+        columns?.Select(c => c == Core.Records.ScoutRecord.DobField ? "DOB (withheld)" : c).ToArray();
 
     /// <summary>
     /// What a pre-fill sends back: every column but the birthdate, which an

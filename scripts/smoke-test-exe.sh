@@ -60,7 +60,7 @@ fi
 curl -sf -o youth.html "$B/youth_register"
 curl -sf -o adult.html "$B/adult_register"
 curl -sf -o data.js "$B/eb-data.js"
-grep -q "Please Sign In" index.html
+grep -q "Please sign in" index.html
 grep -q "register-youth" youth.html
 grep -q "register-adult" adult.html
 grep -q "ebFetchRows" data.js

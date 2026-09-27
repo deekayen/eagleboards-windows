@@ -1116,6 +1116,61 @@ chk "completing frees the renamed room's members" \
 accepted "rename it back" "$(rename ROOM:103 103)"
 chk "nobody committed after section 23" "$(busy_adults)" "0"
 
+# ------------------ 24. what the check-in pages are told, and no birthdate
+# The check-in pages are shared by every version (SPEC.md D-18) and speak one
+# small API that answers with only what each page shows. And no birthdate is
+# kept, shown or exported (D-7); one already on file stays there (O-5).
+echo
+echo "== 24. the check-in pages' API, and no birthdate =="
+
+api_post() { curl -sf -X POST --data-urlencode "email=$2" "$B$1"; }
+
+CHECKED_IN=$(curl -sf "$B/api/checked-in")
+case "$CHECKED_IN" in
+    *'"refreshSeconds"'*'"youth"'*'"adults"'*) ok "/api/checked-in lists youth and adults" ;;
+    *) bad "/api/checked-in -- got '$(echo "$CHECKED_IN" | head -c 120)'" ;;
+esac
+chk "the lists at the door carry no emails" "$(echo "$CHECKED_IN" | grep -c '@example.org')" "0"
+
+post --data-urlencode "!nativeeditor_status=inserted" --data-urlencode "gr_id=SCOUT:Lookup:Lena:4401" \
+     --data-urlencode "Last=Lookup" --data-urlencode "First=Lena" --data-urlencode "Email=Lena.Lookup@Example.org" \
+     --data-urlencode "UnitType=Troop" --data-urlencode "Unit=4401" --data-urlencode "BoardType=Final" \
+     --data-urlencode "DOB=2010-05-06" "$B/youth-scheduled-update"
+LOOKUP=$(api_post /api/youth-lookup "  lena.lookup@EXAMPLE.org ")
+case "$LOOKUP" in
+    *'"First":"Lena"'*) ok "a pre-registration is found by email, trimmed and in any case" ;;
+    *) bad "youth lookup -- got '$LOOKUP'" ;;
+esac
+chk "the youth lookup never sends a birthdate" "$(echo "$LOOKUP" | grep -c 'DOB\|2010-05-06')" "0"
+chk "the youth lookup sends no email back" "$(echo "$LOOKUP" | grep -ci 'example.org')" "0"
+chk "NONE matches nobody" "$(api_post /api/youth-lookup NONE)" "{}"
+case "$(api_post /api/adult-lookup "A1@example.org")" in
+    *'"FinalBoard"'*) ok "an adult is found in the history by email" ;;
+    *) bad "adult lookup found nobody" ;;
+esac
+
+CHOICES=$(curl -sf "$B/api/scout-choices")
+case "$CHOICES" in
+    *'"id":"SCOUT:Lookup:Lena:4401"'*) ok "an RSVP is offered to adults as someone to support" ;;
+    *) bad "scout-choices is missing the RSVP" ;;
+esac
+chk "a youth whose evening is over is not offered" "$(echo "$CHOICES" | grep -c "\"$C1\"")" "0"
+chk "and the choices carry no emails" "$(echo "$CHOICES" | grep -c '@example.org')" "0"
+
+post --data "Last=Oldpage&First=Olive&Email=op@example.org&UnitType=Troop&Unit=4402&BoardType=Final&DOB=2011-02-03" \
+     "$B/register-youth"
+dob_on_file() { awk -F, 'NR>1 && $4=="Oldpage" {print $11}' "$SCOUTS"; }
+chk "a birthdate from an old cached sign-in page is not kept" "$(dob_on_file)" ""
+post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=SCOUT:Oldpage:Olive:4402" \
+     --data-urlencode "DOB=2011-02-03" "$B/youth-update"
+chk "one already on file stays on file" "$(dob_on_file)" "2011-02-03"
+chk "but the grid read never shows it" "$(curl -s "$B/youth-cells?cols=Last,DOB" | grep -c '2011-02-03')" "0"
+chk "nor the CSV export" "$(curl -s "$B/youth-cells?cols=Last,DOB&fmt=csv&filename=Report.csv" | grep -c '2011-02-03')" "0"
+chk "and the export keeps the column, so columns still line up" \
+    "$(curl -s "$B/youth-cells?cols=Last,DOB,First&fmt=csv" | awk -F, '$1=="Oldpage" {print $3}')" "Olive"
+chk "nor the old email autofill" \
+    "$(curl -s "$B/youth-autofill?Email=Lena.Lookup@Example.org&fmt=json" | grep -c '2010-05-06')" "0"
+
 echo
 echo "== the evening ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"

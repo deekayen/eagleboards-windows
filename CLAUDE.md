@@ -169,6 +169,13 @@ runs a native WPF app instead of the Java app's browser pages.
   app or the pages.
 - Endpoints are a contract with the check-in pages and the evening test:
   change the client before the server, and keep formats frozen.
+- **The check-in pages are shared** (SPEC.md D-18): `index.html`,
+  `youth_register.html`, `adult_register.html`, `checkin.css` and `checkin.js`
+  in `wwwroot/` are copies of `eagleboards-shared/checkin`, pinned by
+  `checkin-pages.lock`. **Never edit them here**; CI fails if they differ from
+  the pinned commit. Change them in the shared repo (WCAG 2.2 AA: its
+  `check-contrast.js` and an axe scan), then copy all five and update the
+  lock. They call the `/api/*` endpoints, the API all three versions serve.
 
 ## Workflow
 

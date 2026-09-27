@@ -43,10 +43,33 @@ public class CheckInServerTests
     {
         using var box = new Sandbox();
         var server = Server(box);
-        Assert.Contains("Please Sign In", (await Send(server, Station, "GET", "/")).Body, StringComparison.Ordinal);
+        Assert.Contains("Please sign in", (await Send(server, Station, "GET", "/")).Body, StringComparison.Ordinal);
         Assert.Contains("register-youth", (await Send(server, Station, "GET", "/youth_register")).Body, StringComparison.Ordinal);
         Assert.Contains("register-adult", (await Send(server, Station, "GET", "/adult_register")).Body, StringComparison.Ordinal);
         Assert.Equal(200, (await Send(server, Station, "GET", "/eb-data.js")).Status);
+        Assert.Contains("ebSignInForm", (await Send(server, Station, "GET", "/checkin.js")).Body, StringComparison.Ordinal);
+        Assert.Equal(200, (await Send(server, Station, "GET", "/checkin.css")).Status);
+    }
+
+    [Fact]
+    public async Task TheSharedPagesLookUpAnEmailWithoutABirthdateOrAnEmail()
+    {
+        // SPEC.md D-18 and D-7: the lookup answers with the fields its form
+        // fills in, matched trimmed and in any case, and nothing more.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
+        {
+            ["Last"] = "Aldridge", ["First"] = "Alex", ["Email"] = "alex@example.org", ["DOB"] = "2010-04-01",
+        });
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+
+        var (status, body) = await Send(server, Station, "POST", "/api/youth-lookup", "email=%20ALEX%40example.org%20");
+        Assert.Equal(200, status);
+        Assert.Contains("\"First\":\"Alex\"", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("2010-04-01", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
+        Assert.Equal("{}", (await Send(server, Station, "POST", "/api/youth-lookup", "email=NONE")).Body);
     }
 
     [Theory]
