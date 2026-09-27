@@ -327,6 +327,41 @@ public class BoardServiceTests
         Assert.Equal("", scout.Phone);
     }
 
+    [Fact]
+    public async Task SignUpGeniusFindsTheSignUpCoveringTheEventEvenOnItsFirstDay()
+    {
+        // The API's dates carry a time, so a sign-up starting at 18:30 on the
+        // event's own date once looked as if it hadn't started yet.
+        const string active = """
+            {"data": [
+              {"signupid": 111, "title": "Spring Campout", "startdatestring": "2026-09-01 08:00:00", "enddatestring": "2026-09-30 17:00:00"},
+              {"signupid": 222, "title": "Eagle Board of Review - September", "startdatestring": "2026-09-22 18:30:00", "enddatestring": "2026-09-22 21:00:00"}
+            ]}
+            """;
+        using var http = new HttpClient(new CannedResponse(active));
+        var sug = new SignUpGenius(http, "test-key", _ => { }, _ => { });
+        var saved = DataRecord.Clock;
+        try
+        {
+            DataRecord.Clock = () => new DateTimeOffset(2026, 9, 22, 12, 0, 0, TimeSpan.FromHours(-4));
+            Assert.Equal("222", await sug.FindSignupIdAsync(CancellationToken.None));
+
+            DataRecord.Clock = () => new DateTimeOffset(2026, 9, 23, 12, 0, 0, TimeSpan.FromHours(-4));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sug.FindSignupIdAsync(CancellationToken.None));
+        }
+        finally
+        {
+            DataRecord.Clock = saved;
+        }
+    }
+
+    /// <summary>Answers every request with the same JSON, so no network or key is needed.</summary>
+    private sealed class CannedResponse(string json) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(json) });
+    }
+
     private static (BoardService Service, string Scout, string Chair, string M1, string M2) UnderReview(Sandbox box)
     {
         var (s, scout, chair, m1, m2) = SeatableEvening(box);

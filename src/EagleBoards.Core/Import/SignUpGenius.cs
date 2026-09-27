@@ -37,7 +37,11 @@ public sealed class SignUpGenius(HttpClient http, string key, Action<string> log
             var title = Text(signup, "title");
             var start = Text(signup, "startdatestring");
             var end = Text(signup, "enddatestring");
-            var inRange = string.CompareOrdinal(today, end) <= 0 && string.CompareOrdinal(today, start) >= 0;
+
+            // Compared on the date alone: the API's strings carry a time too,
+            // and "2026-09-22" sorts before "2026-09-22 18:30:00", which missed
+            // a sign-up on its first day.
+            var inRange = string.CompareOrdinal(today, Day(end)) <= 0 && string.CompareOrdinal(today, Day(start)) >= 0;
             if (inRange && title.Contains("board", StringComparison.OrdinalIgnoreCase)
                 && title.Contains("eagle", StringComparison.OrdinalIgnoreCase))
             {
@@ -172,6 +176,9 @@ public sealed class SignUpGenius(HttpClient http, string key, Action<string> log
         await using var stream = await response.Content.ReadAsStreamAsync(cancel).ConfigureAwait(false);
         return await JsonDocument.ParseAsync(stream, cancellationToken: cancel).ConfigureAwait(false);
     }
+
+    /// <summary>The <c>yyyy-MM-dd</c> a SignUpGenius date string starts with.</summary>
+    private static string Day(string stamp) => stamp.Length > 10 ? stamp[..10] : stamp;
 
     /// <summary>A property as text whatever its JSON type, "" when absent or null (Jackson's asText()).</summary>
     private static string Text(JsonElement element, string name)
