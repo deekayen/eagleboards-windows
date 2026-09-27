@@ -95,6 +95,60 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void AYouthPhoneNumberSentAtSignInIsNotStored()
+    {
+        // SPEC.md D-8: an older cached sign-in page still sends Phone.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(new Dictionary<string, string>(Seed.Scout("Aldridge", "Alex", "1001", "Final")) { ["Phone"] = "555-123-4567" });
+
+        Assert.Equal("", s.Snapshot(DataTable.Scouts).Single()["Phone"]);
+    }
+
+    [Fact]
+    public void AYouthPhoneNumberAlreadyOnFileIsLeftAlone()
+    {
+        // SPEC.md D-8: signing in again, with a number or without one,
+        // neither overwrites nor blanks one from before D-8, and a rewrite of
+        // the file carries it through.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        var id = Seed.ScoutId("Aldridge", "Alex", "1001");
+        s.SaveRow(DataTable.Scouts, "updated", id, new Dictionary<string, string> { ["Phone"] = "555-123-4567" });
+
+        s.RegisterScout(new Dictionary<string, string>(Seed.Scout("Aldridge", "Alex", "1001", "Final")) { ["Phone"] = "555-765-4321" });
+        s.RegisterScout(new Dictionary<string, string>(Seed.Scout("Aldridge", "Alex", "1001", "Final")) { ["Phone"] = "" });
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        s.PostponeBoard(id);
+
+        Assert.Equal("555-123-4567", box.Open().Snapshot(DataTable.Scouts).Single()["Phone"]);
+    }
+
+    [Fact]
+    public void APreRegistrationFileGivesAnAdultTheirPhoneNumberButNotAYouth()
+    {
+        // SPEC.md D-8: a youth's number isn't imported, from the usual
+        // heading or a plain Phone one; an adult's still is.
+        using var box = new Sandbox();
+        var s = box.Open();
+        var path = Path.Combine(box.Root, "prereg.csv");
+        File.WriteAllText(path,
+            "Email,First Name,Last Name,Scouts Contact Number,Scoutmasters Name,Unit Number,Item,Phone\n" +
+            "alex@example.org,Alex,Aldridge,5551234567,Pat Parker,Troop 1001,Board of review,555-123-4567\n" +
+            "ann@example.org,Ann,Able,5557654321,,Troop 2001,Adult volunteer,555-765-4321\n");
+
+        s.ImportPreRegistrations(path);
+
+        var youth = s.Snapshot(DataTable.ScoutsScheduled).Single();
+        Assert.Equal("Aldridge", youth["Last"]);
+        Assert.Equal("", youth["Phone"]);
+        var adult = s.Snapshot(DataTable.AdultHistory).Single();
+        Assert.Equal("Able", adult["Last"]);
+        Assert.Equal("555-765-4321", adult["Phone"]);
+    }
+
+    [Fact]
     public void ABlankEmailDoesNotMatchABlankPreRegistration()
     {
         using var box = new Sandbox();
@@ -242,6 +296,10 @@ public class BoardServiceTests
         Assert.Equal("Crew", history.Records[1].UnitType);
         var scout = Assert.Single(scheduled.Records);
         Assert.Equal(("SCOUT:Aldridge:Alex:1001", BoardTypes.Final, "Sam Smith"), (scout.Id, scout.BoardType, scout.Leader));
+
+        // SPEC.md D-8: the adults keep the number they gave; the youth's isn't kept.
+        Assert.Equal("555-123-4567", history.Records[0].Phone);
+        Assert.Equal("", scout.Phone);
     }
 
     private static (BoardService Service, string Scout, string Chair, string M1, string M2) UnderReview(Sandbox box)

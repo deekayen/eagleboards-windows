@@ -135,7 +135,8 @@ internal sealed class PreRegScoutConverter(DataRecordFile<ScoutRecord> file, Act
         {
             ["First Name"] = FieldConverters.FirstName,
             ["Last Name"] = FieldConverters.LastName,
-            ["Scouts Contact Number"] = FieldConverters.Phone,
+            // Not "Scouts Contact Number": a youth's phone number isn't kept
+            // (SPEC.md D-8). The adults' converter still reads it.
             ["request_status"] = (_, v) => FieldConverters.NotCancelled(v),
             ["Item"] = FieldConverters.ScoutBoardType,
             ["Unit Number"] = FieldConverters.Unit,
@@ -149,10 +150,14 @@ internal sealed class PreRegScoutConverter(DataRecordFile<ScoutRecord> file, Act
         ["id"] = "",
     };
 
-    /// <summary>A file with a birthdate column doesn't put it on file (SPEC.md D-7).</summary>
+    /// <summary>
+    /// A file with a birthdate or a phone column doesn't put either on file
+    /// for a youth (SPEC.md D-7, D-8).
+    /// </summary>
     protected override void Accept(ScoutRecord record)
     {
         record.SetValue(ScoutRecord.DobField, "");
+        record.SetValue(ScoutRecord.PhoneField, "");
         base.Accept(record);
     }
 }

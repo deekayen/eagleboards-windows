@@ -63,7 +63,9 @@ public sealed class EventOptions
 /// </summary>
 public sealed class BoardService
 {
-    private static readonly string[] ScoutRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Phone", "Leader"];
+    // What a youth's repeat sign-in refreshes. Not DOB or Phone: neither is
+    // taken any more (SPEC.md D-7, D-8), and one already on file stays (O-5).
+    private static readonly string[] ScoutRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Leader"];
     private static readonly string[] AdultRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Phone", "ProjectReview", "FinalBoard"];
 
     /// <summary>How to reverse one change: every record it touched, and what it set on each.</summary>
@@ -452,9 +454,10 @@ public sealed class BoardService
             }
 
             // A sign-in page cached from before SPEC.md D-7 still sends a
-            // birthdate. Nothing uses one, so it is dropped here, never
-            // stored; one already on the record is left as it is (O-5).
-            var incoming = new ScoutRecord(fields.Where(f => f.Key != ScoutRecord.DobField));
+            // birthdate, and one from before D-8 a phone number. Nothing uses
+            // either, so they are dropped here, never stored; one already on
+            // the record is left as it is (O-5, D-8).
+            var incoming = new ScoutRecord(fields.Where(f => f.Key is not (ScoutRecord.DobField or ScoutRecord.PhoneField)));
             var scout = Scouts.Get(incoming.Id);
             if (scout != null)
             {

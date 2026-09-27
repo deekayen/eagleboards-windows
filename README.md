@@ -158,8 +158,9 @@ Deliberate changes. The server-side ones each have a unit test in
 - **SignUpGenius.** Imported adults get their real ID straight away (the Java
   import left them all as `ADULT:::` until a restart, so a sign-in that day
   created a duplicate history record). The API key is never written to the log.
-- **Phone numbers** from pre-registration are normalized from their digits;
-  the Java code formatted the raw text, so `(555) 123-4567` came out garbled.
+- **Adults' phone numbers** from pre-registration are normalized from their
+  digits; the Java code formatted the raw text, so `(555) 123-4567` came out
+  garbled. (A youth's isn't imported at all: see Privacy.)
 - **Files.** Every save writes a temporary file and swaps it in, so a crash
   can't leave half a file. Old files in the Windows ANSI code page (accented
   names in an adult history from the 2019 build) and files saved by Excel with
@@ -214,9 +215,12 @@ See [CLAUDE.md](CLAUDE.md) for the working rules (data privacy above all).
 ## Privacy
 
 The data folder holds personal information about minors, so the app asks for
-no more than an event needs: sign-in no longer asks for a youth's birthdate,
-and one sent by an older cached page is thrown away. Birthdates already in
-earlier event folders are left as they are but never shown or exported. Keep
+no more than an event needs: sign-in no longer asks for a youth's birthdate or
+phone number, one sent by an older cached page is thrown away, and imports
+from pre-registration or SignUpGenius don't keep a youth's number either.
+Birthdates and youth phone numbers already in earlier event folders are left as
+they are but never shown, pre-filled or exported. Adults' phone numbers are
+kept as before. Keep
 the folder on the admin computer, out of shared and cloud-synced folders, and
 out of git: `.gitignore`
 and `scripts/hooks/pre-commit` refuse CSV and spreadsheet files, dated event

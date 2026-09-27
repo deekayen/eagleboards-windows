@@ -84,11 +84,14 @@ public partial class AdminWindow : Window
     private static readonly KeyValuePair<string, string>[] WoodBadgeChoices = [new("", "No"), new("Y", "Yes")];
     private static readonly KeyValuePair<string, string>[] RoleChoices = Same(["", .. BoardRoles.All]);
 
+    // The youth tabs, and so their exports, have no Phone or DOB column: a
+    // youth's number and birthdate are never shown or exported, though one may
+    // be on file from an older event (SPEC.md D-7, D-8). Adults' numbers are.
     private static readonly TabSpec[] Specs =
     [
         new("Boards", DataTable.Scouts,
         [
-            new("Last", "Last", 100), new("First", "First", 100), new("Phone", "Phone", 105), new("Email", "Email", 150),
+            new("Last", "Last", 100), new("First", "First", 100), new("Email", "Email", 150),
             new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
             new("UnitType", "Unit type", 85, Kind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 110),
             new("Status", "Status", 95, Kind.Choice, StatusChoices), new("Result", "Result", 100, Kind.Choice, ResultChoices),
@@ -99,14 +102,14 @@ public partial class AdminWindow : Window
             new("RegTime", "Signed in", 72, Kind.ReadOnly, Display: DataRecord.RegTimeHmField), new("RegNum", "Sign-in", 64, Kind.ReadOnly),
             new("Last", "Last", 110), new("First", "First", 110),
             new("UnitType", "Unit type", 85, Kind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 130),
-            new("Email", "Email", 170), new("Phone", "Phone", 110), new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
+            new("Email", "Email", 170), new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
             new("Room", "Room", 60), new("Status", "Status", 95, Kind.Choice, StatusChoices), new("Result", "Result", 100, Kind.Choice, ResultChoices),
         ], "Youth"),
         new("Pre-registered", DataTable.ScoutsScheduled,
         [
             new("Last", "Last", 110), new("First", "First", 110),
             new("UnitType", "Unit type", 85, Kind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 150),
-            new("Email", "Email", 190), new("Phone", "Phone", 110), new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
+            new("Email", "Email", 190), new("BoardType", "Board", 110, Kind.Choice, BoardTypeChoices),
         ], "YouthScheduled"),
         new("Adults", DataTable.Adults,
         [

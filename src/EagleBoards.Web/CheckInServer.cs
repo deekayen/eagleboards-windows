@@ -68,7 +68,8 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/scout-choices"] = new(ScoutChoices, true),
             // The shared check-in pages' API (eagleboards-shared/checkin,
             // SPEC.md D-18): names and units for the lists, a lookup's own
-            // fields for the forms, never a birthdate.
+            // fields for the forms, never a birthdate or a youth's phone
+            // number (D-7, D-8).
             ["/api/checked-in"] = new(ApiCheckedIn, true),
             ["/api/scout-choices"] = new(ApiScoutChoices, true),
             ["/api/youth-lookup"] = new(ApiLookup(DataTable.ScoutsScheduled, YouthPrefill), true),
@@ -296,11 +297,13 @@ public sealed class CheckInServer : IAsyncDisposable
         var columns = _service.Read(table, f => Fields(p.Get("cols"), f.Columns.ToArray())!);
 
         // SPEC.md D-7 / O-5: a birthdate already on file stays there but is
-        // never served, here or in an export. Values are read through these
-        // copies, where DOB names a column that holds nothing; `columns` keeps
-        // the real names for the CSV header, so every column still lines up.
-        var valueColumns = WithholdBirthdate(columns)!;
-        var valueUserData = WithholdBirthdate(userData);
+        // never served, here or in an export, and nor is a youth's phone
+        // number (D-8); an adult's still is. Values are read through these
+        // copies, where a withheld column's name is one that holds nothing;
+        // `columns` keeps the real names for the CSV header, so every column
+        // still lines up.
+        var valueColumns = Withhold(table, columns)!;
+        var valueUserData = Withhold(table, userData);
 
         if (!isLocal)
         {
@@ -402,7 +405,8 @@ public sealed class CheckInServer : IAsyncDisposable
     // The shared check-in pages' API (SPEC.md D-18)
     // ------------------------------------------------------------------
 
-    private static readonly string[] YouthPrefill = ["ID", "Last", "First", "Phone", "UnitType", "Unit", "BoardType", "Leader"];
+    // No phone number for a youth (SPEC.md D-8); an adult's is still filled in.
+    private static readonly string[] YouthPrefill = ["ID", "Last", "First", "UnitType", "Unit", "BoardType", "Leader"];
     private static readonly string[] AdultPrefill = ["ID", "Last", "First", "Phone", "UnitType", "Unit", "FinalBoard", "ProjectReview"];
 
     /// <summary>
@@ -577,7 +581,7 @@ public sealed class CheckInServer : IAsyncDisposable
             }
             else if (p.Get("fmt") == "json")
             {
-                file.FindWhere(lookupField, value).FirstOrDefault()?.ToLooseJson(sb, PrefillColumns(file.Columns));
+                file.FindWhere(lookupField, value).FirstOrDefault()?.ToLooseJson(sb, PrefillColumns(table, file.Columns));
             }
             else
             {
@@ -586,7 +590,7 @@ public sealed class CheckInServer : IAsyncDisposable
                 var match = file.FindWhere(lookupField, value).FirstOrDefault();
                 if (match != null)
                 {
-                    sb.AppendJoin('\n', PrefillColumns(file.Columns).Select(c =>
+                    sb.AppendJoin('\n', PrefillColumns(table, file.Columns).Select(c =>
                     {
                         var cell = new StringBuilder();
                         Core.Records.DataRecord.AppendEscaped(cell, match.GetValue(c));
@@ -603,15 +607,23 @@ public sealed class CheckInServer : IAsyncDisposable
         return SendAsync(context, 200, contentType, sb.ToString());
     };
 
-    private static string[]? WithholdBirthdate(string[]? columns) =>
-        columns?.Select(c => c == Core.Records.ScoutRecord.DobField ? "DOB (withheld)" : c).ToArray();
-
     /// <summary>
-    /// What a pre-fill sends back: every column but the birthdate, which an
-    /// older event folder may still hold (SPEC.md D-7, O-5).
+    /// A column that <paramref name="table"/> never serves, though its file
+    /// may hold one from an older event folder: the birthdate (SPEC.md D-7,
+    /// O-5) and, for the youth tables, the phone number (D-8). An adult's
+    /// phone number is served as before.
     /// </summary>
-    private static IEnumerable<string> PrefillColumns(IEnumerable<string> columns) =>
-        columns.Where(c => c != Core.Records.ScoutRecord.DobField);
+    private static bool IsWithheld(DataTable table, string column) =>
+        column == Core.Records.ScoutRecord.DobField
+        || (column == Core.Records.ScoutRecord.PhoneField && table is (DataTable.Scouts or DataTable.ScoutsScheduled));
+
+    /// <summary>The columns to read values through: a withheld one is renamed ("Phone (withheld)"), a column that holds nothing.</summary>
+    private static string[]? Withhold(DataTable table, string[]? columns) =>
+        columns?.Select(c => IsWithheld(table, c) ? c + " (withheld)" : c).ToArray();
+
+    /// <summary>What a pre-fill sends back: every column but the withheld ones.</summary>
+    private static IEnumerable<string> PrefillColumns(DataTable table, IEnumerable<string> columns) =>
+        columns.Where(c => !IsWithheld(table, c));
 
     // ------------------------------------------------------------------
     // Static pages

@@ -18,7 +18,8 @@ public sealed record SignUpEntry(string StartDate, string FirstName, string Last
 /// Slots whose item mentions "adult" become adult-history records, merged by
 /// email (a match gets its phone updated; two matches means the email is
 /// ambiguous and the entry is skipped). Everything else is a youth
-/// pre-registration, which is what makes a sign-in a "P" rather than a "W".
+/// pre-registration, which is what makes a sign-in a "P" rather than a "W";
+/// a youth's phone number is not imported (SPEC.md D-8).
 /// Entries are filtered by calendar month, not by day, as they always were.
 /// </summary>
 public sealed class SignUpGenius(HttpClient http, string key, Action<string> log, Action<string> trace)
@@ -135,7 +136,7 @@ public sealed class SignUpGenius(HttpClient http, string key, Action<string> log
                 var scout = scheduled.CreateNew();
                 FieldConverters.FirstName(scout, e.FirstName);
                 FieldConverters.LastName(scout, e.LastName);
-                FieldConverters.Phone(scout, phone);
+                // No phone number: a youth's isn't kept (SPEC.md D-8).
                 FieldConverters.ScoutBoardType(scout, e.Item);
                 FieldConverters.Unit(scout, unit);
                 FieldConverters.Leader(scout, leader);

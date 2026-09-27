@@ -52,15 +52,16 @@ public class CheckInServerTests
     }
 
     [Fact]
-    public async Task TheSharedPagesLookUpAnEmailWithoutABirthdateOrAnEmail()
+    public async Task TheSharedPagesLookUpAnEmailWithoutABirthdatePhoneOrEmail()
     {
-        // SPEC.md D-18 and D-7: the lookup answers with the fields its form
-        // fills in, matched trimmed and in any case, and nothing more.
+        // SPEC.md D-18, D-7 and D-8: the lookup answers with the fields its
+        // form fills in, matched trimmed and in any case, and nothing more.
         using var box = new Sandbox();
         var svc = box.Open();
         svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
         {
             ["Last"] = "Aldridge", ["First"] = "Alex", ["Email"] = "alex@example.org", ["DOB"] = "2010-04-01",
+            ["Phone"] = "555-123-4567",
         });
         var server = new CheckInServer(svc, new CheckInServerOptions());
 
@@ -68,8 +69,25 @@ public class CheckInServerTests
         Assert.Equal(200, status);
         Assert.Contains("\"First\":\"Alex\"", body, StringComparison.Ordinal);
         Assert.DoesNotContain("2010-04-01", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Phone", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("555-123-4567", body, StringComparison.Ordinal);
         Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
         Assert.Equal("{}", (await Send(server, Station, "POST", "/api/youth-lookup", "email=NONE")).Body);
+    }
+
+    [Fact]
+    public async Task AnAdultIsStillPreFilledWithTheirPhoneNumber()
+    {
+        // SPEC.md D-8 is about youth only.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        svc.RegisterAdult(new Dictionary<string, string>(Seed.Adult("Able", "Ann", "2001", "Member", "Chair")) { ["Phone"] = "555-765-4321" });
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+
+        var (status, body) = await Send(server, Station, "POST", "/api/adult-lookup", "email=ann%40example.org");
+        Assert.Equal(200, status);
+        Assert.Contains("\"Phone\":\"555-765-4321\"", body, StringComparison.Ordinal);
+        Assert.Contains("555-765-4321", (await Send(server, Station, "GET", "/adult-autofill?Email=ann@example.org&fmt=json")).Body, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -142,15 +160,16 @@ public class CheckInServerTests
     }
 
     [Fact]
-    public async Task ReturningYouthArePreFilledWithoutABirthdate()
+    public async Task ReturningYouthArePreFilledWithoutABirthdateOrPhoneNumber()
     {
-        // SPEC.md D-7 and O-5: one already on file stays there, but the
+        // SPEC.md D-7, D-8 and O-5: one already on file stays there, but the
         // sign-in page is never sent it.
         using var box = new Sandbox();
         var svc = box.Open();
         svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
         {
             ["Last"] = "Aldridge", ["First"] = "Alex", ["Email"] = "alex@example.org", ["DOB"] = "2010-04-01",
+            ["Phone"] = "555-123-4567",
         });
         var server = new CheckInServer(svc, new CheckInServerOptions());
 
@@ -161,7 +180,53 @@ public class CheckInServerTests
             Assert.Contains("Aldridge", body, StringComparison.Ordinal);
             Assert.DoesNotContain("DOB", body, StringComparison.Ordinal);
             Assert.DoesNotContain("2010-04-01", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("Phone", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("555-123-4567", body, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public async Task AYouthPhoneNumberIsNeitherKeptAtSignInNorServed()
+    {
+        // SPEC.md D-8 and D-2: a page cached from before D-8 still sends
+        // Phone, and it is thrown away. One already on file stays there, but
+        // no youth table sends it, even to the admin computer; an adult's
+        // still goes there.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+        Assert.Equal(200, (await Send(server, Station, "POST", "/register-youth",
+            "Last=Aldridge&First=Alex&UnitType=Troop&Unit=1001&BoardType=Final&Phone=5551234567")).Status);
+        Assert.Equal("", svc.Snapshot(DataTable.Scouts).Single()["Phone"]);
+
+        svc.SaveRow(DataTable.Scouts, "updated", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string> { ["Phone"] = "555-123-4567" });
+        svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Bram:Beau:1002", new Dictionary<string, string>
+        {
+            ["Last"] = "Bram", ["First"] = "Beau", ["Phone"] = "555-222-3333",
+        });
+        foreach (var query in new[]
+        {
+            "/youth-cells?cols=Last,Phone", "/youth-cells?cols=Last&data=Phone", "/youth-cells?cols=Last,Phone&fmt=data",
+            "/youth-cells?cols=Last,Phone&fmt=csv&filename=Report.csv", "/youth-cells",
+            "/youth-scheduled-cells?cols=Last,Phone", "/youth-scheduled-cells?fmt=csv",
+        })
+        {
+            var (status, body) = await Send(server, IPAddress.Loopback, "GET", query);
+            Assert.Equal(200, status);
+            Assert.DoesNotContain("555-123-4567", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("555-222-3333", body, StringComparison.Ordinal);
+        }
+
+        Assert.Equal("555-123-4567", box.Open().Snapshot(DataTable.Scouts).Single()["Phone"]);
+        var csv = (await Send(server, IPAddress.Loopback, "GET", "/youth-cells?cols=Last,Phone,First&fmt=csv")).Body;
+        Assert.Contains("Last,Phone,First\nAldridge,,Alex\n", csv, StringComparison.Ordinal);
+
+        await Send(server, Station, "POST", "/register-adult",
+            "Last=Able&First=Ann&UnitType=Troop&Unit=2001&FinalBoard=Chair&ProjectReview=Member&Phone=555-765-4321");
+        Assert.Contains("<cell>555-765-4321</cell>",
+            (await Send(server, IPAddress.Loopback, "GET", "/adult-cells?cols=Last,Phone")).Body, StringComparison.Ordinal);
+        Assert.Contains("<cell>555-765-4321</cell>",
+            (await Send(server, IPAddress.Loopback, "GET", "/adult-history-cells?cols=Last,Phone")).Body, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -27,8 +27,9 @@ namespace EagleBoards.App;
 /// </summary>
 public partial class MainWindow : Window
 {
+    // No Phone or DOB: a youth's are never exported (SPEC.md D-7, D-8).
     private static readonly string[] ReportColumns =
-        ["RegNum", "Last", "First", "Phone", "Email", "BoardType", "UnitType", "Unit", "Leader", "Status", "Result", "BoardChair", "BoardMembers", "Notes"];
+        ["RegNum", "Last", "First", "Email", "BoardType", "UnitType", "Unit", "Leader", "Status", "Result", "BoardChair", "BoardMembers", "Notes"];
 
     private readonly EventSession _session;
     private readonly BoardService _svc;
