@@ -69,6 +69,9 @@ internal static class Program
                     ("4-results.png", () => w.MainNav.SelectedIndex = 1),
                     ("5-people.png", () => w.MainNav.SelectedIndex = 2),
                     ("6-settings.png", () => w.FooterNav.SelectedIndex = 0),
+                    // What the sidebar's Donate link opens: the Support card
+                    // and its Venmo code (SPEC.md D-17), below the fold above.
+                    ("6-support.png", () => Invoke(w, "OnDonate", w, new RoutedEventArgs())),
                 ];
             });
 
