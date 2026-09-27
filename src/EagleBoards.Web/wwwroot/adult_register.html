@@ -120,19 +120,19 @@
             <!-- Tonight only: neither answer is kept in the adult history, so
                  next month's form does not pre-fill last month's. -->
             <fieldset>
-               <legend>Tonight</legend>
+               <legend>This event</legend>
                <label class="reg-check">
                   <input type="checkbox" id="WoodBadge">
                   I'm volunteering toward a Wood Badge ticket item
                </label>
                <div class="reg-field">
-                  <label for="scoutFilter">I'm here supporting a scout</label>
-                  <p class="reg-hint">Their Scoutmaster, coach or parent? Check each scout you came
+                  <label for="scoutFilter">I'm here supporting a youth</label>
+                  <p class="reg-hint">Their Scoutmaster, coach or parent? Check each youth you came
                      with, so we can find you when their review starts. Leave it empty if
                      you're here to serve on any board.</p>
                   <input type="text" id="scoutFilter" placeholder="Type a name to narrow the list">
-                  <div id="scoutList" class="reg-scouts" role="group" aria-label="Scouts">
-                     <span class="reg-hint">Loading scouts...</span>
+                  <div id="scoutList" class="reg-scouts" role="group" aria-label="Youth">
+                     <span class="reg-hint">Loading youth...</span>
                   </div>
                </div>
             </fieldset>
@@ -235,7 +235,7 @@
             if (scouts.length === 0) {
                var none = document.createElement("span");
                none.className = "reg-hint";
-               none.textContent = "No scouts are signed up yet.";
+               none.textContent = "No youth are signed up yet.";
                scoutList.appendChild(none);
                return;
             }
@@ -251,7 +251,7 @@
                scoutList.appendChild(label);
             });
          }).catch(function () {
-            scoutList.textContent = "Could not load the scouts. You can still sign in.";
+            scoutList.textContent = "Could not load the youth. You can still sign in.";
          });
 
          scoutFilter.addEventListener("input", function () {

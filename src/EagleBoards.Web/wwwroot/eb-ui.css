@@ -50,17 +50,58 @@
    --eb-target: 24px;
    /* WCAG 2.5.5 (AAA); Apple HIG 44pt and Material 48dp agree. */
    --eb-target-touch: 44px;
+
+   /* ---- operator-mode surfaces (D-16: follows the system appearance) ----
+      Roles, not literal shades -- e.g. --eb-dark-gray is "the body text
+      color" and goes light in dark mode, it does not stay dark. Olive, red
+      and blue are NOT here: every place that uses them pairs a fixed fill
+      with fixed white text (buttons, bands, box-shadows), so the pairing
+      already holds regardless of page background and repainting them would
+      break the pairing instead of fixing anything. --eb-heading exists
+      because --eb-olive also fills those buttons: text-on-page-background
+      needs its own token so lightening it for dark mode does not lighten
+      every olive button along with it.
+      Every dark value below is verified with the WCAG relative-luminance
+      formula against the --eb-page-bg/--eb-surface it is actually painted
+      on, the same discipline as the light values above -- ratios in the
+      dark block's own comments, all >= 4.5:1 (text) or a documented
+      UI-boundary case for --eb-line. */
+   --eb-page-bg:  #ffffff;   /* page canvas */
+   --eb-surface:  #E9E9E4;   /* raised: toolbars, zebra stripes, cards */
+   --eb-line:     #b6b0a4;   /* panel/input borders */
+   --eb-line-subtle: #e6e2da; /* hairline row dividers */
+   --eb-heading:  var(--eb-olive);  /* headings, links, olive-as-text buttons */
+   --eb-red-text: var(--eb-red);   /* 5.63:1 on white, same red as the buttons */
+}
+
+@media (prefers-color-scheme: dark) {
+   /* Scoped to body.eb-operator, not :root: these tokens are shared with
+      the eb-public check-in pages (registration forms, help), which stay
+      light regardless of the operator's dark-mode setting (see the
+      body.eb-public rule below) -- redefining them on :root would leak
+      into every eb-public rule that also uses them. */
+   body.eb-operator {
+      --eb-page-bg: #14160f;
+      --eb-surface: #22251c;
+      --eb-line: #5c5f52;          /* ~2.4-2.8:1: a hairline, not body text */
+      --eb-line-subtle: #2c2f24;
+      --eb-dark-gray: #E9E9E4;     /* 14.97:1 on --eb-page-bg, 12.78:1 on --eb-surface */
+      --eb-warm-gray: #a8aaa4;     /* 7.77:1 on --eb-page-bg, 6.63:1 on --eb-surface */
+      --eb-heading: #8FB89A;       /* 7.76:1 on --eb-page-bg, 7.03:1 on --eb-surface */
+      --eb-tan: #3d3a2e;           /* 9.35:1 under --eb-dark-gray */
+      --eb-red-text: #f0919b;      /* 8.02:1 on --eb-page-bg */
+   }
 }
 
 /* ---------------------------------------------------------------- shared */
 
 body {
-   color: var(--eb-dark-gray);          /* 15.37:1 on white */
-   background: #ffffff;
+   color: var(--eb-dark-gray);          /* 15.37:1 on white, still >4.5:1 dark */
+   background: var(--eb-page-bg);
 }
 
-h1, h2, h3 { color: var(--eb-olive); }  /* 11.66:1 on white */
-a { color: var(--eb-olive); }
+h1, h2, h3 { color: var(--eb-heading); }  /* 11.66:1 on white, 7.76:1 dark */
+a { color: var(--eb-heading); }
 
 /* ============================ OPERATOR MODE ============================
  * scheduler, admin, configure. The operator scans many rows under time
@@ -92,8 +133,9 @@ body.eb-operator .eb-panel-title {
    padding: 6px 10px;
 }
 
-body.eb-operator .eb-panel { border-color: var(--eb-line); }
-body.eb-operator .eb-toolbar { background: var(--eb-light-tan); }
+body.eb-operator .eb-panel { border-color: var(--eb-line); background: var(--eb-page-bg); }
+body.eb-operator .eb-toolbar .eb-sep { border-left-color: var(--eb-line); }
+body.eb-operator .eb-toolbar { background: var(--eb-surface); }
 body.eb-operator .eb-panel .eb-toolbar { border-bottom-color: var(--eb-line); }
 
 /* Primary action: white on olive = 11.66:1. 28px clears the 24px AA floor
@@ -133,7 +175,7 @@ body.eb-operator .eb-toolbar a.eb-btn {
 body.eb-operator .eb-toolbar button:disabled {
    opacity: 1;
    color: var(--eb-warm-gray);
-   background: #ffffff;
+   background: var(--eb-page-bg);
    border-color: var(--eb-line);
 }
 
@@ -169,9 +211,9 @@ body.eb-operator .eb-toolbar button[data-action="Login"],
 body.eb-operator .eb-toolbar button[data-action="Help"],
 body.eb-operator .eb-toolbar button[data-action="Filter"],
 body.eb-operator .eb-toolbar button#room-filter-clear {
-   color: var(--eb-olive);
-   background: #ffffff;
-   border-color: var(--eb-olive);
+   color: var(--eb-heading);
+   background: var(--eb-page-bg);
+   border-color: var(--eb-heading);
 }
 
 /* Red: anything that removes, reverses or cancels. White on red = 5.63:1.
@@ -215,14 +257,14 @@ body.eb-operator .eb-toolbar button#rooms-add {
    reads as an available one. Warm Gray on white = 7.73:1. */
 body.eb-operator .eb-toolbar button:disabled {
    color: var(--eb-warm-gray) !important;
-   background: #ffffff !important;
+   background: var(--eb-page-bg) !important;
    border-color: var(--eb-line) !important;
 }
 
 /* Admin tab bar */
 body.eb-operator .eb-tabbar { border-bottom-color: var(--eb-olive); }
 body.eb-operator .eb-tabbar button {
-   background: var(--eb-light-tan);
+   background: var(--eb-surface);
    border-color: var(--eb-line);
    color: var(--eb-dark-gray);
    font-weight: 600;
@@ -230,7 +272,7 @@ body.eb-operator .eb-tabbar button {
 }
 body.eb-operator .eb-tabbar button.active {
    background: var(--eb-olive);
-   color: var(--eb-light-tan);       /* 9.58:1 */
+   color: var(--eb-light-tan);       /* 9.58:1 -- fixed pairing, unaffected by theme */
    border-color: var(--eb-olive);
    font-weight: 700;
 }
@@ -266,16 +308,27 @@ body.eb-operator .tabulator .tabulator-header .tabulator-header-filter input {
    padding: 2px 4px;
    font-size: 13px;
    color: var(--eb-dark-gray);
+   background: var(--eb-page-bg);
+   border: 1px solid var(--eb-line);
+}
+/* Plain toolbar/room-filter text inputs and selects, wherever an inline
+   <style> block does not already set them -- browsers default these to an
+   opaque white field, which stays bright in dark mode without this. */
+body.eb-operator .eb-toolbar input,
+body.eb-operator .eb-toolbar select {
+   color: var(--eb-dark-gray);
+   background: var(--eb-page-bg);
    border: 1px solid var(--eb-line);
 }
 body.eb-operator .tabulator .tabulator-row {
-   background: #ffffff;
-   border-bottom: 1px solid #e6e2da;
+   background: var(--eb-page-bg);
+   border-bottom: 1px solid var(--eb-line-subtle);
 }
-/* Zebra: Light Tan is a 1.22:1 tint against white -- inside NN/g's "even a
-   5-10% grey tint is enough" -- while Dark Gray on it still reads 12.61:1. */
+/* Zebra: a 1.22:1 tint against the page in light mode -- inside NN/g's "even
+   a 5-10% grey tint is enough" -- while the row text still reads 12.61:1
+   light / 12.78:1 dark. */
 body.eb-operator .tabulator .tabulator-row.tabulator-row-even {
-   background: var(--eb-light-tan);
+   background: var(--eb-surface);
 }
 body.eb-operator .tabulator .tabulator-row .tabulator-cell {
    padding: 4px 8px;
@@ -306,33 +359,37 @@ body.eb-operator .tabulator input[type=checkbox] {
    cursor: pointer;
 }
 
-/* Room cards keep cornsilk from the original for recognisability, but gain a
-   real border and an olive selected state. */
-body.eb-operator .eb-room-card { border-color: var(--eb-line); color: var(--eb-dark-gray); }
-body.eb-operator .eb-room-card.selected {
-   background: var(--eb-tan);
-   border-color: var(--eb-olive);
-   box-shadow: inset 3px 0 0 var(--eb-olive);
+/* Native <dialog> (P-4). The backdrop and centering are the browser's;
+   only its color needs stating. */
+dialog.eb-dialog::backdrop {
+   background: rgba(0, 0, 0, 0.35);
 }
-
-/* Modals and toasts */
-body.eb-operator .eb-modal-title {
+body.eb-operator .eb-dialog-title {
    background: var(--eb-olive);
    color: var(--eb-light-tan);
    border-bottom: none;
 }
-body.eb-operator .eb-modal-buttons button {
+body.eb-operator .eb-dialog-buttons button {
    min-height: 32px;
    padding: 5px 20px;
    font-weight: 700;
    color: #ffffff;
    background: var(--eb-olive);
    border: 1px solid var(--eb-olive);
-   border-radius: 3px;
 }
-body.eb-operator .eb-toast { color: var(--eb-dark-gray); }
-/* White on Scouting Red = 5.63:1. Red is the action/alert colour (p.54). */
-body.eb-operator .eb-toast-error { background: var(--eb-red); color: #ffffff; }
+/* Cancel answers no action, so it's the same white/neutral intent as the
+   toolbar's navigation buttons, not the primary olive fill. */
+body.eb-operator .eb-dialog-buttons button.eb-cancel,
+body.eb-operator .eb-dialog-buttons button[data-name="Cancel"] {
+   color: var(--eb-heading);
+   background: var(--eb-page-bg);
+   border-color: var(--eb-heading);
+}
+/* Persistent messages (D-14): white on Scouting Red = 5.63:1, light tan on
+   olive = 9.58:1 -- both fixed pairings, unaffected by theme (see the
+   --eb-heading comment at the top of this file for why). */
+body.eb-operator .eb-message-error { background: var(--eb-red); color: #ffffff; }
+body.eb-operator .eb-message-ok { background: var(--eb-olive); color: var(--eb-light-tan); }
 
 /* ========================= PUBLIC SIGN-IN PAGES ========================
  * index, scout_register, adult_register, help. Touched once per person, by
