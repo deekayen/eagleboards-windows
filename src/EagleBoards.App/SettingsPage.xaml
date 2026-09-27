@@ -59,6 +59,13 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <!-- Dark on white whatever the theme, so a phone camera can read it. -->
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+          <Image x:Name="VenmoQr" Width="132" Height="132" RenderOptions.BitmapScalingMode="HighQuality"
+                 AutomationProperties.Name="QR code to pay with Venmo" />
+          <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="16,0,0,0"
+                     Text="Or scan this with your phone to pay with Venmo." />
+        </StackPanel>
       </StackPanel>
     </Border>
   </StackPanel>

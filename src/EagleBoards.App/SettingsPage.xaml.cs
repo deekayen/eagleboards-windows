@@ -40,6 +40,9 @@ public partial class SettingsPage : UserControl
         new("Buy Me a Coffee", "https://buymeacoff.ee/deekayen"),
     ];
 
+    /// <summary>Venmo's Pay screen with the note filled in, for the Support card's QR code (SPEC.md D-17).</summary>
+    private const string VenmoPay = "https://venmo.com/u/drdnorman?txn=pay&note=Eagle%20Boards";
+
     private readonly BoardService _svc;
     private readonly Action _saved;
     private readonly Dictionary<string, TextBox> _fields = [];
@@ -57,6 +60,7 @@ public partial class SettingsPage : UserControl
         AppIcon.Source = LargestIconFrame();
         VersionText.Text = "Version " + AppVersion.Text;
         SupportLinks.ItemsSource = Support;
+        VenmoQr.Source = QrWindow.Render(VenmoPay);
         Load();
     }
 

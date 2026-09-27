@@ -22,7 +22,7 @@ public partial class QrWindow : Window
     }
 
     /// <summary>The address as a QR code bitmap, high enough contrast for a phone camera in a hallway.</summary>
-    private static BitmapImage Render(string url)
+    internal static BitmapImage Render(string url)
     {
         var generator = new QRCodeGenerator();
         var data = generator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
