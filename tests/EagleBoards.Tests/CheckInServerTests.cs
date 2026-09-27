@@ -230,6 +230,47 @@ public class CheckInServerTests
     }
 
     [Fact]
+    public async Task AFilterOnAWithheldColumnMatchesNothing()
+    {
+        // SPEC.md D-7 and D-8: the rows a filter kept would say whose birthdate
+        // or number it is, so a filter on a youth's DOB or Phone keeps none.
+        // One on a column that is served, or on an adult's Phone, still works.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        svc.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        svc.SaveRow(DataTable.Scouts, "updated", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
+        {
+            ["Phone"] = "555-123-4567", ["DOB"] = "2010-04-01",
+        });
+        svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Bram:Beau:1002", new Dictionary<string, string>
+        {
+            ["Last"] = "Bram", ["First"] = "Beau", ["Phone"] = "555-222-3333", ["DOB"] = "2011-05-02",
+        });
+        svc.RegisterAdult(new Dictionary<string, string>(Seed.Adult("Able", "Ann", "2001", "Member", "Chair")) { ["Phone"] = "555-765-4321" });
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+
+        foreach (var query in new[]
+        {
+            "/youth-cells?cols=Last&filter=Phone~555-123-4567", "/youth-cells?cols=Last&filter=DOB~2010-04-01",
+            "/youth-cells?cols=Last&filter=Phone~555-123-4567&fmt=csv", "/youth-cells?cols=Last&filter=Phone~555-123-4567&fmt=data",
+            "/youth-scheduled-cells?cols=Last&filter=Phone~555-222-3333", "/youth-scheduled-cells?cols=Last&filter=DOB~2011-05-02",
+        })
+        {
+            var (status, body) = await Send(server, IPAddress.Loopback, "GET", query);
+            Assert.Equal(200, status);
+            Assert.DoesNotContain("Aldridge", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("Bram", body, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("<cell>Aldridge</cell>",
+            (await Send(server, IPAddress.Loopback, "GET", "/youth-cells?cols=Last&filter=Last~Aldridge")).Body, StringComparison.Ordinal);
+        Assert.Contains("<cell>Able</cell>",
+            (await Send(server, IPAddress.Loopback, "GET", "/adult-cells?cols=Last&filter=Phone~555-765-4321")).Body, StringComparison.Ordinal);
+        Assert.Contains("<cell>Able</cell>",
+            (await Send(server, IPAddress.Loopback, "GET", "/adult-history-cells?cols=Last&filter=Phone~555-765-4321")).Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AStationListsTheScoutsAnAdultMaySupportByNameAndUnitOnly()
     {
         using var box = new Sandbox();

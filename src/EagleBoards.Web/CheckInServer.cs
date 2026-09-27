@@ -276,8 +276,8 @@ public sealed class CheckInServer : IAsyncDisposable
     /// <summary>
     /// Grid rows. <c>cols=A,B</c> picks columns, <c>data=</c> adds userdata,
     /// <c>fmt=rows|data|csv</c>, <c>filter=Field~v1|v2</c> keeps rows whose
-    /// Field is non-empty and appears in the value list, <c>filename=</c> makes
-    /// it a download.
+    /// Field is non-empty and appears in the value list (none, if Field is
+    /// withheld), <c>filename=</c> makes it a download.
     /// </summary>
     private Handler Cells(DataTable table) => (context, p, isLocal) =>
     {
@@ -325,6 +325,14 @@ public sealed class CheckInServer : IAsyncDisposable
                 if (filterField == null || filterValues == null)
                 {
                     return true;
+                }
+
+                // A filter on a withheld column matches nothing: the rows it
+                // kept would say whose birthdate or phone number it is
+                // (SPEC.md D-7, D-8). An adult's phone number filters as before.
+                if (IsWithheld(table, filterField))
+                {
+                    return false;
                 }
 
                 var v = r.Get(filterField);

@@ -33,14 +33,16 @@
 # So the evening is capped at five concurrent boards no matter how many rooms
 # are free -- which is the constraint the scheduler actually has to survive.
 #
-# Sections 9-21 then work through what goes wrong on the night: malformed
+# Sections 9-24 then work through what goes wrong on the night: malformed
 # and replayed requests, every out-of-order step, adults and scouts signing
 # in twice, boards moved between rooms, a room renamed or deleted under a
 # board, a name with a comma in it, two operators seating the same chair at
 # once, the server restarting mid-evening, a room switched between
 # Project and Final, a recorded result corrected on the Admin page, what an
 # adult says at sign-in (Wood Badge, "no thanks", whom they support), undo,
-# and a seated board's members changed.
+# a seated board's members changed, a room renamed with a board in it, and
+# what the shared check-in pages are told (with no birthdate, and no
+# youth phone number).
 # ------------------------------------------------------------------------
 
 set -u
@@ -1116,12 +1118,13 @@ chk "completing frees the renamed room's members" \
 accepted "rename it back" "$(rename ROOM:103 103)"
 chk "nobody committed after section 23" "$(busy_adults)" "0"
 
-# ------------------ 24. what the check-in pages are told, and no birthdate
+# ------- 24. what the check-in pages are told: no birthdate, no youth phone
 # The check-in pages are shared by every version (SPEC.md D-18) and speak one
 # small API that answers with only what each page shows. And no birthdate is
-# kept, shown or exported (D-7); one already on file stays there (O-5).
+# kept, shown or exported (D-7); one already on file stays there (O-5). The
+# same goes for a youth's phone number (D-8), but not an adult's.
 echo
-echo "== 24. the check-in pages' API, and no birthdate =="
+echo "== 24. the check-in pages' API, no birthdate, no youth phone number =="
 
 api_post() { curl -sf -X POST --data-urlencode "email=$2" "$B$1"; }
 
@@ -1132,22 +1135,30 @@ case "$CHECKED_IN" in
 esac
 chk "the lists at the door carry no emails" "$(echo "$CHECKED_IN" | grep -c '@example.org')" "0"
 
+# A pre-registration from an older file, with a birthdate and a phone number.
 post --data-urlencode "!nativeeditor_status=inserted" --data-urlencode "gr_id=SCOUT:Lookup:Lena:4401" \
      --data-urlencode "Last=Lookup" --data-urlencode "First=Lena" --data-urlencode "Email=Lena.Lookup@Example.org" \
      --data-urlencode "UnitType=Troop" --data-urlencode "Unit=4401" --data-urlencode "BoardType=Final" \
-     --data-urlencode "DOB=2010-05-06" "$B/youth-scheduled-update"
+     --data-urlencode "DOB=2010-05-06" --data-urlencode "Phone=555-0100" "$B/youth-scheduled-update"
 LOOKUP=$(api_post /api/youth-lookup "  lena.lookup@EXAMPLE.org ")
 case "$LOOKUP" in
     *'"First":"Lena"'*) ok "a pre-registration is found by email, trimmed and in any case" ;;
     *) bad "youth lookup -- got '$LOOKUP'" ;;
 esac
 chk "the youth lookup never sends a birthdate" "$(echo "$LOOKUP" | grep -c 'DOB\|2010-05-06')" "0"
+chk "nor a phone number" "$(echo "$LOOKUP" | grep -c 'Phone\|555-0100')" "0"
 chk "the youth lookup sends no email back" "$(echo "$LOOKUP" | grep -ci 'example.org')" "0"
 chk "NONE matches nobody" "$(api_post /api/youth-lookup NONE)" "{}"
 case "$(api_post /api/adult-lookup "A1@example.org")" in
     *'"FinalBoard"'*) ok "an adult is found in the history by email" ;;
     *) bad "adult lookup found nobody" ;;
 esac
+chk "the pre-registration's phone number is not in the grid read" \
+    "$(curl -s "$B/youth-scheduled-cells?cols=Last,Phone" | grep -c '555-0100')" "0"
+chk "nor its CSV export" \
+    "$(curl -s "$B/youth-scheduled-cells?cols=Last,Phone&fmt=csv&filename=Youth.csv" | grep -c '555-0100')" "0"
+AUTOFILL=$(curl -s "$B/youth-autofill?Email=Lena.Lookup@Example.org&fmt=json")
+chk "nor the old email autofill" "$(echo "$AUTOFILL" | grep -c '2010-05-06\|555-0100')" "0"
 
 CHOICES=$(curl -sf "$B/api/scout-choices")
 case "$CHOICES" in
@@ -1157,19 +1168,36 @@ esac
 chk "a youth whose evening is over is not offered" "$(echo "$CHOICES" | grep -c "\"$C1\"")" "0"
 chk "and the choices carry no emails" "$(echo "$CHOICES" | grep -c '@example.org')" "0"
 
-post --data "Last=Oldpage&First=Olive&Email=op@example.org&UnitType=Troop&Unit=4402&BoardType=Final&DOB=2011-02-03" \
+post --data "Last=Oldpage&First=Olive&Email=op@example.org&Phone=555-0101&UnitType=Troop&Unit=4402&BoardType=Final&DOB=2011-02-03" \
      "$B/register-youth"
-dob_on_file() { awk -F, 'NR>1 && $4=="Oldpage" {print $11}' "$SCOUTS"; }
+dob_on_file()   { awk -F, 'NR>1 && $4=="Oldpage" {print $11}' "$SCOUTS"; }
+phone_on_file() { awk -F, 'NR>1 && $4=="Oldpage" {print $7}' "$SCOUTS"; }
 chk "a birthdate from an old cached sign-in page is not kept" "$(dob_on_file)" ""
+chk "nor a phone number" "$(phone_on_file)" ""
 post --data-urlencode "!nativeeditor_status=updated" --data-urlencode "gr_id=SCOUT:Oldpage:Olive:4402" \
-     --data-urlencode "DOB=2011-02-03" "$B/youth-update"
-chk "one already on file stays on file" "$(dob_on_file)" "2011-02-03"
-chk "but the grid read never shows it" "$(curl -s "$B/youth-cells?cols=Last,DOB" | grep -c '2011-02-03')" "0"
-chk "nor the CSV export" "$(curl -s "$B/youth-cells?cols=Last,DOB&fmt=csv&filename=Report.csv" | grep -c '2011-02-03')" "0"
-chk "and the export keeps the column, so columns still line up" \
-    "$(curl -s "$B/youth-cells?cols=Last,DOB,First&fmt=csv" | awk -F, '$1=="Oldpage" {print $3}')" "Olive"
-chk "nor the old email autofill" \
-    "$(curl -s "$B/youth-autofill?Email=Lena.Lookup@Example.org&fmt=json" | grep -c '2010-05-06')" "0"
+     --data-urlencode "DOB=2011-02-03" --data-urlencode "Phone=555-0101" "$B/youth-update"
+chk "one already on file stays on file" "$(dob_on_file)|$(phone_on_file)" "2011-02-03|555-0101"
+chk "but the grid read never shows it" "$(curl -s "$B/youth-cells?cols=Last,DOB,Phone" | grep -c '2011-02-03\|555-0101')" "0"
+chk "nor the CSV export" \
+    "$(curl -s "$B/youth-cells?cols=Last,DOB,Phone&fmt=csv&filename=Report.csv" | grep -c '2011-02-03\|555-0101')" "0"
+chk "and the export keeps the columns, so columns still line up" \
+    "$(curl -s "$B/youth-cells?cols=Last,DOB,Phone,First&fmt=csv" | awk -F, '$1=="Oldpage" {print $4}')" "Olive"
+chk "a filter on the phone number says nothing about whose it is" \
+    "$(curl -s "$B/youth-cells?cols=Last&filter=Phone~555-0101" | grep -c 'Oldpage')" "0"
+chk "while a filter on a column that is served still works" \
+    "$(curl -s "$B/youth-cells?cols=Last&filter=Last~Oldpage" | grep -c 'Oldpage')" "1"
+post --data "Last=Oldpage&First=Olive&Email=op@example.org&Phone=555-0199&UnitType=Troop&Unit=4402&BoardType=Final&DOB=2012-12-12" \
+     "$B/register-youth"
+chk "and signing in again neither changes nor blanks it" "$(dob_on_file)|$(phone_on_file)" "2011-02-03|555-0101"
+
+# An adult's number is kept, and served, as before.
+post --data "Last=Phoneon&First=Adele&Email=adele@example.org&Phone=555-0102&UnitType=Troop&Unit=4403&ProjectReview=Member&FinalBoard=Member" \
+     "$B/register-adult"
+case "$(api_post /api/adult-lookup "adele@example.org")" in
+    *'"Phone":"555-0102"'*) ok "an adult's phone number still fills in their form" ;;
+    *) bad "adult lookup lost the phone number" ;;
+esac
+chk "and it is in the adult grid read" "$(curl -s "$B/adult-cells?cols=Last,Phone" | grep -c '555-0102')" "1"
 
 echo
 echo "== the evening ends clean =="
