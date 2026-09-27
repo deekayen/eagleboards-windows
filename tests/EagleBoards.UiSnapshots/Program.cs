@@ -28,6 +28,11 @@ internal static class Program
             return Demo.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "demo"), dark);
         }
 
+        if (rest.Count > 0 && rest[0] == "--site")
+        {
+            return Site.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "site"));
+        }
+
         var outDir = Path.GetFullPath(rest.Count > 0 ? rest[0] : "snapshots");
         Directory.CreateDirectory(outDir);
         var root = Path.Combine(Path.GetTempPath(), "eb-snap-" + Guid.NewGuid().ToString("N"));
