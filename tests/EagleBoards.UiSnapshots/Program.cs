@@ -28,6 +28,30 @@ internal static class Program
             return Demo.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "demo"), dark);
         }
 
+        // --gif out.gif frame.png ms [frame.png ms ...]: frames taken elsewhere
+        // (the Java version's browser pages) animated as the walkthroughs are.
+        if (rest.Count > 3 && rest[0] == "--gif")
+        {
+            var frames = new List<(BitmapSource, int)>();
+            for (var i = 2; i + 1 < rest.Count; i += 2)
+            {
+                var frame = new BitmapImage();
+                frame.BeginInit();
+                frame.CacheOption = BitmapCacheOption.OnLoad;
+                frame.UriSource = new Uri(Path.GetFullPath(rest[i]));
+                frame.EndInit();
+                frames.Add((frame, int.Parse(rest[i + 1], System.Globalization.CultureInfo.InvariantCulture)));
+            }
+
+            GifWriter.Write(Path.GetFullPath(rest[1]), frames);
+            return 0;
+        }
+
+        if (rest.Count > 1 && rest[0] == "--site-event")
+        {
+            return Site.WriteEvent(Path.GetFullPath(rest[1]));
+        }
+
         if (rest.Count > 0 && rest[0] == "--site")
         {
             return Site.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "site"));

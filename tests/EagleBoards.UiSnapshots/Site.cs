@@ -141,7 +141,37 @@ internal static class Site
         return 0;
     }
 
-    private static DateTimeOffset At(int hour, int minute) => new(2026, 10, 27, hour, minute, 0, TimeSpan.FromHours(-4));
+    /// <summary>A time in the scene: 27 October 2026, or moved so 20:00 is now (<see cref="WriteEvent"/>).</summary>
+    private static DateTimeOffset At(int hour, int minute) => new DateTimeOffset(2026, 10, 27, hour, minute, 0, TimeSpan.FromHours(-4)) + _shift;
+
+    private static TimeSpan _shift = TimeSpan.Zero;
+
+    /// <summary>
+    /// Write the scene's event to <paramref name="dir"/> for another version to
+    /// open (the Java jar, the Mac app): an empty AdultHistory.csv, a
+    /// config.properties, and today's event folder, with every time moved so
+    /// the scene's 20:00 is this minute and each timer reads as the pictures
+    /// need while it's shot. Nothing is rendered.
+    /// </summary>
+    public static int WriteEvent(string dir)
+    {
+        var now = DateTimeOffset.Now;
+        now = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, now.Offset);
+        _shift = now - At(20, 0);
+        _now = At(18, 50);
+        DataRecord.Clock = () => _now;
+
+        Directory.CreateDirectory(dir);
+        var history = Path.Combine(dir, "AdultHistory.csv");
+        File.WriteAllText(history, string.Join(',', AdultRecord.AllColumns) + "\n");
+        var config = Path.Combine(dir, "config.properties");
+        File.WriteAllText(config, "Type=CONFIG\nID=DEFAULT\nName=DEFAULT\n");
+        var eventDir = Path.Combine(dir, now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        SeedEvening(BoardService.Open(new EventOptions { DataDirectory = eventDir, AdultHistoryPath = history, ConfigPath = config }));
+
+        Console.WriteLine("site event: " + eventDir);
+        return 0;
+    }
 
     private static string YouthId(string last) => Youth.Where(y => y.Last == last).Select(y => $"SCOUT:{y.Last}:{y.First}:{y.Unit}").Single();
 
