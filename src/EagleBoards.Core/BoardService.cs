@@ -1350,6 +1350,20 @@ public sealed class BoardService
             return ActionResult.Error("ERROR: Room # is required.");
         }
 
+        // "N/A" marks adults who have gone home, so a room by that name would
+        // make everyone in it look gone; a comma is written to the CSV as "~"
+        // and read back as a different name. The Mac and Java versions refuse
+        // both too.
+        if (string.Equals(newName, AdultRoom.Disabled, StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionResult.Error("ERROR: N/A marks adults who have gone home; choose another name");
+        }
+
+        if (newName.Contains(','))
+        {
+            return ActionResult.Error("ERROR: A room name cannot contain a comma");
+        }
+
         var oldName = room.Room;
         if (newName == oldName)
         {

@@ -1082,6 +1082,40 @@ chk "the changed board's members are all free" \
 reset "$C2" >/dev/null
 chk "nobody committed after section 21" "$(busy_adults)" "0"
 
+# ------------------------------- 23. rename a room from its card, mid-board
+# Renaming on the Admin page edits one column, and section 13 shows what that
+# strands. /rename-room is the Event page's way: the room keeps its ID and the
+# youth and adults in it follow the new name, so the board carries on.
+echo
+echo "== 23. rename a room with a board in it =="
+
+rename() { act /rename-room --data-urlencode "RoomID=$1" --data-urlencode "Room=$2"; }
+room_name() { awk -F, -v r="$1" 'NR>1 && $2==r {print $3}' "$ROOMS"; }
+
+R1=$(xscout Sutherland Tobias 3701 Final)
+accepted "a board to rename around" "$(seat 103 "$R1" "$FC1" "$M1" "$M2")"
+accepted "rename room 103 to 103B" "$(rename ROOM:103 103B)"
+chk "the room keeps its ID and takes the new name" "$(room_name ROOM:103)" "103B"
+chk "the youth follows the room" "$(room_of "$R1")" "103B"
+chk "and so does every member" "$(adult_room "$FC1")|$(adult_room "$M1")|$(adult_room "$M2")" "103B|103B|103B"
+chk "still convening" "$(status_of "$R1")" "Seated"
+
+# Whatever another room is called by now: section 13 renames rooms too.
+TAKEN=$(awk -F, 'NR>1 && $2!="ROOM:103" && $3!="" {print $3; exit}' "$ROOMS")
+refused "a name another room already has ($TAKEN)" "$(rename ROOM:103 "$TAKEN")"
+refused "a blank name" "$(rename ROOM:103 "  ")"
+refused "N/A, which marks adults who have gone home" "$(rename ROOM:103 N/A)"
+refused "a name with a comma" "$(rename ROOM:103 "103, east")"
+refused "a room that does not exist" "$(rename ROOM:NOPE 999)"
+chk "none of those renamed anything" "$(room_name ROOM:103)" "103B"
+
+accepted "the board runs to the end in the renamed room" "$(start "$R1")"
+accepted "and completes there" "$(complete "$R1" Approved)"
+chk "completing frees the renamed room's members" \
+    "$(adult_room "$FC1")|$(adult_room "$M1")|$(adult_room "$M2")" "||"
+accepted "rename it back" "$(rename ROOM:103 103)"
+chk "nobody committed after section 23" "$(busy_adults)" "0"
+
 echo
 echo "== the evening ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"

@@ -89,6 +89,8 @@ public sealed class CheckInServer : IAsyncDisposable
             // The Java version's Event page changes a seated board's members
             // over HTTP; same parameters as /seat-board, without the room.
             ["/change-board-members"] = new(BoardAction(p => _service.ChangeBoardMembers(p.Get("ScoutID"), p.Get("ChairID"), p.Get("MemberIDs"))), false),
+            // And renames a room from its card; everyone in it follows.
+            ["/rename-room"] = new(BoardAction(p => _service.RenameRoom(p.Get("RoomID"), p.Get("Room"))), false),
             // The Java version's Undo (SPEC.md O-2): the last reversible action, once.
             ["/restore-board"] = new(BoardAction(_ => _service.RestoreBoard()), false),
         };
