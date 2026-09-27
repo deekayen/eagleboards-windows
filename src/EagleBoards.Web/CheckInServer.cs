@@ -86,6 +86,9 @@ public sealed class CheckInServer : IAsyncDisposable
                 p.Get("Cost"), p.Get("BSAHours"), p.Get("OtherHours"))), false),
             ["/postpone-board"] = new(BoardAction(p => _service.PostponeBoard(p.Get("ScoutID"))), false),
             ["/reset-board"] = new(BoardAction(p => _service.ResetBoard(p.Get("ScoutID"))), false),
+            // The Java version's Event page changes a seated board's members
+            // over HTTP; same parameters as /seat-board, without the room.
+            ["/change-board-members"] = new(BoardAction(p => _service.ChangeBoardMembers(p.Get("ScoutID"), p.Get("ChairID"), p.Get("MemberIDs"))), false),
         };
     }
 

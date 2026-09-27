@@ -985,6 +985,68 @@ chk "and can be undone" "$(adult_col "$NOPROJ" 18)" ""
 chk "nobody committed after section 19" "$(busy_adults)" "0"
 
 
+# ------------------------- 21. change the members of a board already seated
+# Someone on a seated board has to leave, or the chair changes hands. The
+# same composition rules as seating apply, except that the adults already in
+# the room may stay; whoever leaves is freed, whoever joins is committed, and
+# the room timer keeps running because it is the same board.
+echo
+echo "== 21. change the members of a seated board =="
+
+change() { # <scout> <chair> <member>...
+    _sc=$1; _ch=$2
+    shift 2
+    _ids=""
+    for _m in "$@"; do _ids="${_ids:+$_ids,}$_m"; done
+    act /change-board-members \
+        --data-urlencode "ScoutID=$_sc" \
+        --data-urlencode "ChairID=$_ch" \
+        --data-urlencode "MemberIDs=$_ids"
+}
+last_update() { awk -F, -v i="$1" 'NR>1 && $2==i {print $15}' "$SCOUTS"; }
+room_leaders() { awk -F, -v r="$1" 'NR>1 && $2==r {print $6}' "$ROOMS"; }
+
+C1=$(xscout Quennell Rosalind 3601 Final)
+# Section 20 (undo) is not in this copy yet: this server has no
+# /restore-board. A scout of its own stands in for the one it left waiting.
+U1=$(xscout Prescott Odalys 3501 Final)
+C2=$(xscout Ravenscroft Sebastian 3602 Final)
+accepted "a board to change" "$(seat 101 "$C1" "$FC1" "$M1" "$M2")"
+accepted "and one next door" "$(seat 102 "$C2" "$FC2" "$M4" "$M5")"
+since=$(last_update "$C1")
+
+accepted "the chair leaves: another chair takes over and a member joins" \
+    "$(change "$C1" "$FC3" "$FC3" "$M1" "$M3")"
+chk "the chair who left is free" "$(adult_room "$FC1")" ""
+chk "the member not kept is free" "$(adult_room "$M2")" ""
+chk "the new chair and member are in the room" "$(adult_room "$FC3")|$(adult_room "$M3")" "101|101"
+chk "the member who stayed is still in the room" "$(adult_room "$M1")" "101"
+chk "the new chair is recorded" "$(chair_of "$C1")" "$FC3"
+chk "the room card names the new board" "$(room_leaders ROOM:101 | tr '~' ',' | awk -F, '{print NF}')" "3"
+chk "still convening: the step is unchanged" "$(status_of "$C1")" "Seated"
+chk "the timer keeps running" "$(last_update "$C1")" "$since"
+
+refused "an adult on the board next door cannot join" "$(change "$C1" "$FC3" "$FC3" "$M1" "$M4")"
+refused "too few members is refused" "$(change "$C1" "$FC3" "$FC3" "$M1")"
+refused "a plain member may not take the chair" "$(change "$C1" "$M1" "$FC3" "$M1" "$M3")"
+refused "the chair must sit on the board" "$(change "$C1" "$FC1" "$M1" "$M3" "$M6")"
+refused "a waiting scout has no board to change" "$(change "$U1" "$FC1" "$FC1" "$M6" "$M7")"
+chk "none of those changed anyone" "$(adult_room "$FC3")|$(adult_room "$M1")|$(adult_room "$M3")|$(adult_room "$M6")" "101|101|101|"
+
+start "$C1" >/dev/null
+accepted "members can change during the review too" "$(change "$C1" "$FC3" "$FC3" "$M1" "$M3" "$M6")"
+chk "still in review" "$(status_of "$C1")" "InProgress"
+chk "the added member is in the room" "$(adult_room "$M6")" "101"
+# The Java copy undoes this change here; this server has no /restore-board.
+accepted "and taken back out the same way" "$(change "$C1" "$FC3" "$FC3" "$M1" "$M3")"
+chk "the member taken out is free again" "$(adult_room "$M6")" ""
+
+accepted "completing releases whoever is on the board now" "$(complete "$C1" Approved)"
+chk "the changed board's members are all free" \
+    "$(adult_room "$FC3")|$(adult_room "$M1")|$(adult_room "$M3")" "||"
+reset "$C2" >/dev/null
+chk "nobody committed after section 21" "$(busy_adults)" "0"
+
 echo
 echo "== the evening ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"
