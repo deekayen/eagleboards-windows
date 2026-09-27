@@ -5,8 +5,7 @@
 
        scripts/make-icon.sh builds EagleBoards.ico from this file. Up to
        64 px it drops the "fine" texture, shows the "bold" feather
-       splits and uses the "cast-small" filter; up to 32 px it also drops
-       the "letters". -->
+       splits and uses the "cast-small" filter. -->
   <defs>
     <!-- Cast metal: the relief's lightness is its height. Blur it into a
          surface, light it from the top left, darken the recesses the way an
@@ -63,8 +62,6 @@
     <clipPath id="body-clip"><path d="M 100 92 C 98 116, 100 136, 108 158 L 148 158 C 156 136, 158 116, 156 92 Z"/></clipPath>
     <clipPath id="head-clip"><path d="M 103 100 C 103 92, 107 85, 112 80 C 110 79, 107 78, 105 76.5 C 103 75, 101.5 75, 100.5 77.5 C 98.5 70, 100 61, 107 55.5 C 111 52.5, 115 51.5, 119 51 C 124 46.5, 133 45, 143 46 C 153 47, 159 53, 160 62 C 161 73, 161 86, 165 98 L 158 108 L 104 108 Z"/></clipPath>
     <clipPath id="thigh-clip"><path d="M 121 145 C 103 154, 88 178, 91 209 L 127.6 209 C 127.6 186, 126.4 163, 121 145 Z"/></clipPath>
-    <clipPath id="letter-clip"><rect x="0" y="111" width="256" height="40"/></clipPath>
-    <clipPath id="letter-edge-clip"><rect x="0" y="109.3" width="256" height="43.4"/></clipPath>
     <!-- Left wing: flight feathers, coverts at the shoulder, the rim along the top. -->
     <g id="wing">
       <path d="M 8 12 C 30 21, 60 36, 81 46 Q 88 49.5, 88 58 C 88 72, 91 86, 100 98 L 113 112 L 116 194 L 97 191 Q 93.1 188.5 90.5 181.6 Q 82.7 181.9 79.3 179.5 Q 75.5 176.8 73.4 169.7 Q 65.8 169.3 62.6 166.6 Q 59.2 163.3 58.5 156 Q 51 154.3 48.3 151 Q 45.5 147.3 45.7 140 Q 38.5 137.2 36.3 133.6 Q 33.9 129.6 35 122.3 Q 28.2 118.8 26.4 115 Q 24.4 110.8 26.3 103.6 Q 19.8 99.4 18.4 95.4 Q 16.9 91 19.5 84.1 Q 13.6 79.2 12.7 75.1 Q 11.9 70.5 15.5 64.1 Q 10.2 58.4 9.7 54.2 Q 9.1 49.6 13.1 43.3 Q 8.2 37.4 8 33.1 Q 7.9 28.5 10.9 22.6 Q 7.9 16.2 8 12 Z" fill="#999999"/>
@@ -339,11 +336,6 @@
       <path d="M 142 212.5 H 149.2 M 142 223 H 149.2" stroke="#666666" stroke-width="1.1"/>
       <rect x="151.4" y="202" width="9.2" height="33" rx="4.6"/>
       <path d="M 152.4 212.5 H 159.6 M 152.4 223 H 159.6" stroke="#666666" stroke-width="1.1"/>
-    </g>
-    <!-- B S A -->
-    <g class="letters" fill="none" stroke-linejoin="miter" stroke-miterlimit="4">
-      <path clip-path="url(#letter-edge-clip)" d="M 75.5 147.5 H 60.5 V 114.5 H 73.5 A 8.25 8.25 0 0 1 73.5 131 H 60.5 M 60.5 131 H 75.5 A 8.25 8.25 0 0 1 75.5 147.5 M 136 117.7 A 10.2 8.2 0 1 0 128 131 A 11.2 8.2 0 1 1 119.2 144.3 M 170.8 156 L 184 106 L 197.2 156 M 175.5 139 H 192.5" stroke="#666666" stroke-width="9.6"/>
-      <path clip-path="url(#letter-clip)" d="M 75.5 147.5 H 60.5 V 114.5 H 73.5 A 8.25 8.25 0 0 1 73.5 131 H 60.5 M 60.5 131 H 75.5 A 8.25 8.25 0 0 1 75.5 147.5 M 136 117.7 A 10.2 8.2 0 1 0 128 131 A 11.2 8.2 0 1 1 119.2 144.3 M 170.8 156 L 184 106 L 197.2 156 M 175.5 139 H 192.5" stroke="#ffffff" stroke-width="6.3"/>
     </g>
   </g>
 </svg>
