@@ -36,8 +36,8 @@ runs a native WPF app instead of the Java app's browser pages.
 - `dotnet test tests/EagleBoards.Tests -c Release`: rules (ported case for
   case from the Java `test-seat-conflicts.js`), storage format, lifecycle,
   auto-select, and each deliberate divergence from Java.
-- `bash scripts/test-board-evening.sh`: the Java project's end-to-end HTTP
-  evening, unchanged except for the launch lines and section 18's check of
+- `bash scripts/test-board-event.sh`: the Java project's end-to-end HTTP
+  event test, unchanged except for the launch lines and section 18's check of
   the Admin window's choice lists (Java reads admin.html; this reads
   `AdminWindow.xaml.cs`). New scenarios added in the Java repo are copied here
   and into the Mac version. `EB_JAR=<jar>` runs it against
@@ -59,7 +59,7 @@ runs a native WPF app instead of the Java app's browser pages.
   and the shared check-in pages (`checkin.png`, `youth.png`, `adult.png`)
   through Edge headless; see WEBSITE.md in eagleboards-shared for when.
 - **CI is the acceptance gate** (`.github/workflows/build.yml`, windows-latest):
-  build, unit tests, the evening, snapshots (artifact), self-contained publish,
+  build, unit tests, the event test, snapshots (artifact), self-contained publish,
   and a smoke test of the published exe (`scripts/smoke-test-exe.sh`). Prefer
   pushing and reading the run over re-running the whole suite locally.
 - **Releases** (`.github/workflows/release.yml`): Run workflow (today's date)
@@ -94,7 +94,7 @@ runs a native WPF app instead of the Java app's browser pages.
    the window shows them as the board is built; warnings make Seat say "Seat
    anyway" (same-unit is override-only by design). Anything absolute must also
    be refused server-side, because the HTTP endpoints are another way in. Add a unit test for any rule you change
-   and a case in `test-board-evening.sh` if it changes what the server does.
+   and a case in `test-board-event.sh` if it changes what the server does.
 5. **Don't let a test or harness pop UI on the owner's desktop.** WPF runs
    `App.OnStartup` on the first message pump even without `Run()`, so harnesses
    use a plain `Application` plus `Theme.xaml`, never `EagleBoards.App.App`.
@@ -181,7 +181,7 @@ runs a native WPF app instead of the Java app's browser pages.
   snapshot harness); adorners don't follow their element's visibility.
 - **Branding is district-neutral.** Never put a district or council name in the
   app or the pages.
-- Endpoints are a contract with the check-in pages and the evening test:
+- Endpoints are a contract with the check-in pages and the event test:
   change the client before the server, and keep formats frozen.
 - **The check-in pages are shared** (SPEC.md D-18): `index.html`,
   `youth_register.html`, `adult_register.html`, `checkin.css` and `checkin.js`

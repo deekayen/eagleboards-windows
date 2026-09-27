@@ -40,11 +40,11 @@ jobs:
       - name: Unit tests
         run: dotnet test tests/EagleBoards.Tests -c Release --no-build
 
-      # The Java project's end-to-end evening, unchanged apart from how the
+      # The Java project's end-to-end event test, unchanged apart from how the
       # server is launched: the proof that the port's server behaves the same.
-      - name: Board evening (HTTP, end to end)
+      - name: Board event (HTTP, end to end)
         shell: bash
-        run: bash scripts/test-board-evening.sh
+        run: bash scripts/test-board-event.sh
 
       # Off-screen renders of every window over synthetic data, light and
       # dark, plus the README's demo GIF, for review.

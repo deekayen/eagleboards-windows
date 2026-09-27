@@ -15,7 +15,7 @@ name: release
 # time, so there is no file to bump first.
 #
 # Nothing is published unless the exact exe being attached builds, passes the
-# tests and the board evening, carries no data files, reports the right
+# tests and the board event test, carries no data files, reports the right
 # version, and serves the check-in site in a smoke test.
 
 on:
@@ -88,7 +88,7 @@ jobs:
         run: |
           dotnet build EagleBoards.slnx -c Release
           dotnet test tests/EagleBoards.Tests -c Release --no-build
-          bash scripts/test-board-evening.sh
+          bash scripts/test-board-event.sh
 
       - name: Publish the exe
         shell: bash

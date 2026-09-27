@@ -180,14 +180,14 @@ src/EagleBoards.Server   headless console host (tests, no-desktop use)
 src/EagleBoards.App      the WPF admin app (EagleBoards.exe)
 tests/EagleBoards.Tests       xUnit: composition rules, storage format, lifecycle, auto-select
 tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and the demo GIF
-scripts/test-board-evening.sh the Java project's HTTP end-to-end event, run against this server
+scripts/test-board-event.sh   the Java project's HTTP end-to-end event, run against this server
 scripts/test-handoff.sh       the Java and Windows versions taking turns on one event folder
 ```
 
 ```bat
 dotnet build -c Release
 dotnet test tests/EagleBoards.Tests -c Release
-bash scripts/test-board-evening.sh
+bash scripts/test-board-event.sh
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots-dark --dark
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/images
@@ -195,7 +195,7 @@ dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/ima
 ```
 
 The last two regenerate the images in this README; run them after a UI change.
-`EB_JAR=/path/to/eagleboardscheduler-*.jar bash scripts/test-board-evening.sh`
+`EB_JAR=/path/to/eagleboardscheduler-*.jar bash scripts/test-board-event.sh`
 runs the same end-to-end test against the Java server, for comparison, and
 `EB_JAR=... bash scripts/test-handoff.sh` has the two versions take turns on
 one event folder, as they would if one crashed mid-event.

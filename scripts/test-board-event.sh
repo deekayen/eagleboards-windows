@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------------
-# test-board-evening.sh — end-to-end regression test for a board evening.
+# test-board-event.sh — end-to-end regression test for a board event.
 #
 # scripts/test-seat-conflicts.js pins down the composition RULES as pure
 # functions. This pins down what the SERVER does with them across a whole
-# evening: boards convening and starting, adults committed to one room and
+# event: boards convening and starting, adults committed to one room and
 # released when the review finishes, boards postponed and reset, and the
 # rules that must hold even when the request does not come from our own UI.
 #
-#   dotnet build -c Release && bash scripts/test-board-evening.sh
-#   EB_PORT=18096 bash scripts/test-board-evening.sh
-#   EB_JAR=/path/to/eagleboardscheduler-*.jar bash scripts/test-board-evening.sh
+#   dotnet build -c Release && bash scripts/test-board-event.sh
+#   EB_PORT=18096 bash scripts/test-board-event.sh
+#   EB_JAR=/path/to/eagleboardscheduler-*.jar bash scripts/test-board-event.sh
 #
 # The last form runs the SAME checks against the Java version this was ported
 # from. The script came over from that project unchanged apart from how the
@@ -30,14 +30,14 @@
 #   30 adults, of whom only FIVE may chair anything:
 #       3 can chair a Final board, 3 a Project review, one of them both.
 #
-# So the evening is capped at five concurrent boards no matter how many rooms
+# So the event is capped at five concurrent boards no matter how many rooms
 # are free -- which is the constraint the scheduler actually has to survive.
 #
 # Sections 9-24 then work through what goes wrong on the night: malformed
 # and replayed requests, every out-of-order step, adults and scouts signing
 # in twice, boards moved between rooms, a room renamed or deleted under a
 # board, a name with a comma in it, two operators seating the same chair at
-# once, the server restarting mid-evening, a room switched between
+# once, the server restarting mid-event, a room switched between
 # Project and Final, a recorded result corrected on the Admin page, what an
 # adult says at sign-in (Wood Badge, "no thanks", whom they support), undo,
 # a seated board's members changed, a room renamed with a board in it, and
@@ -50,7 +50,7 @@ set -u
 PORT="${EB_PORT:-18096}"
 B="http://127.0.0.1:$PORT"
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-WORK="${TMPDIR:-/tmp}/eb-evening-$$"
+WORK="${TMPDIR:-/tmp}/eb-event-$$"
 SRV=""
 
 PASS=0
@@ -257,7 +257,7 @@ for r in 200A 200B 201A 201B 202; do
 done
 
 # The five chair-qualified people. FC1 can chair either kind, so committing
-# them to a Final board is what drops the evening to two Project chairs.
+# them to a Final board is what drops the event to two Project chairs.
 FC1=$(adult 1 2001 Chair       Chair)
 FC2=$(adult 2 2002 Member      Chair)
 FC3=$(adult 3 2003 Member      Chair)
@@ -303,7 +303,7 @@ SF7=$(scout 7 Final); SF8=$(scout 8 Final); SF9=$(scout 9 Final)
 SP1=$(scout 10 Project); SP2=$(scout 11 Project); SP3=$(scout 12 Project)
 SP4=$(scout 13 Project); SP5=$(scout 14 Project)
 
-echo "== 1. the evening as seeded =="
+echo "== 1. the event as seeded =="
 chk "12 rooms"  "$(awk 'NR>1' "$ROOMS"  | wc -l | tr -d ' ')" "12"
 chk "30 adults" "$(awk 'NR>1' "$ADULTS" | wc -l | tr -d ' ')" "30"
 chk "14 scouts" "$(awk 'NR>1' "$SCOUTS" | wc -l | tr -d ' ')" "14"
@@ -348,7 +348,7 @@ chk "none of that seated anyone" "$(n_status Seated)" "0"
 
 # ------------------------------------------------------- 3. the chair ceiling
 echo
-echo "== 3. five chairs cap the evening at five concurrent boards =="
+echo "== 3. five chairs cap the event at five concurrent boards =="
 
 accepted "Final board 1, room 101" "$(seat 101 "$SF1" "$FC1" "$M1" "$M2")"
 accepted "Final board 2, room 102" "$(seat 102 "$SF2" "$FC2" "$M3" "$M4")"
@@ -403,7 +403,7 @@ accepted "and now the result can be recorded" \
         --data-urlencode "Result=Approved")"
 chk "board is Completed" "$(status_of "$SF1")" "Completed"
 
-# The whole evening turns on this: finishing a review must hand the adults
+# The whole event turns on this: finishing a review must hand the adults
 # back, or the fifth board is the last board.
 echo
 echo "== 6. completing a review releases its adults =="
@@ -446,7 +446,7 @@ chk "its project chair was released"     "$(adult_room "$PC1")" ""
 
 # --------------------------------------------------------- 8. run it to the end
 echo
-echo "== 8. the rest of the evening, five chairs at a time =="
+echo "== 8. the rest of the event, five chairs at a time =="
 
 # Explicit rather than greedy: a regression test should assert the outcome it
 # expects, not whatever the scheduler managed on the day.
@@ -475,7 +475,7 @@ chk "every room empty"         "$(empty_rooms)" "12"
 
 # Every completed board must name a chair who was actually allowed to chair
 # it -- the record is what the district keeps, so a wrong chair on it is the
-# failure that outlives the evening.
+# failure that outlives the event.
 bad_chairs=0
 while IFS= read -r line; do
     [ -z "$line" ] && continue
@@ -722,7 +722,7 @@ chk "nobody committed after section 15" "$(busy_adults)" "0"
 
 # ----------------------------------------------- 16. the laptop restarts
 echo
-echo "== 16. the server restarts in the middle of the evening =="
+echo "== 16. the server restarts in the middle of the event =="
 
 # A laptop that sleeps, a Pi that loses power, a window closed by mistake:
 # boards convening and running when it goes down must still be there -- and
@@ -768,7 +768,7 @@ reset "$LATE11" >/dev/null
 echo
 echo "== 17. a room switched between Project and Final on the Admin page =="
 
-# When the evening's mix turns out different from the plan, rooms get
+# When the event's mix turns out different from the plan, rooms get
 # switched on the Admin page. A room's type is only where the UI suggests a
 # board should go (process_seat.js asks before crossing it); the size and
 # chair rules, and the room-card timers, all follow the SCOUT's board type.
@@ -1165,7 +1165,7 @@ case "$CHOICES" in
     *'"id":"SCOUT:Lookup:Lena:4401"'*) ok "an RSVP is offered to adults as someone to support" ;;
     *) bad "scout-choices is missing the RSVP" ;;
 esac
-chk "a youth whose evening is over is not offered" "$(echo "$CHOICES" | grep -c "\"$C1\"")" "0"
+chk "a youth who is done for the event is not offered" "$(echo "$CHOICES" | grep -c "\"$C1\"")" "0"
 chk "and the choices carry no emails" "$(echo "$CHOICES" | grep -c '@example.org')" "0"
 
 post --data "Last=Oldpage&First=Olive&Email=op@example.org&Phone=555-0101&UnitType=Troop&Unit=4402&BoardType=Final&DOB=2011-02-03" \
@@ -1200,7 +1200,7 @@ esac
 chk "and it is in the adult grid read" "$(curl -s "$B/adult-cells?cols=Last,Phone" | grep -c '555-0102')" "1"
 
 echo
-echo "== the evening ends clean =="
+echo "== the event ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"
 chk "no review left running"   "$(n_status InProgress)" "0"
 chk "every adult released"     "$(busy_adults)" "0"
@@ -1208,10 +1208,10 @@ chk "every adult released"     "$(busy_adults)" "0"
 # ------------------------------------------------------------------- verdict
 echo
 if [ "$FAIL" -gt 0 ]; then
-    echo "BOARD EVENING: FAIL — $FAIL of $((PASS + FAIL)) checks failed"
+    echo "BOARD EVENT: FAIL — $FAIL of $((PASS + FAIL)) checks failed"
     echo "--- server log (tail) ---"
     tail -30 "$WORK/server.log"
     exit 1
 fi
 
-echo "BOARD EVENING: PASS — $PASS checks"
+echo "BOARD EVENT: PASS — $PASS checks"

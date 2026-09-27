@@ -1415,7 +1415,7 @@ public sealed class BoardService
     /// Switch a room between final boards and project reviews, on the room
     /// card itself rather than only the Admin tables. A board already seated
     /// there isn't disturbed (GTA 8.0.5.3): a final board may sit in a
-    /// project-review room and back, as section 17 of the evening test
+    /// project-review room and back, as section 17 of the event test
     /// covers.
     /// </summary>
     public ActionResult SetRoomType(string? roomId, string? boardType)

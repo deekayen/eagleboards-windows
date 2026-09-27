@@ -6,7 +6,7 @@ using EagleBoards.Core.Storage;
 namespace EagleBoards.Tests;
 
 /// <summary>
-/// Behaviour the HTTP evening test (scripts/test-board-evening.sh) doesn't
+/// Behaviour the HTTP event test (scripts/test-board-event.sh) doesn't
 /// reach, mostly the places this port deliberately differs from the Java one.
 /// </summary>
 [Collection(ClockCollection.Name)]
@@ -806,7 +806,7 @@ public class BoardServiceTests
     [Fact]
     public void UndoIsRefusedOnceSomethingElseChangedWhatItWouldPutBack()
     {
-        // The Java version's restore refuses the same way (evening section 20):
+        // The Java version's restore refuses the same way (event test section 20):
         // putting the old value back would silently undo the correction too.
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = SeatableEvening(box);

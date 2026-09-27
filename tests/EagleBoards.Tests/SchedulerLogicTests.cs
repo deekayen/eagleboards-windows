@@ -267,13 +267,13 @@ public class SchedulerLogicTests
     }
 
     /// <summary>
-    /// The evening test's shape: 9 Final and 5 Project scouts, 30 adults, five
+    /// The event test's shape: 9 Final and 5 Project scouts, 30 adults, five
     /// of whom chair anything. Proposing boards down the queue must reach the
     /// chair cap of five at once; sign-in order stalled at three, because the
     /// first Final board took both project chairs as its members.
     /// </summary>
     [Fact]
-    public void AWholeEveningSeatsFiveBoardsAtOnce()
+    public void AWholeEventSeatsFiveBoardsAtOnce()
     {
         var adults = new List<AdultInfo>
         {
