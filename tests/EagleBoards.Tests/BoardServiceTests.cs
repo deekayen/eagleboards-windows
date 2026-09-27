@@ -50,6 +50,51 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void ABirthdateSentAtSignInIsNotStored()
+    {
+        // SPEC.md D-7: an older cached sign-in page still sends DOB.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(new Dictionary<string, string>(Seed.Scout("Aldridge", "Alex", "1001", "Final")) { ["DOB"] = "2010-04-01" });
+
+        Assert.Equal("", s.Snapshot(DataTable.Scouts).Single()["DOB"]);
+    }
+
+    [Fact]
+    public void ABirthdateAlreadyOnFileIsLeftAlone()
+    {
+        // SPEC.md O-5: signing in again neither overwrites nor blanks one
+        // from before D-7, and a rewrite of the file carries it through.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        var id = Seed.ScoutId("Aldridge", "Alex", "1001");
+        s.SaveRow(DataTable.Scouts, "updated", id, new Dictionary<string, string> { ["DOB"] = "2010-04-01" });
+
+        s.RegisterScout(new Dictionary<string, string>(Seed.Scout("Aldridge", "Alex", "1001", "Final")) { ["DOB"] = "2011-05-02" });
+        s.PostponeBoard(id);
+
+        Assert.Equal("2010-04-01", box.Open().Snapshot(DataTable.Scouts).Single()["DOB"]);
+    }
+
+    [Fact]
+    public void APreRegistrationFileWithBirthdatesDoesNotStoreThem()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        var path = Path.Combine(box.Root, "prereg.csv");
+        File.WriteAllText(path,
+            "Email,First Name,Last Name,Scouts Contact Number,Scoutmasters Name,Unit Number,Item,DOB\n" +
+            "alex@example.org,Alex,Aldridge,5551234567,Pat Parker,Troop 1001,Board of review,2010-04-01\n");
+
+        s.ImportPreRegistrations(path);
+
+        var row = s.Snapshot(DataTable.ScoutsScheduled).Single();
+        Assert.Equal("Aldridge", row["Last"]);
+        Assert.Equal("", row["DOB"]);
+    }
+
+    [Fact]
     public void ABlankEmailDoesNotMatchABlankPreRegistration()
     {
         using var box = new Sandbox();

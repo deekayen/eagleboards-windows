@@ -27,7 +27,13 @@ public sealed class ScoutRecord : PersonRecord
         set => SetValue("RegNum", value);
     }
 
-    public string Dob => GetValue("DOB");
+    /// <summary>
+    /// The birthdate column. It stays in the file so folders still move
+    /// between versions (SPEC.md D-1), but nothing is written to it, shown
+    /// from it or sent from it (D-7). Values already on file are carried
+    /// through untouched (O-5).
+    /// </summary>
+    public const string DobField = "DOB";
 
     public string Leader => GetValue("Leader");
 

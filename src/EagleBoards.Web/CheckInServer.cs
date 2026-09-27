@@ -434,7 +434,7 @@ public sealed class CheckInServer : IAsyncDisposable
             }
             else if (p.Get("fmt") == "json")
             {
-                file.FindWhere(lookupField, value).FirstOrDefault()?.ToLooseJson(sb);
+                file.FindWhere(lookupField, value).FirstOrDefault()?.ToLooseJson(sb, PrefillColumns(file.Columns));
             }
             else
             {
@@ -443,7 +443,7 @@ public sealed class CheckInServer : IAsyncDisposable
                 var match = file.FindWhere(lookupField, value).FirstOrDefault();
                 if (match != null)
                 {
-                    sb.AppendJoin('\n', file.Columns.Select(c =>
+                    sb.AppendJoin('\n', PrefillColumns(file.Columns).Select(c =>
                     {
                         var cell = new StringBuilder();
                         Core.Records.DataRecord.AppendEscaped(cell, match.GetValue(c));
@@ -462,6 +462,13 @@ public sealed class CheckInServer : IAsyncDisposable
 
     // ------------------------------------------------------------------
     // Static pages
+    /// <summary>
+    /// What a pre-fill sends back: every column but the birthdate, which an
+    /// older event folder may still hold (SPEC.md D-7, O-5).
+    /// </summary>
+    private static IEnumerable<string> PrefillColumns(IEnumerable<string> columns) =>
+        columns.Where(c => c != Core.Records.ScoutRecord.DobField);
+
     // ------------------------------------------------------------------
 
     private static readonly Dictionary<string, string> ContentTypes = new(StringComparer.OrdinalIgnoreCase)

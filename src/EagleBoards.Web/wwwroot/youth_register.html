@@ -62,28 +62,16 @@
                   </div>
                </div>
 
-               <div class="reg-pair">
-                  <div class="reg-field">
-                     <label for="Phone">Phone</label>
-                     <!-- type=tel raises the phone keypad instead of the full
-                          keyboard. It intentionally does not constrain what
-                          may be typed: 555-1234, (555) 1234 and 5551234 are
-                          all accepted, because a rejected phone number at a
-                          check-in table costs more than an inconsistent one. -->
-                     <input type="tel" id="Phone" name="Phone" required inputmode="tel">
-                  </div>
-                  <div class="reg-field">
-                     <label for="DOB">Birthdate</label>
-                     <!-- Left as free text on purpose. type="date" would force
-                          the browser's ISO value format on a column that no
-                          Java code parses -- DOB is stored, listed and
-                          exported as an opaque string -- so it would silently
-                          change the shape of the data next to every record
-                          already on file. A picker is also the wrong control
-                          for a birth year 15+ years back: it opens on the
-                          current month and has to be paged. -->
-                     <input type="text" id="DOB" name="DOB" required>
-                  </div>
+               <!-- No birthdate (SPEC.md D-7): nothing uses one, so it isn't
+                    asked for. -->
+               <div class="reg-field">
+                  <label for="Phone">Phone</label>
+                  <!-- type=tel raises the phone keypad instead of the full
+                       keyboard. It intentionally does not constrain what
+                       may be typed: 555-1234, (555) 1234 and 5551234 are
+                       all accepted, because a rejected phone number at a
+                       check-in table costs more than an inconsistent one. -->
+                  <input type="tel" id="Phone" name="Phone" required inputmode="tel">
                </div>
 
                <div class="reg-pair">
@@ -146,7 +134,7 @@
 
          // When a known email is entered, prefill the rest of the form.
          var last_email = "";
-         var PREFILL = ["ID", "Last", "First", "Phone", "DOB", "UnitType", "Unit", "BoardType", "Leader"];
+         var PREFILL = ["ID", "Last", "First", "Phone", "UnitType", "Unit", "BoardType", "Leader"];
          function onEmailChange() {
             var value = form.elements["Email"].value;
             if (value && last_email !== value && value != "NONE" && value != "none") {
@@ -175,7 +163,7 @@
          form.addEventListener("submit", function (ev) {
             ev.preventDefault();
             var fields = {};
-            ["Email", "ID", "Last", "First", "Phone", "DOB", "UnitType", "Unit", "BoardType", "Leader"].forEach(function (name) {
+            ["Email", "ID", "Last", "First", "Phone", "UnitType", "Unit", "BoardType", "Leader"].forEach(function (name) {
                fields[name] = form.elements[name].value;
             });
             var btn = document.getElementById("registerBtn");

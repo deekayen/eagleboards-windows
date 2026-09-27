@@ -209,11 +209,13 @@ public abstract partial class DataRecord
     /// The server's pseudo-JSON: unquoted keys, <c>"</c> in values written as
     /// <c>~</c>. The check-in pages parse it with a regex.
     /// </summary>
-    public void ToLooseJson(StringBuilder sb)
+    public void ToLooseJson(StringBuilder sb) => ToLooseJson(sb, Columns);
+
+    public void ToLooseJson(StringBuilder sb, IEnumerable<string> columns)
     {
         var first = true;
         sb.Append('{');
-        foreach (var column in Columns)
+        foreach (var column in columns)
         {
             if (!first)
             {

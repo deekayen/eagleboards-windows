@@ -28,7 +28,7 @@ namespace EagleBoards.App;
 public partial class MainWindow : Window
 {
     private static readonly string[] ReportColumns =
-        ["RegNum", "Last", "First", "Phone", "Email", "BoardType", "DOB", "UnitType", "Unit", "Leader", "Status", "Result", "BoardChair", "BoardMembers", "Notes"];
+        ["RegNum", "Last", "First", "Phone", "Email", "BoardType", "UnitType", "Unit", "Leader", "Status", "Result", "BoardChair", "BoardMembers", "Notes"];
 
     private readonly EventSession _session;
     private readonly BoardService _svc;

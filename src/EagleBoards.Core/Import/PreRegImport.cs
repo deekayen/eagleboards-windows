@@ -148,6 +148,13 @@ internal sealed class PreRegScoutConverter(DataRecordFile<ScoutRecord> file, Act
         ["Email"] = "Email",
         ["id"] = "",
     };
+
+    /// <summary>A file with a birthdate column doesn't put it on file (SPEC.md D-7).</summary>
+    protected override void Accept(ScoutRecord record)
+    {
+        record.SetValue(ScoutRecord.DobField, "");
+        base.Accept(record);
+    }
 }
 
 internal sealed class PreRegAdultConverter(DataRecordFile<AdultRecord> file, Action<string> trace)

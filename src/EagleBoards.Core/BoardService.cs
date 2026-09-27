@@ -63,7 +63,7 @@ public sealed class EventOptions
 /// </summary>
 public sealed class BoardService
 {
-    private static readonly string[] ScoutRegFields = ["First", "Last", "DOB", "Unit", "UnitType", "Email", "Phone", "Leader"];
+    private static readonly string[] ScoutRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Phone", "Leader"];
     private static readonly string[] AdultRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Phone", "ProjectReview", "FinalBoard"];
 
     /// <summary>How to reverse one change, captured before it was made.</summary>
@@ -329,7 +329,10 @@ public sealed class BoardService
                 }
             }
 
-            var incoming = new ScoutRecord(fields);
+            // A sign-in page cached from before SPEC.md D-7 still sends a
+            // birthdate. Nothing uses one, so it is dropped here, never
+            // stored; one already on the record is left as it is (O-5).
+            var incoming = new ScoutRecord(fields.Where(f => f.Key != ScoutRecord.DobField));
             var scout = Scouts.Get(incoming.Id);
             if (scout != null)
             {

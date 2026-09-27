@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using EagleBoards.Core;
 using EagleBoards.Web;
 using Microsoft.AspNetCore.Http;
 
@@ -114,6 +115,29 @@ public class CheckInServerTests
         var (status, body) = await Send(Server(box), IPAddress.Loopback, "POST", "/inprogress-board", "ScoutID=nobody");
         Assert.Equal(409, status);
         Assert.StartsWith("ERROR: Invalid Scout ID", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ReturningYouthArePreFilledWithoutABirthdate()
+    {
+        // SPEC.md D-7 and O-5: one already on file stays there, but the
+        // sign-in page is never sent it.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
+        {
+            ["Last"] = "Aldridge", ["First"] = "Alex", ["Email"] = "alex@example.org", ["DOB"] = "2010-04-01",
+        });
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+
+        foreach (var query in new[] { "/youth-autofill?Email=alex@example.org", "/youth-autofill?Email=alex@example.org&fmt=json" })
+        {
+            var (status, body) = await Send(server, Station, "GET", query);
+            Assert.Equal(200, status);
+            Assert.Contains("Aldridge", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("DOB", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("2010-04-01", body, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

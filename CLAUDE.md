@@ -126,6 +126,10 @@ runs a native WPF app instead of the Java app's browser pages.
   `BoardService.ChangeBoardMembers`, from the details pane: the same member
   checks as seating (`CheckComposition`), leavers freed, timer not reset.
   Never ask the operator to hand-edit member lists in the admin tables.
+- **No birthdate** (SPEC.md D-7): the `DOB` column stays in the youth file
+  for the other versions, written empty; sign-in and imports drop it, and
+  nothing shows, pre-fills or exports it. Values already on file are left
+  alone (O-5).
 - `BoardService.Changed` fires on the thread that made the change (often a
   Kestrel thread). The window marshals to the dispatcher and debounces.
 - **The UI follows Microsoft's Windows (Fluent) guidance, not the Java app's

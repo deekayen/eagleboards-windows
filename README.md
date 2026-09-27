@@ -143,7 +143,7 @@ Deliberate changes. The server-side ones each have a unit test in
   (seat, complete, record edits, room changes, settings) still exist with the
   same wire formats, but answer only requests from the admin computer itself.
   From the network, the youth and adult lists return names and units only,
-  never phones, emails or birthdates.
+  never phones or emails.
 - **Seating is stricter where the old checks had gaps.** One adult listed
   twice no longer counts as two members, and an adult marked Unavailable for
   that board type is refused wherever they appear in the list (the browser
@@ -213,8 +213,12 @@ See [CLAUDE.md](CLAUDE.md) for the working rules (data privacy above all).
 
 ## Privacy
 
-The data folder holds personal information about minors. Keep it on the admin
-computer, out of shared and cloud-synced folders, and out of git: `.gitignore`
+The data folder holds personal information about minors, so the app asks for
+no more than an event needs: sign-in no longer asks for a youth's birthdate,
+and one sent by an older cached page is thrown away. Birthdates already in
+earlier event folders are left as they are but never shown or exported. Keep
+the folder on the admin computer, out of shared and cloud-synced folders, and
+out of git: `.gitignore`
 and `scripts/hooks/pre-commit` refuse CSV and spreadsheet files, dated event
 folders, the adult history and `.env`. Install the hook once per clone with
 `git config core.hooksPath scripts/hooks`.
