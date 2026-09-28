@@ -77,7 +77,7 @@
         select a row and double-click a cell to change it. The change is saved as soon as you leave the cell.</Paragraph>
       <List>
         <ListItem><Paragraph><Bold>Results</Bold>: every board at the event and its result, to correct a result or its notes. <Bold>Open on Event page</Bold> shows the selected board there;
-          <Bold>Save report</Bold> saves the results as a CSV file for Excel. Who sat on a board is changed on the Event page, while it runs.</Paragraph></ListItem>
+          <Bold>Save report</Bold> saves the results as a CSV file for Excel. A youth's status, and who sat on their board, change only on the Event page, through its steps.</Paragraph></ListItem>
         <ListItem><Paragraph><Bold>People</Bold>: the adults signed in. Change someone's roles, unit or Wood Badge here. Mark someone <Bold>Gone home</Bold> when they leave, and <Bold>Back</Bold> if they return.</Paragraph></ListItem>
         <ListItem><Paragraph><Bold>Youth</Bold>, <Bold>Pre-registered</Bold>, <Bold>Adult history</Bold> and <Bold>Rooms</Bold>: every other record, including the event's sign-ups and every adult from earlier events.
           <Bold>Export</Bold> saves a table as a CSV file; <Bold>Delete</Bold> removes a record for good, after asking.</Paragraph></ListItem>

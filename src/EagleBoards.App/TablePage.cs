@@ -97,7 +97,10 @@ public enum ColumnKind
     ReadOnly,
     Choice,
 
-    /// <summary>The status pill, and a choice of status while editing.</summary>
+    /// <summary>
+    /// The status pill, read-only: a youth's status changes only through the
+    /// Event page's steps, which free the room and its members as they go.
+    /// </summary>
     Status,
 
     /// <summary>The Wood Badge mark (SPEC.md D-20), and Yes or No while editing.</summary>
@@ -134,7 +137,6 @@ public static class TableSpecs
     public static readonly KeyValuePair<string, string>[] BoardTypeChoices =
         [new("", ""), new(BoardTypes.Final, Display.BoardType(BoardTypes.Final)), new(BoardTypes.Project, Display.BoardType(BoardTypes.Project))];
     private static readonly KeyValuePair<string, string>[] UnitTypeChoices = Same(["", .. UnitTypes.All]);
-    private static readonly KeyValuePair<string, string>[] StatusChoices = [new("", ""), .. BoardStatus.All.Select(v => new KeyValuePair<string, string>(v, Display.Status(v)))];
     // A board's three decisions only. Not "Postponed": that is the Status of a
     // scout sent away unprepared before any board met them, who has no Result.
     private static readonly KeyValuePair<string, string>[] ResultChoices = [new("", ""), .. BoardResults.All.Select(v => new KeyValuePair<string, string>(v, Display.Result(v)))];
@@ -145,12 +147,12 @@ public static class TableSpecs
     // youth's number and birthdate are never shown or exported, though one may
     // be on file from an older event (SPEC.md D-7, D-8). Adults' numbers are.
     public static readonly TableSpec Results = new("Results", "Results",
-        "Every board at this event and its result. Double-click a cell to correct it.", "Find a board", DataTable.Scouts,
+        "Every board at this event and its result. Double-click a cell to correct it; a status changes on the Event page.", "Find a board", DataTable.Scouts,
         [
             new("RegNum", "Sign-in", 76, ColumnKind.ReadOnly), new("Last", "Last", 110), new("First", "First", 100),
             new("UnitType", "Unit type", 85, ColumnKind.Choice, UnitTypeChoices), new("Unit", "Unit", 60),
             new("BoardType", "Board", 110, ColumnKind.Choice, BoardTypeChoices),
-            new("Status", "Status", 128, ColumnKind.Status, StatusChoices), new("Room", "Room", 68, ColumnKind.ReadOnly, Path: nameof(RecordRow.BoardRoomText)),
+            new("Status", "Status", 128, ColumnKind.Status), new("Room", "Room", 68, ColumnKind.ReadOnly, Path: nameof(RecordRow.BoardRoomText)),
             new("Result", "Result", 110, ColumnKind.Choice, ResultChoices),
             // Who sat is changed on the Event page while the board runs, under the
             // rules for seating; never typed into a list here.
@@ -172,14 +174,14 @@ public static class TableSpecs
         ], "Adults", Frozen: 3, SortField: "Last", RowStyle: "PeopleRowStyle");
 
     public static readonly TableSpec Youth = new("Youth", "Youth",
-        "Every youth signed in at this event, in sign-in order. Double-click a cell to change it.", "Find a youth", DataTable.Scouts,
+        "Every youth signed in at this event, in sign-in order. Double-click a cell to change it; a status changes on the Event page.", "Find a youth", DataTable.Scouts,
         [
             new("RegTime", "Signed in", 88, ColumnKind.ReadOnly, Path: "[" + DataRecord.RegTimeHmField + "]"), new("RegNum", "Sign-in", 76, ColumnKind.ReadOnly),
             new("Last", "Last", 110), new("First", "First", 110),
             new("UnitType", "Unit type", 85, ColumnKind.Choice, UnitTypeChoices), new("Unit", "Unit", 60), new("Leader", "Leader", 130),
             new("Email", "Email", 170), new("BoardType", "Board", 110, ColumnKind.Choice, BoardTypeChoices),
             new("Room", "Room", 68, ColumnKind.ReadOnly, Path: nameof(RecordRow.BoardRoomText)),
-            new("Status", "Status", 128, ColumnKind.Status, StatusChoices), new("Result", "Result", 100, ColumnKind.Choice, ResultChoices),
+            new("Status", "Status", 128, ColumnKind.Status), new("Result", "Result", 100, ColumnKind.Choice, ResultChoices),
         ], "Youth", Frozen: 4);
 
     public static readonly TableSpec PreRegistered = new("PreRegistered", "Pre-registered",
@@ -512,7 +514,7 @@ public sealed class TablePage : DockPanel
                     Width = col.Width,
                     SortMemberPath = sort,
                     CellTemplate = (DataTemplate)resource("StatusCell"),
-                    CellEditingTemplate = ChoiceEditor(path, col.Choices!),
+                    IsReadOnly = true,
                 };
             case ColumnKind.WoodBadge:
                 var marks = new FrameworkElementFactory(typeof(AdultMarks));
@@ -540,7 +542,7 @@ public sealed class TablePage : DockPanel
         }
     }
 
-    /// <summary>A choice while a pill or mark column is being edited, saved as soon as it's picked.</summary>
+    /// <summary>A choice while the Wood Badge column is being edited, saved as soon as it's picked.</summary>
     private static DataTemplate ChoiceEditor(string path, KeyValuePair<string, string>[] choices)
     {
         var combo = new FrameworkElementFactory(typeof(ComboBox));

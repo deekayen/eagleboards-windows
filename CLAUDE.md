@@ -130,8 +130,9 @@ runs a native WPF app instead of the Java app's browser pages.
   already seated or in review (someone has to leave) is
   `BoardService.ChangeBoardMembers`, from the details pane: the same member
   checks as seating (`CheckComposition`), leavers freed, timer not reset.
-  Never ask the operator to hand-edit member lists on a table page: Results
-  shows Chair and Members read-only for that reason.
+  Never ask the operator to hand-edit member lists or a youth's status on a
+  table page: Status is read-only on Results and Youth, and Chair and Members
+  on Results, since only the Event page's steps free a room and its members.
 - **Undo** (SPEC.md O-2) is a stack in `BoardService`: each step records the
   fields it set (`Snap` before, `PushUndo` after), and undoing puts back only
   those, refusing (and clearing the stack) if anything has changed one since,

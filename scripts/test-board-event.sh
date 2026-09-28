@@ -851,17 +851,19 @@ vocab_list() { # <class> -> the identifiers in that class's "All = [...]"
         | awk -F'[][]' '{print $2}' | tr -d ' ' | tr , ' '
 }
 
-# Every status offered must be one the app acts on. The Java version once
-# offered "Waiting", which nothing recognised, so choosing it -- the obvious
-# way to send a scout back to the queue -- left them where nothing could seat
-# them.
-case "$(grep 'StatusChoices =' "$ADMIN_SRC")" in
-    *'BoardStatus.All'*) ok "the table pages' statuses are the app's own statuses" ;;
-    *) bad "the table pages build their Status list from something other than BoardStatus.All" ;;
-esac
+# Java checks that every status its admin page offers is one the app acts on
+# (it once offered "Waiting", which nothing recognised). The table pages
+# offer none: a youth's status changes only through the Event page's steps,
+# which free the room and its members, so a status typed into a table can't
+# leave them held (SPEC.md P-6).
+if grep -q 'StatusChoices' "$ADMIN_SRC"; then
+    bad "a table page offers a youth's status to choose"
+else
+    ok "no table page offers a status to choose; the Event page's steps change it"
+fi
 case " $(vocab_list BoardStatus) " in
-    *" Registered "*) ok "and include Registered, to undo a result on the wrong scout" ;;
-    *) bad "the table pages cannot set a scout back to Registered" ;;
+    *" Registered "*) ok "and /youth-update can still set Registered, to undo a result on the wrong scout" ;;
+    *) bad "/youth-update cannot set a scout back to Registered" ;;
 esac
 
 # And every Result offered must be a board's decision -- one /complete-board
