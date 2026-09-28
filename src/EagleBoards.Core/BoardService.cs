@@ -1491,6 +1491,42 @@ public sealed class BoardService
         return action;
     }
 
+    /// <summary>
+    /// An edit to an adult on a table page: tonight's (People) or the adult
+    /// history's. The fields a sign-in carries between the two (name, unit,
+    /// contact, roles; <see cref="AdultRegFields"/>) are changed in both, so
+    /// a role corrected in the history is the one the Event page seats by,
+    /// and one corrected tonight is the one the next event's sign-in fills
+    /// in. Tonight-only fields (room, Wood Badge, who they came to support)
+    /// stay where they were edited. Off the Undo stack, like any table edit.
+    /// </summary>
+    public string SaveAdultEdit(DataTable table, string id, IReadOnlyDictionary<string, string> fields)
+    {
+        if (table is not (DataTable.Adults or DataTable.AdultHistory))
+        {
+            throw new ArgumentOutOfRangeException(nameof(table));
+        }
+
+        string action;
+        lock (_lock)
+        {
+            action = SaveRowLocked(Table(table), "updated", id, fields, false);
+            var other = table == DataTable.Adults ? AdultHistory : Adults;
+            var shared = fields.Where(f => AdultRegFields.Contains(f.Key)).ToDictionary(f => f.Key, f => f.Value, StringComparer.Ordinal);
+            if (action != "invalid" && shared.Count > 0 && other.Get(id) != null)
+            {
+                SaveRowLocked(other, "updated", id, shared, false);
+            }
+        }
+
+        if (action != "invalid")
+        {
+            OnChanged(DataTable.Adults, DataTable.AdultHistory);
+        }
+
+        return action;
+    }
+
     private string SaveRowLocked(IDataRecordFile file, string? status, string? id, IReadOnlyDictionary<string, string> fields, bool undoable)
     {
         if (id == null)

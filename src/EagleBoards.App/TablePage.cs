@@ -286,7 +286,26 @@ public sealed class TablePage : DockPanel
 
         Grid.BeginningEdit += (_, _) => _editing = true;
         Grid.CellEditEnding += (_, _) => _editing = false;
-        Grid.SelectionChanged += (_, _) => SelectionChanged?.Invoke();
+        Grid.SelectionChanged += (_, e) =>
+        {
+            if (ReferenceEquals(e.OriginalSource, Grid))
+            {
+                SelectionChanged?.Invoke();
+            }
+        };
+
+        // A choice in a cell (a status, a result, a role) is saved as it's
+        // picked; end the cell's edit there too, so nothing is left open for
+        // a later cancel, a reload or another page to catch half done. The
+        // editor's first selection, as it opens, isn't a pick: nothing is
+        // unselected by it.
+        Grid.AddHandler(Selector.SelectionChangedEvent, new SelectionChangedEventHandler((_, e) =>
+        {
+            if (e.OriginalSource is ComboBox && e.RemovedItems.Count > 0 && e.AddedItems.Count > 0)
+            {
+                Dispatcher.BeginInvoke(CommitEdit, System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }));
         var card = new Border { Child = Grid };
         card.SetResourceReference(StyleProperty, "Card");
         Children.Add(card);
@@ -350,6 +369,15 @@ public sealed class TablePage : DockPanel
     }
 
     /// <summary>Reload from the service, keeping the selection. A quiet reload waits out an open cell editor.</summary>
+    /// <summary>
+    /// Finish any cell still being edited, saving it: before the page is left
+    /// or the window closed, so the other pages show what was typed.
+    /// </summary>
+    public void CommitEdit()
+    {
+        Grid.CommitEdit(DataGridEditingUnit.Row, exitEditingMode: true);
+    }
+
     public void Reload(bool quiet)
     {
         if (quiet && _editing)
@@ -382,9 +410,17 @@ public sealed class TablePage : DockPanel
         _count.Text = _view.Count == all ? $"{all} {(all == 1 ? "record" : "records")}" : $"{_view.Count} of {all} records";
     }
 
+    /// <summary>
+    /// Save one changed cell. An adult's name, unit, contact and roles are
+    /// the same on People and Adult history: a change to one is made to both.
+    /// </summary>
     private void OnEdited(RecordRow row, string field, string value)
     {
-        if (_svc.SaveRow(Spec.Table, "updated", row.Id, new Dictionary<string, string> { [field] = value }) == "invalid")
+        var fields = new Dictionary<string, string> { [field] = value };
+        var action = Spec.Table is DataTable.Adults or DataTable.AdultHistory
+            ? _svc.SaveAdultEdit(Spec.Table, row.Id, fields)
+            : _svc.SaveRow(Spec.Table, "updated", row.Id, fields);
+        if (action == "invalid")
         {
             Notice.Show(Severity.Warning, "That record is gone", "It may have been deleted. The table has been reloaded.");
             Dispatcher.BeginInvoke(() => Reload(quiet: false));

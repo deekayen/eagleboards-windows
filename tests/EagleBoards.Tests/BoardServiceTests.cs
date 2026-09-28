@@ -178,6 +178,35 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void AnAdultEditedOnATablePageIsTheSameInTheHistoryAndTonight()
+    {
+        // SPEC.md P-6: a role corrected in Adult history is the one the Event
+        // page seats by; one corrected on People carries to the next sign-in.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Member"));
+        const string id = "ADULT:Able:Ann:2001";
+        string History(string field) => s.Snapshot(DataTable.AdultHistory).Single(r => r["ID"] == id)[field];
+
+        Assert.Equal("updated", s.SaveAdultEdit(DataTable.AdultHistory, id, new Dictionary<string, string> { ["FinalBoard"] = "Chair" }));
+        Assert.Equal("Chair", AdultRow(s, id)["FinalBoard"]);
+
+        s.SaveAdultEdit(DataTable.Adults, id, new Dictionary<string, string> { ["ProjectReview"] = "Unavailable", ["Phone"] = "555-0142" });
+        Assert.Equal("Unavailable", History("ProjectReview"));
+        Assert.Equal("555-0142", History("Phone"));
+
+        // Tonight-only answers stay tonight's.
+        s.SaveAdultEdit(DataTable.Adults, id, new Dictionary<string, string> { ["WoodBadge"] = "Y" });
+        Assert.Equal("Y", AdultRow(s, id)["WoodBadge"]);
+        Assert.Equal("", History("WoodBadge"));
+
+        // Someone in the history who hasn't signed in tonight is edited there alone.
+        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "night2"), AdultHistoryPath = box.HistoryPath, ConfigPath = box.ConfigPath });
+        Assert.Equal("updated", s2.SaveAdultEdit(DataTable.AdultHistory, id, new Dictionary<string, string> { ["FinalBoard"] = "Member" }));
+        Assert.Empty(s2.Snapshot(DataTable.Adults));
+    }
+
+    [Fact]
     public void ANewInstallStartsAnEmptyAdultHistory()
     {
         // SPEC.md D-9: no release ships Master_AdultHistory.csv, so the first

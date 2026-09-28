@@ -316,6 +316,13 @@ public partial class MainWindow : Window
     /// <summary>The Event page or a table page, with the View menu's check on the page shown.</summary>
     private void ShowPage(string page)
     {
+        // A cell still being edited on the page being left is saved first, so
+        // the page shown next has it (the menu doesn't end the grid's edit).
+        foreach (var table in _tables.Values.Where(t => t.Visibility == Visibility.Visible))
+        {
+            table.CommitEdit();
+        }
+
         foreach (var (item, element) in _pages)
         {
             var shown = (string)item.Tag == page;
@@ -1443,6 +1450,11 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        foreach (var table in _tables.Values)
+        {
+            table.CommitEdit();
+        }
+
         if (!AppDialog.Confirm(this, "Close the scheduler?",
                 "Closing also stops the check-in website. Stations can't sign anyone in until the scheduler is started again.", "Close"))
         {
