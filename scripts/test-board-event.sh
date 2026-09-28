@@ -1289,6 +1289,56 @@ chk "still a chair"                           "$(adult_col "$HAND" 11)" "Chair"
 chk "with no second history record"           "$(awk 'END {print NR}' "$WORK/AdultHistory.csv")" "$history_rows"
 chk "and the corrected name in the history"   "$(history_col "$HAND" 4)" "Harriet Ann"
 
+# ------------------------------ 28. approved proposals from earlier events
+echo
+echo "== 28. approved proposals from earlier events (D-22) =="
+
+# For a youth who comes to their board of review without the signed page of
+# their project proposal: every dated folder beside this event's, dated
+# before it however long ago; only Project rows whose Result is Approved;
+# read afresh each time; never a birthdate, phone number or email; nothing
+# in an earlier folder written. This event's folder is "run", not a date, so
+# "before it" means before today.
+youth_header='Type,ID,RegNum,Last,First,Email,Phone,UnitType,Unit,UnitName,DOB,BoardType,Leader,RegTime,LastUpdateTime,Flags,Room,Status,Result,BoardChair,BoardChairID,BoardMembers,BoardMembersIDs,Notes'
+earlier_row() { # <last> <first> <unit> <type> <result> [notes]
+    echo "SCOUT,SCOUT:$1:$2:$3,W1,$1,$2,$2@example.org,555-0199,Troop,$3,Troop$3,1/2/2010,$4,,,,,N/A,Completed,$5,Chris Chair,ADULT:Chair:Chris:1,Chris Chair~Morgan Member,ADULT:Chair:Chris:1~ADULT:Member:Morgan:2,${6:-}"
+}
+proposals() { curl -s "$B/approved-proposals-cells?cols=Last,First,UnitType,Unit,Event,BoardChair,BoardMembers,Notes"; }
+case "$(proposals)" in
+    *'read="0"'*) ok "with no earlier events, none are read" ;;
+    *) bad "approved proposals read an earlier event that isn't there" ;;
+esac
+mkdir -p "$WORK/2019-05-28" "$WORK/2025-08-26" "$WORK/2099-01-01" "$WORK/notes" "$WORK/2020-01-01" "$WORK/2025-07-22/scouts.csv"
+{ echo "$youth_header"; earlier_row Quill Ada 3701 Project Approved "Park benches~ phase one"; } > "$WORK/2019-05-28/scouts.csv"
+{ echo "$youth_header"; earlier_row Brook Ben 3702 Project Approved
+  earlier_row Final Fay 3703 Final Approved; earlier_row Later Lou 3704 Project Adjourned; } > "$WORK/2025-08-26/scouts.csv"
+{ echo "$youth_header"; earlier_row Future Flo 3705 Project Approved; } > "$WORK/2099-01-01/scouts.csv"
+{ echo "$youth_header"; earlier_row Undated Una 3706 Project Approved; } > "$WORK/notes/scouts.csv"
+FOUND=$(proposals)
+chk "only earlier events' approved proposals, by last name" \
+    "$(echo "$FOUND" | grep -o '<row id="[^"]*"><cell>[^<]*' | sed 's/.*<cell>//' | tr '\n' ' ')" "Brook Quill "
+case "$FOUND" in
+    *'read="2" from="2019-05-28" to="2025-08-26"'*) ok "every earlier event is read, however long ago; a folder with no youth file held none" ;;
+    *) bad "the events read are wrong: $(echo "$FOUND" | head -c 200)" ;;
+esac
+case "$FOUND" in
+    *'unreadable="2025-07-22: '*) ok "a folder whose youth file can't be read is named" ;;
+    *) bad "an unreadable folder was not named" ;;
+esac
+chk "with the event's date, the chair and the board, as the file holds them" \
+    "$(echo "$FOUND" | grep -o '<cell>Quill</cell>.*</row>' | sed 's/<\/cell><cell>/|/g; s/<[^>]*>//g')" \
+    "Quill|Ada|Troop|3701|2019-05-28|Chris Chair|Chris Chair~Morgan Member|Park benches~ phase one"
+chk "never an email, a phone number or a birthdate" "$(echo "$FOUND" | grep -c '@example.org\|555-0199\|1/2/2010')" "0"
+chk "nothing is written in an earlier folder" "$(ls "$WORK/2020-01-01" | wc -l | tr -d ' ')" "0"
+{ echo "$youth_header"; earlier_row Brook Ben 3702 Project Approved; earlier_row Cove Cal 3707 Project Approved; } \
+    > "$WORK/2025-08-26/scouts.csv"
+chk "and they are read afresh each time" \
+    "$(proposals | grep -o '<row id="[^"]*"><cell>[^<]*' | sed 's/.*<cell>//' | tr '\n' ' ')" "Brook Cove Quill "
+# Java's admin tab is Windows' View menu page (SPEC.md D-22, P-6); the rest of
+# this section is Java's, byte for byte.
+chk "the app shows them on a page of their own" \
+    "$(grep -c 'Tag="ApprovedProposals"' "$ROOT/src/EagleBoards.App/MainWindow.xaml")" "1"
+
 echo
 echo "== the event ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"

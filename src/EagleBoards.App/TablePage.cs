@@ -267,7 +267,7 @@ public static class TableSpecs
         {
             var read = svc.ReadApprovedProposals();
             return new PageRows(read.Approvals.Select(a => a.Snapshot()).ToList(), read.About,
-                read.Unreadable.Count == 0 ? null : $"The youth in {string.Join(", ", read.Unreadable)} couldn't be read, so any proposals approved there aren't listed. The other events are.");
+                read.Unreadable.Count == 0 ? null : $"The youth in {string.Join(", ", read.Unreadable.Select(u => u.Event))} couldn't be read, so any proposals approved there aren't listed. The other events are.");
         });
 
     /// <summary>The View menu's table pages, in its order after Event.</summary>

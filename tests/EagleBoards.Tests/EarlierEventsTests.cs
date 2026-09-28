@@ -35,7 +35,7 @@ public class EarlierEventsTests
         Assert.Equal(["Ashby", "Byrne"], read.Approvals.Select(a => a.GetValue("Last")));
         var byrne = read.Approvals[1];
         Assert.Equal("2026-08-25", byrne.GetValue("Event"));
-        Assert.Equal("2026-08-25:SCOUT:Byrne:Bo:3102", byrne.Id);
+        Assert.Equal("2026-08-25|SCOUT:Byrne:Bo:3102", byrne.Id);
         Assert.Equal("Chair Person", byrne.GetValue("BoardChair"));
         Assert.Equal("Well planned~ and safe", byrne.GetValue("Notes"));
 
@@ -56,10 +56,25 @@ public class EarlierEventsTests
         using (File.Open(Path.Combine(box.Root, "2026-06-01", "scouts.csv"), FileMode.Open, FileAccess.Read, FileShare.None))
         {
             var read = EarlierEvents.ReadApprovedProposals(Path.Combine(box.Root, "2026-09-27"), Now);
-            Assert.Equal(["2026-06-01"], read.Unreadable);
+            Assert.Equal(["2026-06-01"], read.Unreadable.Select(u => u.Event));
             Assert.Equal(["2026-07-01"], read.Events);
             Assert.Equal("Gale", Assert.Single(read.Approvals).GetValue("Last"));
         }
+    }
+
+    [Fact]
+    public void AYouthFileThatIsntAFileIsNamedAndApprovalsAreByLastNameAcrossEvents()
+    {
+        // Event test section 28 plants a folder whose scouts.csv is a folder.
+        using var box = new Sandbox();
+        Plant(box, "2019-05-28", Youth("Quill", "Ada", "3701", BoardTypes.Project, BoardResults.Approved));
+        Plant(box, "2025-08-26", Youth("Brook", "Ben", "3702", BoardTypes.Project, BoardResults.Approved));
+        Directory.CreateDirectory(Path.Combine(box.Root, "2025-07-22", "scouts.csv"));
+
+        var read = EarlierEvents.ReadApprovedProposals(Path.Combine(box.Root, "2026-09-27"), Now);
+        Assert.Equal(["Brook", "Quill"], read.Approvals.Select(a => a.GetValue("Last")));
+        Assert.Equal(["2019-05-28", "2025-08-26"], read.Events);
+        Assert.Equal("2025-07-22", Assert.Single(read.Unreadable).Event);
     }
 
     [Fact]

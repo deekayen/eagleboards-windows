@@ -44,7 +44,8 @@ runs a native WPF app instead of the Java app's browser pages.
 - `bash scripts/test-board-event.sh`: the Java project's end-to-end HTTP
   event test, unchanged except for the launch lines and section 18's check of
   the table pages' choice lists (Java reads admin.html; this reads
-  `TablePage.cs`), and section 22, the Java page's own event stream, left
+  `TablePage.cs`), section 28's last check (the View menu's page, where Java
+  greps admin.html), and section 22, the Java page's own event stream, left
   out. New scenarios added in the Java repo are copied here
   and into the Mac version. `EB_JAR=<jar>` runs it against
   the Java server; it passes against both. `EB_KEEP=1` keeps the data files so

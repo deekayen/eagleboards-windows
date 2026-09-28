@@ -7,8 +7,9 @@ namespace EagleBoards.Core;
 /// <summary>
 /// A proposal approved at an earlier event (SPEC.md D-22), with only what
 /// the Approved proposals page shows: never a birthdate, phone number or
-/// email. Its ID is the event's date and the youth's ID, since the same
-/// youth can come up at more than one event.
+/// email. Its ID is the event's date and the youth's ID ("2026-08-25|SCOUT:..."),
+/// as the Java version's is, since the same youth can come up at more than
+/// one event.
 /// </summary>
 public sealed class ApprovalRecord : DataRecord
 {
@@ -25,10 +26,10 @@ public sealed class ApprovalRecord : DataRecord
 
 /// <summary>
 /// What <see cref="EarlierEvents.ReadApprovedProposals"/> found: the
-/// approvals, the dates of the earlier events read (oldest first), and the
-/// folders whose youth couldn't be read.
+/// approvals by last name, the dates of the earlier events read (oldest
+/// first), and the events whose youth couldn't be read, with why.
 /// </summary>
-public sealed record ApprovedProposals(IReadOnlyList<ApprovalRecord> Approvals, IReadOnlyList<string> Events, IReadOnlyList<string> Unreadable)
+public sealed record ApprovedProposals(IReadOnlyList<ApprovalRecord> Approvals, IReadOnlyList<string> Events, IReadOnlyList<UnreadableEvent> Unreadable)
 {
     /// <summary>How many earlier events were read, and from which date to which.</summary>
     public string About => Events.Count switch
@@ -38,6 +39,9 @@ public sealed record ApprovedProposals(IReadOnlyList<ApprovalRecord> Approvals, 
         _ => $"Read from {Events.Count} earlier events, {Events[0]} to {Events[^1]}.",
     };
 }
+
+/// <summary>An earlier event whose youth file couldn't be read: its date, and why.</summary>
+public sealed record UnreadableEvent(string Event, string Problem);
 
 /// <summary>
 /// The events held in the data folder beside this one. Read only: nothing
@@ -53,15 +57,16 @@ public static class EarlierEvents
     /// ago: a project can take more than a year. The event's date is its
     /// folder's name, or today if that isn't a date. From each, the
     /// <c>scouts.csv</c> rows whose board was a Project review and whose
-    /// result was Approved. A folder with no <c>scouts.csv</c> held no event;
-    /// one that can't be read is named in <see cref="ApprovedProposals.Unreadable"/>,
-    /// and the rest are still read.
+    /// result was Approved, by last name, then first, then the oldest
+    /// approval first, as the Java version sorts them. A folder with no
+    /// <c>scouts.csv</c> held no event; one that can't be read is named in
+    /// <see cref="ApprovedProposals.Unreadable"/>, and the rest are still read.
     /// </summary>
     public static ApprovedProposals ReadApprovedProposals(string eventFolder, DateTimeOffset now)
     {
         var approvals = new List<ApprovalRecord>();
         var events = new List<string>();
-        var unreadable = new List<string>();
+        var unreadable = new List<UnreadableEvent>();
         var full = Path.GetFullPath(eventFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var eventDate = DateOf(Path.GetFileName(full)) ?? DateOnly.FromDateTime(now.Date);
         if (Path.GetDirectoryName(full) is not { } dataFolder || !Directory.Exists(dataFolder))
@@ -77,7 +82,8 @@ public static class EarlierEvents
         foreach (var name in earlier)
         {
             var path = Path.Combine(dataFolder, name, "scouts.csv");
-            if (!File.Exists(path))
+            // Something by that name that isn't a file can't be read, and says so.
+            if (!File.Exists(path) && !Directory.Exists(path))
             {
                 continue;
             }
@@ -88,7 +94,7 @@ public static class EarlierEvents
                 foreach (var youth in DataRecordFile<ScoutRecord>.ReadOnly(path, ScoutRecord.Factory).Where(r => r.GetValue("BoardType") == BoardTypes.Project && r.GetValue("Result") == BoardResults.Approved))
                 {
                     var fields = ApprovalRecord.Copied.ToDictionary(f => f, youth.GetValue, StringComparer.Ordinal);
-                    fields["ID"] = name + ":" + youth.Id;
+                    fields["ID"] = name + "|" + youth.Id;
                     fields["Event"] = name;
                     found.Add(new ApprovalRecord(fields));
                 }
@@ -98,11 +104,16 @@ public static class EarlierEvents
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException or ArgumentException or IndexOutOfRangeException)
             {
-                unreadable.Add(name);
+                unreadable.Add(new UnreadableEvent(name, e.Message));
             }
         }
 
-        return new ApprovedProposals(approvals, events, unreadable);
+        var sorted = approvals
+            .OrderBy(a => a.GetValue("Last"), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(a => a.GetValue("First"), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(a => a.GetValue("Event"), StringComparer.Ordinal)
+            .ToList();
+        return new ApprovedProposals(sorted, events, unreadable);
     }
 
     /// <summary>The date a folder is named by, or null if it isn't named <c>YYYY-MM-DD</c>.</summary>

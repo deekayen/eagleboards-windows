@@ -303,7 +303,8 @@ public class CheckInServerTests
 
         var (status, body) = await Send(server, IPAddress.Loopback, "GET", "/approved-proposals-cells?cols=Event,Last,First,Unit,BoardChair,Notes,DOB,Phone,Email");
         Assert.Equal(200, status);
-        Assert.Contains("<row id=\"2020-01-14:SCOUT:Ashby:Ava:3101\"><cell>2020-01-14</cell><cell>Ashby</cell><cell>Ava</cell><cell>3101</cell><cell>Chair Person</cell><cell>Trail steps</cell><cell></cell><cell></cell><cell></cell></row>",
+        Assert.Contains("<rows read=\"1\" from=\"2020-01-14\" to=\"2020-01-14\" unreadable=\"\">", body, StringComparison.Ordinal);
+        Assert.Contains("<row id=\"2020-01-14|SCOUT:Ashby:Ava:3101\"><cell>2020-01-14</cell><cell>Ashby</cell><cell>Ava</cell><cell>3101</cell><cell>Chair Person</cell><cell>Trail steps</cell><cell></cell><cell></cell><cell></cell></row>",
             body, StringComparison.Ordinal);
         Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
         Assert.Equal(403, (await Send(server, Station, "GET", "/approved-proposals-cells")).Status);

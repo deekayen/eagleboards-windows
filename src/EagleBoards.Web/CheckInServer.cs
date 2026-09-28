@@ -360,7 +360,8 @@ public sealed class CheckInServer : IAsyncDisposable
     /// Values are read through <paramref name="valueColumns"/>, where a
     /// withheld column is one that holds nothing.
     /// </summary>
-    private static void WriteRows(StringBuilder sb, string fmt, IEnumerable<Core.Records.DataRecord> rows, string[] columns, string[] valueColumns, string[]? valueUserData)
+    private static void WriteRows(StringBuilder sb, string fmt, IEnumerable<Core.Records.DataRecord> rows, string[] columns, string[] valueColumns, string[]? valueUserData,
+        string rowsAttributes = "")
     {
         switch (fmt)
         {
@@ -384,7 +385,7 @@ public sealed class CheckInServer : IAsyncDisposable
 
                 break;
             default:
-                sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rows>");
+                sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rows").Append(rowsAttributes).Append('>');
                 foreach (var r in rows)
                 {
                     r.ToCells(sb, valueColumns, valueUserData);
@@ -400,15 +401,29 @@ public sealed class CheckInServer : IAsyncDisposable
     /// SPEC.md D-22: the proposals approved at the earlier events in this
     /// data folder, answered as <c>/youth-cells</c> is, with only the
     /// columns the Approved proposals page shows (<see cref="ApprovalRecord"/>),
-    /// whatever <c>cols</c> asks for: any other is served empty.
+    /// whatever <c>cols</c> asks for: any other is served empty. As in the
+    /// Java version, the <c>rows</c> element says which events were read
+    /// (<c>read</c>, and <c>from</c> and <c>to</c> when any were) and names
+    /// any that couldn't be (<c>unreadable</c>, "|"-separated "date: why"),
+    /// for the line above the Java admin tab's list (event test section 28).
     /// </summary>
     private Task ApprovedProposalsCells(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
     {
         var fmt = p.Get("fmt") ?? "rows";
         string[]? Shown(string[]? columns) => columns?.Select(c => ApprovalRecord.AllColumns.Contains(c) ? c : c + " (withheld)").ToArray();
         var columns = Fields(p.Get("cols"), [.. ApprovalRecord.AllColumns])!;
+        var read = _service.ReadApprovedProposals();
+        var attributes = new StringBuilder(" read=\"").Append(read.Events.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append('"');
+        if (read.Events.Count > 0)
+        {
+            attributes.Append(" from=\"").Append(read.Events[0]).Append("\" to=\"").Append(read.Events[read.Events.Count - 1]).Append('"');
+        }
+
+        attributes.Append(" unreadable=\"");
+        Core.Records.DataRecord.AppendEscaped(attributes, string.Join("|", read.Unreadable.Select(u => u.Event + ": " + u.Problem)));
+        attributes.Append('"');
         var sb = new StringBuilder();
-        WriteRows(sb, fmt, _service.ReadApprovedProposals().Approvals, columns, Shown(columns)!, Shown(Fields(p.Get("data"), null)));
+        WriteRows(sb, fmt, read.Approvals, columns, Shown(columns)!, Shown(Fields(p.Get("data"), null)), attributes.ToString());
         return SendAsync(context, 200, fmt == "csv" ? "text/csv" : "text/xml", sb.ToString());
     }
 
