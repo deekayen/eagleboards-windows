@@ -159,8 +159,8 @@ jobs:
             echo "Windows Firewall asks too: allow it on **private** networks."
             echo
             echo "Don't run this and the Java version at the same time: they share the port and"
-            echo "the data files. The SignUpGenius key is not in this build; the app reads it from"
-            echo 'a `.env` file in the data folder or the `SUG_KEY` environment variable.'
+            echo "the data files. The SignUpGenius key is not in this build: paste it into the"
+            echo "start-up window once, and it's kept, encrypted, for your Windows account."
             echo
             echo 'Check the download with `certutil -hashfile EagleBoards.exe SHA256` against'
             echo '`EagleBoards.exe.sha256`.'

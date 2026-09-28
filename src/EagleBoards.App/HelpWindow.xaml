@@ -99,7 +99,7 @@
         The files use the same format as the Java version, so either one can read the other's.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Pre-registration</Paragraph>
-      <Paragraph>With a SignUpGenius API key (a line SUG_KEY=your-key in a file named .env in the data folder, or the SUG_KEY environment variable), the scheduler imports the event's sign-ups at start:
+      <Paragraph>With a SignUpGenius API key (entered in the start-up window, and kept, encrypted, for your Windows account), the scheduler imports the event's sign-ups at start:
         youth become pre-registrations, which is what makes them P, and adults are added to the adult history by email.</Paragraph>
     </FlowDocument>
   </FlowDocumentScrollViewer>

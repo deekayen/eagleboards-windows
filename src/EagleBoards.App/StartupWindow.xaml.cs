@@ -15,16 +15,25 @@ public partial class StartupWindow : Window
     private sealed record NetworkChoice(string Label, IPAddress? Address);
 
     private readonly AppSettings _settings;
+    private readonly SignUpGeniusKeyStore _keys;
+
+    /// <summary>The key as saved when the window opened, or null.</summary>
+    private readonly string? _savedKey;
 
     public StartupWindow()
-        : this(AppSettings.Load())
+        : this(AppSettings.Load(), SignUpGeniusKeyStore.CurrentUser)
     {
     }
 
-    /// <summary>With given settings rather than the saved ones (the snapshot harness uses a sandbox).</summary>
-    public StartupWindow(AppSettings settings)
+    /// <summary>
+    /// With given settings and key store rather than the saved ones (the
+    /// snapshot harness uses a sandbox and a made-up key).
+    /// </summary>
+    public StartupWindow(AppSettings settings, SignUpGeniusKeyStore keys)
     {
         _settings = settings;
+        _keys = keys;
+        _savedKey = keys.Read();
         InitializeComponent();
         Title = $"Eagle Board Scheduler {AppVersion.Text} - Start an event";
         DataFolderBox.Text = _settings.DataFolder.Length > 0 ? _settings.DataFolder : SuggestDataFolder();
@@ -32,7 +41,9 @@ public partial class StartupWindow : Window
         PortBox.Text = _settings.Port.ToString(CultureInfo.InvariantCulture);
         EventDate.SelectedDate = DateTime.Today;
         LoadNetworks(_settings.BindAddress);
+        SugKeyBox.Password = _savedKey ?? "";
         Refresh();
+        RefreshSignUpGenius();
     }
 
     /// <summary>Set when Start succeeds.</summary>
@@ -115,19 +126,32 @@ public partial class StartupWindow : Window
             HistoryStatus.Text = "Can't read it: " + ex.Message;
             HistoryStatus.SetResourceReference(ForegroundProperty, "SystemFillColorCriticalBrush");
         }
-
-        var (key, source) = AppSettings.FindSignUpGeniusKey(DataFolder);
-        // Only reset the tick when a key appears or disappears, so typing in
-        // the path boxes doesn't undo the operator's own choice.
-        if (SugCheck.IsEnabled != (key != null) || SugCheck.IsChecked == null)
-        {
-            SugCheck.IsEnabled = key != null;
-            SugCheck.IsChecked = key != null && _settings.ImportSignUpGenius;
-        }
-        SugStatus.Text = key != null
-            ? $"Using the API key from {source}."
-            : "No API key found. Put a line SUG_KEY=your-key in a file named .env in the data folder, or set the SUG_KEY environment variable.";
     }
+
+    private string EnteredKey => SugKeyBox.Password.Trim();
+
+    private void RefreshSignUpGenius()
+    {
+        var key = EnteredKey;
+        var usable = SignUpGeniusKeyStore.IsPlausible(key);
+        // Only reset the tick when a key appears or disappears, so editing
+        // the key doesn't undo the operator's own choice.
+        if (SugCheck.IsEnabled != usable || SugCheck.IsChecked == null)
+        {
+            SugCheck.IsEnabled = usable;
+            SugCheck.IsChecked = usable && _settings.ImportSignUpGenius;
+        }
+
+        SugStatus.Text = key.Length == 0
+            ? _savedKey != null
+                ? "Starting removes the saved key from this computer."
+                : "Paste the district's API key to import the event's sign-ups. It's kept, encrypted, for this Windows account, not in the data folder."
+            : !usable ? "That's too short to be an API key."
+            : key == _savedKey ? "Kept, encrypted, for this Windows account, not in the data folder."
+            : "Kept for this Windows account when you start.";
+    }
+
+    private void OnSugKeyChanged(object sender, RoutedEventArgs e) => RefreshSignUpGenius();
 
     private void OnPathsChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => Refresh();
 
@@ -198,13 +222,12 @@ public partial class StartupWindow : Window
                 File.WriteAllText(config, DefaultConfig.Text);
             }
 
-            var (key, _) = AppSettings.FindSignUpGeniusKey(DataFolder);
             plan = new LaunchPlan
             {
                 DataDirectory = EventFolder,
                 AdultHistoryPath = HistoryPath,
                 ConfigPath = config,
-                SignUpGeniusKey = SugCheck.IsChecked == true ? key : null,
+                SignUpGeniusKey = SugCheck.IsChecked == true && SignUpGeniusKeyStore.IsPlausible(EnteredKey) ? EnteredKey : null,
                 Port = port,
                 BindAddress = (NetworkBox.SelectedItem as NetworkChoice)?.Address,
             };
@@ -242,6 +265,15 @@ public partial class StartupWindow : Window
         _settings.BindAddress = (NetworkBox.SelectedItem as NetworkChoice)?.Address?.ToString() ?? "";
         _settings.ImportSignUpGenius = SugCheck.IsChecked == true || !SugCheck.IsEnabled && _settings.ImportSignUpGenius;
         _settings.Save();
+
+        // A new key replaces the saved one, and an emptied box forgets it;
+        // one too short to be a key changes nothing.
+        var key = EnteredKey;
+        if (key != (_savedKey ?? "") && (key.Length == 0 || SignUpGeniusKeyStore.IsPlausible(key)) && !_keys.Save(key))
+        {
+            Session.Log("The SignUpGenius key couldn't be saved in the registry.");
+        }
+
         DialogResult = true;
     }
 

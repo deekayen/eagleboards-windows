@@ -123,8 +123,10 @@ internal static class Program
             Snap(settings, outDir, "6-settings.png", _ => [("6-support.png", settings.Page.ShowSupport)]);
 
             // Pointed at the sandbox: the default would suggest and read the
-            // machine's real data folder.
-            Snap(new StartupWindow(new AppSettings { DataFolder = root, AdultHistoryFile = "AdultHistory.csv", Port = plan.Port }),
+            // machine's real data folder, and the registry's real
+            // SignUpGenius key. A made-up key shows the usual state.
+            Snap(new StartupWindow(new AppSettings { DataFolder = root, AdultHistoryFile = "AdultHistory.csv", Port = plan.Port },
+                    SignUpGeniusKeyStore.InMemory(new string('x', 32))),
                 outDir, "8-startup.png");
             Snap(new HelpWindow(), outDir, "9-help.png");
             Snap(new QrWindow(["http://192.168.1.23:8080/", "http://10.0.0.5:8080/"]), outDir, "12-qr.png");

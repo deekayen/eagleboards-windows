@@ -67,8 +67,10 @@
         <Label Style="{StaticResource FieldLabel}" Content="_Port" Target="{Binding ElementName=PortBox}" />
         <TextBox x:Name="PortBox" Width="96" HorizontalAlignment="Left" VerticalContentAlignment="Center" AutomationProperties.Name="Port" />
 
-        <CheckBox x:Name="SugCheck" Margin="0,20,0,0" IsChecked="{x:Null}" Content="Import the event's sign-ups from _SignUpGenius" />
-        <TextBlock x:Name="SugStatus" Style="{StaticResource FieldHint}" Margin="28,4,0,0" />
+        <Label Style="{StaticResource FieldLabel}" Content="SignUpGenius API _key" Target="{Binding ElementName=SugKeyBox}" />
+        <PasswordBox x:Name="SugKeyBox" VerticalContentAlignment="Center" PasswordChanged="OnSugKeyChanged" AutomationProperties.Name="SignUpGenius API key" />
+        <TextBlock x:Name="SugStatus" Style="{StaticResource FieldHint}" TextWrapping="Wrap" />
+        <CheckBox x:Name="SugCheck" Margin="0,12,0,0" IsChecked="{x:Null}" Content="_Import the event's sign-ups from SignUpGenius" />
       </StackPanel>
     </StackPanel>
   </DockPanel>

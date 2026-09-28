@@ -6,7 +6,8 @@ namespace EagleBoards.App;
 /// <summary>
 /// What the start-up window remembers between runs, kept per Windows user in
 /// %LOCALAPPDATA%\EagleBoards\settings.json. Holds paths and network
-/// choices only -- never the SignUpGenius key and never participant data.
+/// choices only -- never participant data, and never the SignUpGenius key,
+/// which <see cref="SignUpGeniusKeyStore"/> keeps encrypted in the registry.
 /// </summary>
 public sealed class AppSettings
 {
@@ -57,51 +58,4 @@ public sealed class AppSettings
         {
         }
     }
-
-    /// <summary>
-    /// The SignUpGenius key: the SUG_KEY environment variable, else a
-    /// <c>SUG_KEY=</c> line in a .env file in the data folder or beside the
-    /// exe -- the same places the Java launcher looked. Returns the key and
-    /// where it came from, or nulls.
-    /// </summary>
-    public static (string? Key, string? Source) FindSignUpGeniusKey(string dataFolder)
-    {
-        var env = Environment.GetEnvironmentVariable("SUG_KEY");
-        if (IsRealKey(env))
-        {
-            return (env, "the SUG_KEY environment variable");
-        }
-
-        foreach (var dir in new[] { dataFolder, AppContext.BaseDirectory }.Where(d => d.Length > 0))
-        {
-            var path = Path.Combine(dir, ".env");
-            try
-            {
-                if (!File.Exists(path))
-                {
-                    continue;
-                }
-
-                foreach (var line in File.ReadAllLines(path))
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.StartsWith("SUG_KEY=", StringComparison.Ordinal))
-                    {
-                        var key = trimmed["SUG_KEY=".Length..].Trim().Trim('"', '\'');
-                        if (IsRealKey(key))
-                        {
-                            return (key, path);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-            }
-        }
-
-        return (null, null);
-    }
-
-    private static bool IsRealKey(string? key) => key is { Length: > 10 } && key != "replace-with-real-key";
 }

@@ -92,7 +92,10 @@ runs a native WPF app instead of the Java app's browser pages.
    screenshot or test against either. Anything that defaults to "the usual data
    folder" (the start-up window does) must be pointed at a sandbox when
    exercised. The snapshot harness passes it an explicit `AppSettings` for
-   exactly this reason.
+   exactly this reason. The same window reads the district's real
+   SignUpGenius key (`SignUpGeniusKeyStore`: DPAPI-encrypted under
+   `HKCU\Software\Eagle Boards`, never `.env` or the data folder), so the
+   harness passes `SignUpGeniusKeyStore.InMemory` with a made-up key.
 3. **Keep the data format identical to the Java version.** Shared files, no
    quoting, `,`→`~` and newline→`+` in values, `yyyy-MM-dd_HH:mm±hhmm` times,
    column orders as in each record's `AllColumns`. A format change strands

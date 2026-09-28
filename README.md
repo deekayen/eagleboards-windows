@@ -71,9 +71,13 @@ anything that doesn't. The check-in stations only need a web browser.
      folder.
    - **Check-in network**: the venue Wi-Fi. Serving only that network keeps
      the site off Hyper-V, WSL and VPN adapters. "All networks" is there too.
-   - **Port** (8080) and whether to **import the event's SignUpGenius
-     sign-ups** (needs `SUG_KEY=...` in a `.env` file in the data folder, or
-     the `SUG_KEY` environment variable).
+   - **Port** (8080).
+   - **SignUpGenius API key**, and whether to **import the event's
+     sign-ups**. The key is kept for your Windows account in the registry
+     (`HKEY_CURRENT_USER\Software\Eagle Boards`), encrypted so only that
+     account can read it, and never in the data folder. Paste it once; it's
+     there the next time. Empty the box and start to remove it. (The Java
+     version's launcher still reads its own key from a `.env` file.)
 3. Press **Start**. The first time, Windows Firewall asks whether to allow the
    scheduler on the network: allow **private** networks, or the stations can't
    connect.
