@@ -29,7 +29,9 @@ before anyone sits down, and sees every room's time at a glance.
   (a Wood Badge pentagon marks those counting the event toward Wood Badge).
 - **Every room timed.** Convening, in review, running long, overdue. Times
   follow the Guide to Advancement and can be changed in Settings.
-- **Where their people are.** Each youth's leader and parents, and which room
+- **Where everyone is.** Type anyone's name over the rooms, youth or adult,
+  and see which room they're in, or that they're waiting, free or gone home.
+  Each youth's leader and parents, and which room
   they're in, for fetching them and for afterwards.
 - **Results and a report.** Every board and its result, saved to a CSV file
   for Excel.

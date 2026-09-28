@@ -102,6 +102,44 @@ public class SchedulerLogicTests
     }
 
     [Fact]
+    public void FindingAPersonSaysWhichRoomTheyAreInOrWhereTheyAreInstead()
+    {
+        // SPEC.md D-21: a youth or an adult, by any part of their name.
+        ScoutInfo Youth(string first, string last, string status, string room = "") =>
+            new(last, last, first, "Troop1", BoardTypes.Final, room, status, "");
+        AdultInfo Adult(string first, string last, string room = "") =>
+            new(last, last, first, "Troop2", room, BoardRoles.Member, BoardRoles.Member);
+
+        var youth = new[]
+        {
+            Youth("Arthur", "Eldred", BoardStatus.InProgress, "101"),
+            Youth("Bill", "Amend", BoardStatus.Registered),
+            Youth("Peter", "Agre", BoardStatus.Completed, AdultRoom.Disabled),
+            Youth("Rob", "Corddry", BoardStatus.Postponed),
+        };
+        var adults = new[]
+        {
+            Adult("Neil", "Armstrong", "101"),
+            Adult("Jim", "Lovell"),
+            Adult("Charles", "Duke", AdultRoom.Disabled),
+        };
+
+        string Say(string query) => string.Join("; ",
+            SchedulerLogic.FindPeople(query, youth, adults).Select(p => $"{p.Name} {p.Where}{(p.Room != null ? " [" + p.Room + "]" : "")}"));
+
+        // Youth first, then adults, each by last name.
+        Assert.Equal("Arthur Eldred is in room 101 [101]; Neil Armstrong is in room 101 [101]; Charles Duke has gone home", Say("ar"));
+        Assert.Equal("Neil Armstrong is in room 101 [101]", Say("neil arm"));
+        Assert.Equal("Bill Amend is waiting", Say("bill"));
+        Assert.Equal("Peter Agre has finished", Say("AGRE"));
+        Assert.Equal("Rob Corddry was postponed", Say("rob c"));
+        Assert.Equal("Jim Lovell isn't on a board", Say("lovell"));
+        Assert.Equal("Charles Duke has gone home", Say("Duke"));
+        Assert.Empty(SchedulerLogic.FindPeople("  ", youth, adults));
+        Assert.Empty(SchedulerLogic.FindPeople("Spielberg", youth, adults));
+    }
+
+    [Fact]
     public void TheYouthListStacksWaitingThenOnABoardByRoomThenFinishedNewestFirst()
     {
         // SPEC.md O-3 (amended): one list, three groups, each in its own order.

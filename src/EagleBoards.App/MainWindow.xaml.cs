@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -40,6 +41,7 @@ public partial class MainWindow : Window
     private readonly ListCollectionView _queueView;
     private readonly ListCollectionView _boardView;
     private readonly ListCollectionView _adultView;
+    private readonly ListCollectionView _roomView;
     private readonly DispatcherTimer _minute = new();
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private readonly DispatcherTimer _copied = new() { Interval = TimeSpan.FromSeconds(3) };
@@ -51,11 +53,10 @@ public partial class MainWindow : Window
     private QrWindow? _qr;
     private SettingsWindow? _settings;
 
-    /// <summary>
-    /// The youth the details pane shows. Chosen by the operator; kept when the
-    /// youth drops out of the queue's view (Find no longer matches them), so
-    /// the board and where their people are stay on screen.
-    /// </summary>
+    /// <summary>The rooms Find a person narrows the Rooms card to, or null when it's empty.</summary>
+    private HashSet<string>? _foundRooms;
+
+    /// <summary>The youth the details pane shows, chosen by the operator.</summary>
     private ScoutRow? _current;
 
     /// <summary>The builder's choices that aren't saved until Seat: chair and room.</summary>
@@ -72,11 +73,10 @@ public partial class MainWindow : Window
 
         // Every youth in one list, stacked in three groups that are always
         // there, each headed with its count, even at nought (SPEC.md O-3).
+        // No filter: Find a person, over the rooms, finds anyone (D-21).
         _queueView = new ListCollectionView(_scouts)
         {
-            Filter = o => QueueVisible((ScoutRow)o),
             CustomSort = Comparer<object>.Create((a, b) => QueueOrder((ScoutRow)a, (ScoutRow)b)),
-            IsLiveFiltering = true,
             IsLiveSorting = true,
             IsLiveGrouping = true,
         };
@@ -89,7 +89,6 @@ public partial class MainWindow : Window
         _queueView.GroupDescriptions.Add(groups);
         foreach (var p in new[] { nameof(ScoutRow.Status), nameof(ScoutRow.QueueGroup), nameof(ScoutRow.QueueSort), nameof(ScoutRow.Room) })
         {
-            _queueView.LiveFilteringProperties.Add(p);
             _queueView.LiveSortingProperties.Add(p);
             _queueView.LiveGroupingProperties.Add(p);
         }
@@ -104,7 +103,8 @@ public partial class MainWindow : Window
         _adultView.SortDescriptions.Add(new SortDescription(nameof(AdultRow.Last), ListSortDirection.Ascending));
         AdultGrid.ItemsSource = _adultView;
 
-        RoomList.ItemsSource = _rooms;
+        _roomView = new ListCollectionView(_rooms) { Filter = o => _foundRooms?.Contains(((RoomCard)o).Room) ?? true };
+        RoomList.ItemsSource = _roomView;
 
         foreach (var r in BoardResults.All)
         {
@@ -165,6 +165,7 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnUndo(this, new RoutedEventArgs())), Key.Z, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(RefreshAll), Key.F5, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnHelp(this, new RoutedEventArgs())), Key.F1, ModifierKeys.None));
+        InputBindings.Add(new KeyBinding(new RelayCommand(FocusFind), Key.F, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("Event")), Key.D1, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("Results")), Key.D2, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("People")), Key.D3, ModifierKeys.Control));
@@ -202,6 +203,10 @@ public partial class MainWindow : Window
         UpdateRoomTimers();
         ShowDetails();
         UpdatePeopleButtons();
+        if (_foundRooms != null)
+        {
+            UpdatePersonFind();
+        }
 
         // Edit > Undo (and Ctrl+Z) is the one way to undo, and names the
         // step, as the Mac's does. A name's own underscore mustn't become an
@@ -303,10 +308,6 @@ public partial class MainWindow : Window
     private static bool Matches(string filter, params string[] fields) =>
         filter.Length == 0 || fields.Any(f => f.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Find looks through every group, finished youth included (SPEC.md O-3).</summary>
-    private bool QueueVisible(ScoutRow s) =>
-        Matches(QueueFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.FullName, s.UnitName, s.UnitLabel, s.Room, s.Leader);
-
     /// <summary>
     /// Waiting by sign-in number, On a board by room, Finished the most recent
     /// first (<see cref="ScoutRow.QueueSort"/>); sign-in number breaks a tie.
@@ -324,13 +325,78 @@ public partial class MainWindow : Window
     private bool AdultVisible(AdultRow a) =>
         Matches(AdultFilter.Text.Trim(), a.Last, a.First, a.UnitName, a.UnitLabel, a.RoomText, a.FinalBoard, a.ProjectReview);
 
-    private void OnQueueFilter(object sender, TextChangedEventArgs e) => _queueView?.Refresh();
-
     private void OnBoardFilter(object sender, TextChangedEventArgs e) => _boardView?.Refresh();
 
     private void OnAdultFilter(object sender, TextChangedEventArgs e) => _adultView?.Refresh();
 
     private void OnAvailableFilter(object sender, TextChangedEventArgs e) => ShowDetails();
+
+    private void OnPersonFind(object sender, TextChangedEventArgs e) => UpdatePersonFind();
+
+    /// <summary>
+    /// Which room is someone in (SPEC.md D-21)? The rooms narrow to those
+    /// holding a youth or an adult by that name, or a room by that name; for
+    /// anyone in no room, the note says where they are. Kept up to date as
+    /// the event changes (<see cref="RefreshAll"/>).
+    /// </summary>
+    private void UpdatePersonFind()
+    {
+        var query = PersonFind.Text.Trim();
+        if (query.Length == 0)
+        {
+            _foundRooms = null;
+            PersonFindNote.Text = "";
+        }
+        else
+        {
+            var found = SchedulerLogic.FindPeople(query, _scouts.Select(s => s.Info), _adults.Select(a => a.Info));
+            _foundRooms = found.Where(p => p.Room != null).Select(p => p.Room!)
+                .Concat(_rooms.Where(r => r.Room.Contains(query, StringComparison.OrdinalIgnoreCase)).Select(r => r.Room))
+                .ToHashSet(StringComparer.Ordinal);
+            var elsewhere = found.Where(p => p.Room == null).ToList();
+            PersonFindNote.Text = _foundRooms.Count == 0 && elsewhere.Count == 0 ? "No one by that name has signed in."
+                : string.Join(" ", elsewhere.Take(4).Select(p => $"{p.Name} {p.Where}."))
+                  + (elsewhere.Count > 4 ? $" And {elsewhere.Count - 4} more." : "");
+        }
+
+        _roomView.Refresh();
+        if (UIElementAutomationPeer.CreatePeerForElement(PersonFindNote) is { } peer)
+        {
+            peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        }
+    }
+
+    /// <summary>Enter opens the first room found (or the youth found, if in no room); Esc clears.</summary>
+    private void OnPersonFindKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && PersonFind.Text.Length > 0)
+        {
+            PersonFind.Text = "";
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && _foundRooms != null)
+        {
+            if (_roomView.Cast<RoomCard>().FirstOrDefault() is { } room)
+            {
+                RoomList.SelectedItem = room;
+            }
+            else if (SchedulerLogic.FindPeople(PersonFind.Text, _scouts.Select(s => s.Info), []).FirstOrDefault() is { } youth
+                     && _scouts.FirstOrDefault(s => s.Id == youth.Id) is { } row)
+            {
+                Open(row);
+            }
+
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Ctrl+F: the find box of the page shown.</summary>
+    private void FocusFind()
+    {
+        var box = EventPage.IsVisible ? PersonFind : ResultsPage.IsVisible ? BoardFilter : AdultFilter;
+        box.Focus();
+        box.SelectAll();
+    }
 
     // ------------------------------------------------------------------
     // Selection
@@ -338,8 +404,6 @@ public partial class MainWindow : Window
 
     private void OnQueueSelected(object sender, SelectionChangedEventArgs e)
     {
-        // Null when the selected youth leaves the view (Find no longer
-        // matches them): keep showing them rather than blanking the pane.
         if (!_quiet && QueueList.SelectedItem is ScoutRow s)
         {
             Open(s);
@@ -380,11 +444,6 @@ public partial class MainWindow : Window
         if (BoardGrid.SelectedItem is ScoutRow row)
         {
             ShowPage("Event");
-            if (!_queueView.Contains(row))
-            {
-                QueueFilter.Text = "";
-            }
-
             Open(row);
         }
     }

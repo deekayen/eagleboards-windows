@@ -34,6 +34,12 @@ public sealed record ScoutInfo(string Id, string Last, string First, string Unit
 
 public sealed record RoomInfo(string Id, string Room, string BoardType, string Scout);
 
+/// <summary>
+/// Someone found by name (<see cref="SchedulerLogic.FindPeople"/>): the room
+/// they're in, or null and where they are instead, in words ("is waiting").
+/// </summary>
+public sealed record PersonPlace(string Id, string Name, bool IsYouth, string? Room, string Where);
+
 /// <summary>An auto-selected board: who, where, and what couldn't be found.</summary>
 public sealed record AutoSelection(IReadOnlyList<string> ChairIds, IReadOnlyList<string> MemberIds, string? RoomId, IReadOnlyList<string> Problems)
 {
@@ -469,6 +475,40 @@ public static class SchedulerLogic
         var rank = regNum.StartsWith('P') ? 0 : regNum.StartsWith('W') ? 1 : 2;
         var digits = new string(regNum.SkipWhile(char.IsAsciiLetter).TakeWhile(char.IsAsciiDigit).ToArray());
         return (rank, int.TryParse(digits, out var n) ? n : 0);
+    }
+
+    /// <summary>
+    /// Everyone signed in whose name has <paramref name="query"/> in it,
+    /// ignoring case, youth then adults, each by last name: the room they're
+    /// in, or where they are instead (SPEC.md D-21). An empty query finds no one.
+    /// </summary>
+    public static IReadOnlyList<PersonPlace> FindPeople(string query, IEnumerable<ScoutInfo> youth, IEnumerable<AdultInfo> adults)
+    {
+        query = query.Trim();
+        if (query.Length == 0)
+        {
+            return [];
+        }
+
+        bool Named(string first, string last) => $"{first} {last}".Contains(query, StringComparison.OrdinalIgnoreCase);
+
+        var found = youth.Where(s => Named(s.First, s.Last))
+            .OrderBy(s => s.Last, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.First, StringComparer.OrdinalIgnoreCase)
+            .Select(s => BoardStatus.IsActive(s.Status)
+                ? new PersonPlace(s.Id, $"{s.First} {s.Last}", true, s.Room, "is in room " + s.Room)
+                : new PersonPlace(s.Id, $"{s.First} {s.Last}", true, null, s.Status switch
+                {
+                    BoardStatus.Completed => "has finished",
+                    BoardStatus.Postponed => "was postponed",
+                    _ => "is waiting",
+                }))
+            .ToList();
+        found.AddRange(adults.Where(a => Named(a.First, a.Last))
+            .OrderBy(a => a.Last, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.First, StringComparer.OrdinalIgnoreCase)
+            .Select(a => a.Room == AdultRoom.Disabled ? new PersonPlace(a.Id, $"{a.First} {a.Last}", false, null, "has gone home")
+                : a.IsFree ? new PersonPlace(a.Id, $"{a.First} {a.Last}", false, null, "isn't on a board")
+                : new PersonPlace(a.Id, $"{a.First} {a.Last}", false, a.Room, "is in room " + a.Room)));
+        return found;
     }
 
     /// <summary>

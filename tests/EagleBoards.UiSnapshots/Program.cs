@@ -96,6 +96,10 @@ internal static class Program
                 [
                     ("2-builder.png", () => queue.SelectedItem = queue.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.Registered)),
                     ("3-board.png", () => queue.SelectedItem = queue.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.InProgress)),
+                    // Find a person (SPEC.md D-21): an adult on a board, then
+                    // a youth still waiting, whom no room holds.
+                    ("3a-find-in-room.png", () => w.PersonFind.Text = "duxbury"),
+                    ("3b-find-elsewhere.png", () => w.PersonFind.Text = "Aldridge"),
                     ("4-results.png", () => Invoke(w, "ShowPage", "Results")),
                     ("5-people.png", () => Invoke(w, "ShowPage", "People")),
                 ];

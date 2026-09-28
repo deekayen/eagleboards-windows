@@ -355,16 +355,15 @@
               <ColumnDefinition Width="360" />
             </Grid.ColumnDefinitions>
 
-            <!-- The queue: every youth, stacked Waiting, On a board, Finished,
-                 with nothing to pick before a youth can be found (SPEC.md O-3). -->
+            <!-- The queue: every youth, stacked Waiting, On a board, Finished
+                 (SPEC.md O-3). No find of its own: Find a person, over the
+                 rooms, says where anyone is (D-21). -->
             <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12,12,4,12">
               <DockPanel>
                 <!-- As tall as the Rooms card's command row, so the two titles line up. -->
-                <Grid DockPanel.Dock="Top" MinHeight="32" Margin="0,0,8,8">
+                <Grid DockPanel.Dock="Top" MinHeight="32" Margin="0,0,8,4">
                   <TextBlock Style="{StaticResource CardTitle}" Text="Youth" />
                 </Grid>
-                <TextBox x:Name="QueueFilter" app:Placeholder.Text="Find a youth" DockPanel.Dock="Top" Margin="0,0,8,8" TextChanged="OnQueueFilter"
-                         AutomationProperties.Name="Find a youth" ToolTip="Find anyone who signed in, waiting, on a board or finished, by name, unit or room" />
                 <ListBox x:Name="QueueList" Background="Transparent" BorderThickness="0" ItemTemplate="{StaticResource QueueItem}" Padding="0,0,8,0"
                          SelectionChanged="OnQueueSelected" PreviewMouseLeftButtonDown="OnQueueClick" AutomationProperties.Name="Youth"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
@@ -414,6 +413,17 @@
                     </Button>
                   </StackPanel>
                   <TextBlock Style="{StaticResource CardTitle}" Text="Rooms" />
+                </DockPanel>
+                <!-- Which room is someone in (SPEC.md D-21)? A youth's or an
+                     adult's name, or a room, narrows the rooms to theirs; for
+                     anyone in no room, the note beside it says where they are. -->
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                  <TextBox x:Name="PersonFind" app:Placeholder.Text="Find a person" DockPanel.Dock="Left" Width="280" VerticalAlignment="Top"
+                           VerticalContentAlignment="Center" TextChanged="OnPersonFind" PreviewKeyDown="OnPersonFindKey"
+                           AutomationProperties.Name="Find a person"
+                           ToolTip="Type a youth's or an adult's name to see which room they're in. Enter opens the room's board; Esc clears." />
+                  <TextBlock x:Name="PersonFindNote" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="12,6,0,0"
+                             VerticalAlignment="Top" AutomationProperties.LiveSetting="Polite" />
                 </DockPanel>
                 <ListBox x:Name="RoomList" SelectionMode="Single" SelectionChanged="OnRoomSelected"
                          ItemContainerStyle="{StaticResource RoomItem}" ItemTemplate="{StaticResource RoomCardTemplate}"
