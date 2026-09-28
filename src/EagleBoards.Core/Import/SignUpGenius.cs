@@ -114,7 +114,7 @@ public sealed class SignUpGenius(HttpClient http, string key, Action<string> log
                 // The ID was fixed as "ADULT:::" when the empty record was made;
                 // derive the real one now. (The Java import didn't, so every
                 // adult it added shared that ID until the next restart, and a
-                // sign-in that evening created a duplicate history record.)
+                // sign-in at that event created a duplicate history record.)
                 adult.PostLoadUpdate();
 
                 var matches = history.Where("Email", e.Email);

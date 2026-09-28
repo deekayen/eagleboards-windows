@@ -123,7 +123,7 @@ public class CheckInServerTests
     [InlineData("POST", "/update-config", "RefreshTimeSecs=1")]
     [InlineData("GET", "/adult-history-cells", null)]
     [InlineData("GET", "/room-cells", null)]
-    public async Task AStationCannotRunTheEvening(string method, string path, string? form)
+    public async Task AStationCannotRunTheEvent(string method, string path, string? form)
     {
         using var box = new Sandbox();
         Assert.Equal(403, (await Send(Server(box), Station, method, path, form)).Status);

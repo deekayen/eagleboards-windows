@@ -214,7 +214,7 @@ public class BoardServiceTests
         // reset and completed only through the Event page's steps, which give
         // it a room and members and take them back.
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         string Edit(string status) => s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["Status"] = status }, out var why) + "|" + why;
 
         Assert.StartsWith("invalid|Alex Aldridge can be seated", Edit(BoardStatus.Seated));
@@ -257,7 +257,7 @@ public class BoardServiceTests
         Assert.DoesNotContain(said, m => m.Contains("Started a new"));
     }
 
-    private static (BoardService Service, string Scout, string Chair, string M1, string M2) SeatableEvening(Sandbox box)
+    private static (BoardService Service, string Scout, string Chair, string M1, string M2) SeatableEvent(Sandbox box)
     {
         var s = box.Open();
         s.AddRoom("101", BoardTypes.Final);
@@ -273,7 +273,7 @@ public class BoardServiceTests
     public void OnePersonListedThreeTimesIsNotABoardOfThree()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, _, _) = SeatableEvening(box);
+        var (s, scout, chair, _, _) = SeatableEvent(box);
         var result = s.SeatBoard("ROOM:101", scout, chair, $"{chair},{chair},{chair}");
         Assert.False(result.Ok);
         Assert.Contains("more than once", result.Message, StringComparison.Ordinal);
@@ -284,7 +284,7 @@ public class BoardServiceTests
     public void AnUnavailableAdultCannotBeSeatedEvenAfterTheChair()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, _) = SeatableEvening(box);
+        var (s, scout, chair, m1, _) = SeatableEvent(box);
         s.RegisterAdult(Seed.Adult("Dunn", "Dee", "2004", "Member", "Unavailable"));
         var result = s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{Seed.AdultId("Dunn", "Dee", "2004")}");
         Assert.False(result.Ok);
@@ -295,7 +295,7 @@ public class BoardServiceTests
     public void SeatingUsesUpTheOperatorsPicks()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         foreach (var id in new[] { chair, m1, m2 })
         {
             s.SaveRow(DataTable.Adults, "updated", id, new Dictionary<string, string> { ["Sel"] = "1" });
@@ -311,7 +311,7 @@ public class BoardServiceTests
     public void AResultCannotBeRecordedWhileTheBoardIsStillConvening()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         Assert.False(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
         Assert.True(s.StartReview(scout).Ok);
@@ -324,7 +324,7 @@ public class BoardServiceTests
     public void AMemberCannotChairAndTheChairMustSit()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.Contains("not qualified", s.SeatBoard("ROOM:101", scout, m1, $"{chair},{m1},{m2}").Message, StringComparison.Ordinal);
         s.RegisterAdult(Seed.Adult("Dunn", "Dee", "2004", "Member", "Member"));
         Assert.Contains("not one of the board members",
@@ -335,7 +335,7 @@ public class BoardServiceTests
     public void RoomsCannotBeDuplicatedOrRemovedWhileInUse()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.False(s.AddRoom("101", BoardTypes.Final).Ok);
         Assert.False(s.AddRoom("  ", BoardTypes.Final).Ok);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
@@ -419,7 +419,7 @@ public class BoardServiceTests
 
     private static (BoardService Service, string Scout, string Chair, string M1, string M2) UnderReview(Sandbox box)
     {
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         Assert.True(s.StartReview(scout).Ok);
         return (s, scout, chair, m1, m2);
@@ -507,7 +507,7 @@ public class BoardServiceTests
     public void AnAdultWithACommaInTheirNameCanBeSeated()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, _) = SeatableEvening(box);
+        var (s, scout, chair, m1, _) = SeatableEvent(box);
         s.RegisterAdult(Seed.Adult("Whitmore, Jr.", "Lysander", "2031", "Member", "Member"));
         var junior = "ADULT:Whitmore~ Jr.:Lysander:2031";
         Assert.Equal("Lysander", AdultRow(s, junior)["First"]);
@@ -634,7 +634,7 @@ public class BoardServiceTests
     }
 
     [Fact]
-    public void ScoutChoicesAreRsvpsAndWalkInsWhoseEveningIsNotOver()
+    public void ScoutChoicesAreRsvpsAndWalkInsNotYetFinished()
     {
         using var box = new Sandbox();
         var s = box.Open();
@@ -650,7 +650,7 @@ public class BoardServiceTests
     public void AnOperatorLinksAnAdultToAScoutAfterBothSignedIn()
     {
         using var box = new Sandbox();
-        var (s, scout, _, m1, _) = SeatableEvening(box);
+        var (s, scout, _, m1, _) = SeatableEvent(box);
         Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
         Assert.Equal(scout, AdultRow(s, m1)["Supporting"]);
         Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);   // pressing it twice links once
@@ -671,7 +671,7 @@ public class BoardServiceTests
     public void RenamingARoomMovesItsBoardMembersWithIt()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
 
         Assert.True(s.RenameRoom("ROOM:101", "101 Annex").Ok);
@@ -704,7 +704,7 @@ public class BoardServiceTests
     public void UndoReversesARoomRename()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         Assert.True(s.RenameRoom("ROOM:101", "101 Annex").Ok);
 
@@ -718,7 +718,7 @@ public class BoardServiceTests
     public void SwitchingRoomTypeDoesNotDisturbABoardAlreadyThere()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
 
         Assert.True(s.SetRoomType("ROOM:101", BoardTypes.Project).Ok);
@@ -773,7 +773,7 @@ public class BoardServiceTests
     public void UndoReversesSeatingABoard()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         Assert.True(s.CanUndo);
 
@@ -788,7 +788,7 @@ public class BoardServiceTests
     public void UndoReversesStartingTheReview()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         Assert.True(s.StartReview(scout).Ok);
 
@@ -859,7 +859,7 @@ public class BoardServiceTests
     public void UndoReversesLinkingAndUnlinking()
     {
         using var box = new Sandbox();
-        var (s, scout, _, m1, _) = SeatableEvening(box);
+        var (s, scout, _, m1, _) = SeatableEvent(box);
         Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
         Assert.True(s.Undo().Ok);
         Assert.Equal("", AdultRow(s, m1)["Supporting"]);
@@ -869,7 +869,7 @@ public class BoardServiceTests
     public void UndoReversesMovingARoomsBoard()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         s.AddRoom("102", BoardTypes.Final);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
 
@@ -906,7 +906,7 @@ public class BoardServiceTests
     public void DisableAdultRefusesWhoIsOnABoard()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         Assert.False(s.DisableAdult(chair).Ok);
     }
@@ -928,7 +928,7 @@ public class BoardServiceTests
         // table no longer sets a sitting board's status (section 25), so the
         // correction is to the chair the seat set.
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["BoardChair"] = "Someone Else" });
 
@@ -961,7 +961,7 @@ public class BoardServiceTests
         // A member signs in again mid-board with a new phone and whom they came
         // to support; undoing the seat frees them without losing either.
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         var again = new Dictionary<string, string>(Seed.Adult("Baker", "Bob", "2002", "Member", "Member"))
         {
@@ -979,7 +979,7 @@ public class BoardServiceTests
     public void RestoreBoardTakesBackTheLastActionOnceAsJavaDoes()
     {
         using var box = new Sandbox();
-        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SetSupporting(m1, scout, linked: true).Ok);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
 
@@ -1002,7 +1002,7 @@ public class BoardServiceTests
     {
         // The Java Event page marks adults gone home through /adult-update.
         using var box = new Sandbox();
-        var (s, _, _, m1, m2) = SeatableEvening(box);
+        var (s, _, _, m1, m2) = SeatableEvent(box);
 
         s.SaveRow(DataTable.Adults, "updated", m1, new Dictionary<string, string> { ["Sel"] = "1" }, undoable: true);
         Assert.False(s.CanUndo);

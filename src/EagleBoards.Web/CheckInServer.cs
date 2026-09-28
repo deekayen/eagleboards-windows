@@ -430,7 +430,7 @@ public sealed class CheckInServer : IAsyncDisposable
     /// <summary>
     /// The adult sign-in page's "I'm here supporting" list, in the same
     /// rows format as the other lists: First, Last, UnitName for each RSVP
-    /// and walk-in whose evening is not over (<see cref="BoardService.ScoutChoices"/>).
+    /// and walk-in not yet finished (<see cref="BoardService.ScoutChoices"/>).
     /// Its own endpoint because the RSVP list is otherwise admin-only.
     /// </summary>
     private Task ScoutChoices(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)

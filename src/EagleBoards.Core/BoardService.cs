@@ -668,8 +668,8 @@ public sealed class BoardService
 
     /// <summary>
     /// The scouts an adult may say at sign-in they came to support: everyone
-    /// who RSVP'd, plus tonight's walk-ins, leaving out anyone whose evening
-    /// is over (Completed or Postponed). Names and units only -- this is read
+    /// who RSVP'd, plus the event's walk-ins, leaving out anyone already
+    /// finished (Completed or Postponed). Names and units only -- this is read
     /// by the check-in stations, which see nothing more.
     /// </summary>
     public List<(string Id, string First, string Last, string UnitName)> ScoutChoices()
