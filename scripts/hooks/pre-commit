@@ -45,7 +45,9 @@ done
 # SIGNUP_GENIUS_KEY assignment followed by a long base64-like literal
 # (placeholders like "dummy", "$SUG_KEY", or REPLACE_WITH_... pass).
 if git diff --cached -G'(-sugkey +|SIGNUP_GENIUS_KEY *= *")[A-Za-z0-9+/=]{16,}' --name-only | grep -q .; then
-    echo "BLOCKED: staged content contains a SignUpGenius key; use the SUG_KEY env var instead" >&2
+    echo 'BLOCKED: staged content contains a SignUpGenius key. Paste it into the start-up' >&2
+    echo '         window, which keeps it encrypted for your Windows account; on a command' >&2
+    echo '         line, pass -sugkey "$SUG_KEY" from the environment, not the key itself.' >&2
     fail=1
 fi
 
