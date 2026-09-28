@@ -87,7 +87,8 @@ internal static class Program
             // escapes included), not just what was typed.
             Seed(session.Service);
             session = Restart(session, plan);
-            Snap(new MainWindow(session), outDir, "1-event.png", win =>
+            var main = new MainWindow(session);
+            Snap(main, outDir, "1-event.png", win =>
             {
                 var w = (MainWindow)win;
                 var queue = w.QueueList;
@@ -95,14 +96,15 @@ internal static class Program
                 [
                     ("2-builder.png", () => queue.SelectedItem = queue.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.Registered)),
                     ("3-board.png", () => queue.SelectedItem = queue.Items.Cast<ScoutRow>().First(s => s.Status == BoardStatus.InProgress)),
-                    ("4-results.png", () => w.MainNav.SelectedIndex = 1),
-                    ("5-people.png", () => w.MainNav.SelectedIndex = 2),
-                    ("6-settings.png", () => w.FooterNav.SelectedIndex = 0),
-                    // What the sidebar's Donate link opens: the Support card
-                    // and its Venmo code (SPEC.md D-17), below the fold above.
-                    ("6-support.png", () => Invoke(w, "OnDonate", w, new RoutedEventArgs())),
+                    ("4-results.png", () => Invoke(w, "ShowPage", "Results")),
+                    ("5-people.png", () => Invoke(w, "ShowPage", "People")),
                 ];
             });
+
+            // File > Settings, and what Help > Donate opens: the Support card
+            // and its Venmo code (SPEC.md D-17), below the fold.
+            var settings = new SettingsWindow(new SettingsPage(session.Service, () => { }));
+            Snap(settings, outDir, "6-settings.png", _ => [("6-support.png", settings.Page.ShowSupport)]);
 
             Snap(new AdminWindow(session.Service), outDir, "7-admin.png");
 
@@ -124,6 +126,14 @@ internal static class Program
             add.AddChoice("Used for", [new(BoardTypes.Final, "Final board"), new(BoardTypes.Project, "Project review")], BoardTypes.Final);
             add.AddMessage("For project reviews sharing one room, add one entry per table, like 200A and 200B.");
             Snap(add, outDir, "11-form-dialog.png");
+
+            // Add member's choice of adults, with the marks after the names
+            // (SPEC.md D-20), showing a Wood Badge adult.
+            var bram = main.QueueList.Items.Cast<ScoutRow>().First(s => s.Last == "Bram");
+            var member = new AppDialog(owner, "Add a member?", "Add");
+            var choice = (System.Windows.Controls.ComboBox)Invoke(main, "AddAdultChoice", member, "Add to the board in room 101", Invoke(main, "JoinChoices", bram)!)!;
+            choice.SelectedItem = choice.Items.Cast<PickRow>().First(p => p.WoodBadge);
+            Snap(member, outDir, "13-choice-dialog.png");
         }
         finally
         {
@@ -163,13 +173,20 @@ internal static class Program
         string[] last = ["Abernathy", "Blackwood", "Castellano", "Duxbury", "Ellsworth", "Fairbanks", "Grimaldi", "Hollingsworth", "Ivanovic", "Jankowski", "Kaminski"];
         string[] first = ["Anneliese", "Bartholomew", "Clementine", "Desmond", "Evangeline", "Fitzgerald", "Genevieve", "Horatio", "Isadora", "Jebediah", "Katarina"];
         string[] roles = ["Chair/Chair", "Member/Chair", "Chair/Member", "Member/Member", "Member/Member", "Member/Member", "Member/Member", "Member/Member", "Unavailable/Member", "Member/Member", "Member/Member"];
+
+        // The marks after a name (SPEC.md D-20): two counting toward Wood
+        // Badge, and one in each of two youth's units -- Ellsworth sits on
+        // Bram's board, and Jankowski is free while Aldridge waits.
+        int[] woodBadge = [3, 6];
+        var unit = new Dictionary<int, int> { [4] = 1002, [9] = 1001 };
         for (var i = 0; i < last.Length; i++)
         {
             var r = roles[i].Split('/');
             s.RegisterAdult(new Dictionary<string, string>
             {
-                ["Last"] = last[i], ["First"] = first[i], ["UnitType"] = "Troop", ["Unit"] = (2001 + i).ToString(),
+                ["Last"] = last[i], ["First"] = first[i], ["UnitType"] = "Troop", ["Unit"] = unit.GetValueOrDefault(i, 2001 + i).ToString(),
                 ["Email"] = $"a{i}@example.org", ["ProjectReview"] = r[0], ["FinalBoard"] = r[1],
+                ["WoodBadge"] = woodBadge.Contains(i) ? "Y" : "",
             });
         }
 
@@ -184,7 +201,7 @@ internal static class Program
             });
         }
 
-        string A(int i) => $"ADULT:{last[i]}:{first[i]}:{2001 + i}";
+        string A(int i) => $"ADULT:{last[i]}:{first[i]}:{unit.GetValueOrDefault(i, 2001 + i)}";
         string S(int i) => $"SCOUT:{slast[i]}:{sfirst[i]}:{1001 + i}";
         s.SeatBoard("ROOM:101", S(1), A(1), $"{A(1)},{A(3)},{A(4)}");
         s.StartReview(S(1));

@@ -24,7 +24,9 @@ before anyone sits down, and sees every room's time at a glance.
 - **Rules checked as you build, not after.** Board size (3 to 6 for a board of
   review), a qualified chair, nobody on two boards or gone home, and the
   council's same-unit rule, with the national floor enforced when you
-  override it. Problems are listed above the Seat button, in plain words.
+  override it. Problems are listed above the Seat button, in plain words,
+  and a warning mark follows the name of anyone from the youth's own unit
+  (a Wood Badge pentagon marks those counting the event toward Wood Badge).
 - **Every room timed.** Convening, in review, running long, overdue. Times
   follow the Guide to Advancement and can be changed in Settings.
 - **Where their people are.** Each youth's leader and parents, and which room
@@ -46,9 +48,9 @@ before anyone sits down, and sees every room's time at a glance.
 
 Download `EagleBoards.exe` from
 [**Releases**](https://github.com/deekayen/eagleboards-windows/releases). It's
-one file with its own .NET runtime: nothing to install. The version is on the
-Settings page. The exe isn't code-signed yet, so the first time Windows may
-say it *protected your PC*: choose **More info**, then **Run anyway**.
+one file with its own .NET runtime: nothing to install. The version is in
+**File › Settings**. The exe isn't code-signed yet, so the first time Windows
+may say it *protected your PC*: choose **More info**, then **Run anyway**.
 
 **Requirements.** Windows 11 on the admin computer. Windows 10 (22H2) should
 work too, without Windows 11's translucent window background; please report
@@ -76,7 +78,10 @@ anything that doesn't. The check-in stations only need a web browser.
 4. Point each check-in station's browser at the check-in address at the
    bottom of the window (right-click it to copy), e.g. `http://192.168.1.23:8080`.
 5. Add rooms with **Add room** and run the event from the **Event** page.
-   **Help** in the app walks through seating, starting and completing boards.
+   **Help › Eagle Boards help** (F1) walks through seating, starting and
+   completing boards. The menu bar has the rest: **View** switches to the
+   Results and People pages (Ctrl+1 to 3), and **File** has Save report,
+   Admin tables, the check-in QR code and Settings.
 
 Closing the scheduler stops the check-in site. Everything is saved as it
 happens; there is no "save" step.
@@ -111,7 +116,7 @@ district's board events, you can chip in:
 [PayPal](https://paypal.me/deekayen) ·
 [Venmo](https://venmo.com/drdnorman) ·
 [Buy Me a Coffee](https://buymeacoff.ee/deekayen).
-The same links are on the app's Settings page.
+The same links are in the app, under **Help › Donate**.
 
 ## How it's built
 
@@ -128,8 +133,8 @@ Just never run both at once: they would fight over the port and the files.
 ```
   Check-in stations (any browser)             Admin computer
      /  /youth_register  /adult_register      EagleBoards.exe
-              |                                 |  Event, Results, People,
-              |  HTTP, venue network            |  Settings pages
+              |                                 |  Menu bar; Event, Results
+              |  HTTP, venue network            |  and People pages
               +---------------> Kestrel <-------+  (in-process, no browser)
                                    |
                               BoardService  --  CSV files in the data folder

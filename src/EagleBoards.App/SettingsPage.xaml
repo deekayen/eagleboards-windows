@@ -32,7 +32,7 @@
       </DockPanel>
     </Border>
 
-    <!-- Also reached from the sidebar's Donate link (SPEC.md D-17). -->
+    <!-- Also reached from Help > Donate (SPEC.md D-17). -->
     <Border x:Name="SupportCard" Style="{StaticResource Card}" Padding="16" Margin="0,4,0,16">
       <StackPanel>
         <StackPanel Orientation="Horizontal">

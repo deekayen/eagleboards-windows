@@ -85,6 +85,12 @@ public sealed class ScoutRow : Row
 
     public string RegNum { get => _regNum; private set { if (Set(ref _regNum, value)) Raise(nameof(RegNumSort)); } }
 
+    /// <summary>
+    /// Order in the Youth list: Waiting by sign-in number, On a board by room,
+    /// Finished the most recent first (SPEC.md O-3). Compared ordinally.
+    /// </summary>
+    public string QueueSort => SchedulerLogic.QueueSortKey(Status, RegNum, Room, _lastUpdate);
+
     /// <summary>Pre-registered first, walk-ins after, each in sign-in order.</summary>
     public string RegNumSort
     {
@@ -188,12 +194,15 @@ public sealed class ScoutRow : Row
         Notes = Display.Text(V(r, "Notes"));
         Raise(nameof(QueueGroup));
         Raise(nameof(QueueRank));
+        Raise(nameof(QueueSort));
         Raise(nameof(SubLine));
         Raise(nameof(TimeText));
     }
 
-    /// <summary>The queue's sections: who's next, who's in a room, who's done.</summary>
-    public string QueueGroup => BoardStatus.IsWaiting(Status) ? "Waiting" : BoardStatus.IsActive(Status) ? "On a board" : "Finished";
+    /// <summary>The queue's sections, in order: who's next, who's in a room, who's done.</summary>
+    public static readonly string[] QueueGroups = ["Waiting", "On a board", "Finished"];
+
+    public string QueueGroup => QueueGroups[QueueRank];
 
     public int QueueRank => BoardStatus.IsWaiting(Status) ? 0 : BoardStatus.IsActive(Status) ? 1 : 2;
 
@@ -217,21 +226,23 @@ public sealed class ScoutRow : Row
 }
 
 /// <summary>
-/// An adult in the board builder, seen from one youth's board: picked
-/// members (with the chair choice) and the eligible adults to add.
+/// An adult seen from one youth's board: a picked member (with the chair
+/// choice), an eligible adult to add, a seated board's member, or a choice
+/// in Replace and Add member. Carries the marks after the name (SPEC.md D-20).
 /// </summary>
 public sealed class PickRow : Row
 {
     private bool _isChair;
 
-    public PickRow(AdultRow adult, string boardType, string scoutUnit, Action<PickRow>? chairChosen = null)
+    public PickRow(AdultRow adult, ScoutRow scout, Action<PickRow>? chairChosen = null)
     {
         Adult = adult;
         Id = adult.Id;
-        var role = adult.Info.RoleFor(boardType);
+        var role = adult.Info.RoleFor(scout.BoardType);
         CanChair = role == BoardRoles.Chair;
-        SameUnit = scoutUnit.Length > 0 && adult.UnitName == scoutUnit;
-        Detail = string.Join(" · ", new[] { adult.UnitLabel, role, SameUnit ? "same unit as the youth" : "" }.Where(s => s.Length > 0));
+        SameUnit = scout.UnitName.Length > 0 && adult.UnitName == scout.UnitName;
+        SameUnitAs = SameUnit ? scout.FullName : null;
+        Detail = string.Join(" · ", new[] { adult.UnitLabel, role }.Where(s => s.Length > 0));
         ChairChosen = chairChosen;
     }
 
@@ -243,7 +254,17 @@ public sealed class PickRow : Row
 
     public bool CanChair { get; }
 
+    /// <summary>In the youth's own unit: a warning, with an override to seat (SPEC.md D-4).</summary>
     public bool SameUnit { get; }
+
+    /// <summary>The youth's name when <see cref="SameUnit"/>, for the mark's tooltip; otherwise null.</summary>
+    public string? SameUnitAs { get; }
+
+    public bool WoodBadge => Adult.IsWoodBadge;
+
+    /// <summary>What a screen reader says for the adult as a choice in a list, marks included.</summary>
+    public override string ToString() =>
+        string.Join(", ", new[] { Name, WoodBadge ? "Wood Badge" : "", SameUnit ? "Same unit" : "", Detail }.Where(s => s.Length > 0));
 
     private Action<PickRow>? ChairChosen { get; }
 
@@ -338,11 +359,11 @@ public sealed class AdultRow : Row
 
     public string ProjectReview { get => _project; private set => Set(ref _project, value); }
 
-    /// <summary>"Y" when tonight counts toward a Wood Badge ticket item.</summary>
-    public string WoodBadge { get => _woodBadge; private set { if (Set(ref _woodBadge, value)) Raise(nameof(WoodBadgeMark)); } }
+    /// <summary>"Y" when the event counts toward a Wood Badge ticket item.</summary>
+    public string WoodBadge { get => _woodBadge; private set { if (Set(ref _woodBadge, value)) Raise(nameof(IsWoodBadge)); } }
 
-    /// <summary>What the WB column shows.</summary>
-    public string WoodBadgeMark => WoodBadge == "Y" ? "\u2713" : "";
+    /// <summary>Shows the Wood Badge mark (SPEC.md D-20).</summary>
+    public bool IsWoodBadge => WoodBadge == "Y";
 
     /// <summary>IDs of the scouts this adult came to support, "|"-separated.</summary>
     public string Supporting { get => _supporting; private set => Set(ref _supporting, value); }

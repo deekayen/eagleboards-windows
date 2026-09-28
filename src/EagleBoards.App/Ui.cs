@@ -289,6 +289,25 @@ internal sealed class AppDialog : Window
         return combo;
     }
 
+    /// <summary>
+    /// A choice of objects drawn by <paramref name="itemTemplate"/>, the first
+    /// selected; SelectedValue is each one's <paramref name="valuePath"/>.
+    /// Typing to jump and screen readers use the items' ToString.
+    /// </summary>
+    public ComboBox AddChoice(string label, System.Collections.IEnumerable items, string valuePath, DataTemplate itemTemplate)
+    {
+        var combo = new ComboBox
+        {
+            ItemsSource = items,
+            ItemTemplate = itemTemplate,
+            SelectedValuePath = valuePath,
+            SelectedIndex = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        AddLabelled(label, combo);
+        return combo;
+    }
+
     public new bool ShowDialog()
     {
         Loaded += (_, _) =>

@@ -15,9 +15,10 @@ using Microsoft.Win32;
 namespace EagleBoards.App;
 
 /// <summary>
-/// The operator's window. A sidebar of pages: Event (the youth queue, the
-/// rooms, and a details pane that builds and runs the selected youth's
-/// board), Results, People and Settings.
+/// The operator's window: a menu bar over the pages Event (the youth queue,
+/// the rooms, and a details pane that builds and runs the selected youth's
+/// board), Results and People. Settings, Admin tables, Help and the QR code
+/// open windows of their own.
 ///
 /// Data is read from and written to <see cref="BoardService"/> in-process,
 /// and every change, including a sign-in on the website, raises
@@ -48,11 +49,12 @@ public partial class MainWindow : Window
     private bool _quiet;
     private AdminWindow? _admin;
     private QrWindow? _qr;
+    private SettingsWindow? _settings;
 
     /// <summary>
     /// The youth the details pane shows. Chosen by the operator; kept when the
-    /// youth drops out of the queue's view (completed, with finished hidden),
-    /// so the result and where their people are stay on screen.
+    /// youth drops out of the queue's view (Find no longer matches them), so
+    /// the board and where their people are stay on screen.
     /// </summary>
     private ScoutRow? _current;
 
@@ -68,17 +70,24 @@ public partial class MainWindow : Window
         InitializeComponent();
         Title = "Eagle Board Scheduler " + AppVersion.Text;
 
+        // Every youth in one list, stacked in three groups that are always
+        // there, each headed with its count, even at nought (SPEC.md O-3).
         _queueView = new ListCollectionView(_scouts)
         {
             Filter = o => QueueVisible((ScoutRow)o),
+            CustomSort = Comparer<object>.Create((a, b) => QueueOrder((ScoutRow)a, (ScoutRow)b)),
             IsLiveFiltering = true,
             IsLiveSorting = true,
             IsLiveGrouping = true,
         };
-        _queueView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ScoutRow.QueueGroup)));
-        _queueView.SortDescriptions.Add(new SortDescription(nameof(ScoutRow.QueueRank), ListSortDirection.Ascending));
-        _queueView.SortDescriptions.Add(new SortDescription(nameof(ScoutRow.RegNumSort), ListSortDirection.Ascending));
-        foreach (var p in new[] { nameof(ScoutRow.Status), nameof(ScoutRow.QueueRank), nameof(ScoutRow.QueueGroup), nameof(ScoutRow.RegNumSort) })
+        var groups = new PropertyGroupDescription(nameof(ScoutRow.QueueGroup));
+        foreach (var name in ScoutRow.QueueGroups)
+        {
+            groups.GroupNames.Add(name);
+        }
+
+        _queueView.GroupDescriptions.Add(groups);
+        foreach (var p in new[] { nameof(ScoutRow.Status), nameof(ScoutRow.QueueGroup), nameof(ScoutRow.QueueSort), nameof(ScoutRow.Room) })
         {
             _queueView.LiveFilteringProperties.Add(p);
             _queueView.LiveSortingProperties.Add(p);
@@ -103,8 +112,6 @@ public partial class MainWindow : Window
             _resultButtons[r] = button;
             ResultChoices.Children.Add(button);
         }
-
-        SettingsHost.Content = new SettingsPage(_svc, RefreshAll);
 
         UrlList.ItemsSource = session.CheckInUrls;
         DataText.Text = "Data: " + session.Plan.DataDirectory;
@@ -158,12 +165,14 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnUndo(this, new RoutedEventArgs())), Key.Z, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(RefreshAll), Key.F5, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnHelp(this, new RoutedEventArgs())), Key.F1, ModifierKeys.None));
-        InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 0), Key.D1, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 1), Key.D2, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayCommand(() => MainNav.SelectedIndex = 2), Key.D3, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("Event")), Key.D1, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("Results")), Key.D2, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("People")), Key.D3, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => OnReport(this, new RoutedEventArgs())), Key.S, ModifierKeys.Control));
+        InputBindings.Add(new KeyBinding(new RelayCommand(() => OnSettings(this, new RoutedEventArgs())), Key.OemComma, ModifierKeys.Control));
         Closing += OnClosing;
 
-        MainNav.SelectedIndex = 0;
+        ShowPage("Event");
         RefreshAll();
         ScheduleMinute();
     }
@@ -195,6 +204,11 @@ public partial class MainWindow : Window
         UpdatePeopleButtons();
         UndoButton.IsEnabled = _svc.CanUndo;
         UndoButton.ToolTip = _svc.UndoDescription is { } what ? $"Undo {what} (Ctrl+Z)" : "Nothing to undo (Ctrl+Z)";
+
+        // Edit > Undo names the step, as the Mac's does. A name's own
+        // underscore mustn't become an access key.
+        UndoMenu.IsEnabled = _svc.CanUndo;
+        UndoMenu.Header = _svc.UndoDescription is { } step ? "_Undo " + step.Replace("_", "__", StringComparison.Ordinal) : "_Undo";
     }
 
     /// <summary>Times are stamped to the minute, so counts change on the clock's minute: tick just after it.</summary>
@@ -249,26 +263,22 @@ public partial class MainWindow : Window
     // Navigation
     // ------------------------------------------------------------------
 
-    private void OnNavigate(object sender, SelectionChangedEventArgs e)
+    private void OnViewPage(object sender, RoutedEventArgs e)
     {
-        if (_quiet || sender is not ListBox { SelectedItem: ListBoxItem { Tag: string page } } list)
+        if (sender is MenuItem { Tag: string page })
         {
-            return;
+            ShowPage(page);
         }
-
-        Quietly(() => (ReferenceEquals(list, MainNav) ? FooterNav : MainNav).SelectedItem = null);
-        ShowPage(page);
     }
 
+    /// <summary>Event, Results or People, with the View menu's check on the page shown.</summary>
     private void ShowPage(string page)
     {
-        EventPage.Visibility = page == "Event" ? Visibility.Visible : Visibility.Collapsed;
-        ResultsPage.Visibility = page == "Results" ? Visibility.Visible : Visibility.Collapsed;
-        PeoplePage.Visibility = page == "People" ? Visibility.Visible : Visibility.Collapsed;
-        SettingsPage.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
-        if (page == "Settings" && SettingsHost.Content is SettingsPage settings)
+        foreach (var (item, element) in new (MenuItem, FrameworkElement)[] { (ViewEvent, EventPage), (ViewResults, ResultsPage), (ViewPeople, PeoplePage) })
         {
-            settings.Load();
+            var shown = (string)item.Tag == page;
+            item.IsChecked = shown;
+            element.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -294,22 +304,19 @@ public partial class MainWindow : Window
     private static bool Matches(string filter, params string[] fields) =>
         filter.Length == 0 || fields.Any(f => f.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Find looks through every group, finished youth included (SPEC.md O-3).</summary>
     private bool QueueVisible(ScoutRow s) =>
-        QueueScopeMatches(s.Status)
-        && Matches(QueueFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.FullName, s.UnitName, s.UnitLabel, s.Room, s.Leader);
+        Matches(QueueFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.FullName, s.UnitName, s.UnitLabel, s.Room, s.Leader);
 
     /// <summary>
-    /// Mac's Waiting/On Boards/Finished lists, as a filter over this one view
-    /// rather than separate destinations (SPEC.md O-3). "Active" (the
-    /// default) blends Waiting and On boards, as the queue always used to.
+    /// Waiting by sign-in number, On a board by room, Finished the most recent
+    /// first (<see cref="ScoutRow.QueueSort"/>); sign-in number breaks a tie.
     /// </summary>
-    private bool QueueScopeMatches(string status) => ((QueueScopeBox.SelectedItem as ComboBoxItem)?.Tag as string) switch
+    private static int QueueOrder(ScoutRow a, ScoutRow b)
     {
-        "Waiting" => BoardStatus.IsWaiting(status),
-        "OnBoards" => BoardStatus.IsActive(status),
-        "Finished" => BoardStatus.IsFinished(status),
-        _ => !BoardStatus.IsFinished(status),
-    };
+        var order = string.CompareOrdinal(a.QueueSort, b.QueueSort);
+        return order != 0 ? order : string.CompareOrdinal(a.RegNumSort, b.RegNumSort);
+    }
 
     private bool BoardVisible(ScoutRow s) =>
         !BoardStatus.IsWaiting(s.Status)
@@ -319,8 +326,6 @@ public partial class MainWindow : Window
         Matches(AdultFilter.Text.Trim(), a.Last, a.First, a.UnitName, a.UnitLabel, a.RoomText, a.FinalBoard, a.ProjectReview);
 
     private void OnQueueFilter(object sender, TextChangedEventArgs e) => _queueView?.Refresh();
-
-    private void OnQueueViewChanged(object sender, SelectionChangedEventArgs e) => _queueView?.Refresh();
 
     private void OnBoardFilter(object sender, TextChangedEventArgs e) => _boardView?.Refresh();
 
@@ -334,8 +339,8 @@ public partial class MainWindow : Window
 
     private void OnQueueSelected(object sender, SelectionChangedEventArgs e)
     {
-        // Null when the selected youth leaves the view (say, completed with
-        // finished hidden): keep showing them rather than blanking the pane.
+        // Null when the selected youth leaves the view (Find no longer
+        // matches them): keep showing them rather than blanking the pane.
         if (!_quiet && QueueList.SelectedItem is ScoutRow s)
         {
             Open(s);
@@ -375,10 +380,10 @@ public partial class MainWindow : Window
     {
         if (BoardGrid.SelectedItem is ScoutRow row)
         {
-            MainNav.SelectedIndex = 0;
-            if (!QueueScopeMatches(row.Status))
+            ShowPage("Event");
+            if (!_queueView.Contains(row))
             {
-                QueueScopeBox.SelectedIndex = BoardStatus.IsFinished(row.Status) ? 3 : 0;   // Finished, else Active
+                QueueFilter.Text = "";
             }
 
             Open(row);
@@ -514,7 +519,7 @@ public partial class MainWindow : Window
             BuilderRoom.SelectedValue = _builderRoomId;
         });
 
-        var picked = _adults.Where(IsPicked).Select(a => new PickRow(a, scout.BoardType, scout.UnitName, OnChairChosen)).ToList();
+        var picked = _adults.Where(IsPicked).Select(a => new PickRow(a, scout, OnChairChosen)).ToList();
         if (picked.Where(p => p.CanChair).All(p => p.Id != _chairId))
         {
             _chairId = picked.FirstOrDefault(p => p.CanChair)?.Id;
@@ -532,7 +537,7 @@ public partial class MainWindow : Window
         var available = _adults
             .Where(a => !a.Sel && a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
             .Where(a => Matches(filter, a.Last, a.First, a.FullName, a.UnitName, a.UnitLabel))
-            .Select(a => new PickRow(a, scout.BoardType, scout.UnitName))
+            .Select(a => new PickRow(a, scout))
             .OrderBy(p => p.SameUnit)
             .ThenByDescending(p => p.CanChair && _chairId == null)
             .ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
@@ -576,7 +581,7 @@ public partial class MainWindow : Window
         if (active)
         {
             var members = _adults.Where(a => a.Room == scout.Room)
-                .Select(a => new PickRow(a, scout.BoardType, scout.UnitName)).ToList();
+                .Select(a => new PickRow(a, scout)).ToList();
             foreach (var m in members)
             {
                 m.SetChairQuietly(m.Id == scout.BoardChairId);
@@ -850,12 +855,15 @@ public partial class MainWindow : Window
             : null;
 
     /// <summary>Free adults who could join this youth's board, as dropdown choices; same-unit ones last and marked.</summary>
-    private List<KeyValuePair<string, string>> JoinChoices(ScoutRow scout) =>
+    private List<PickRow> JoinChoices(ScoutRow scout) =>
         _adults.Where(a => a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
-            .Select(a => new PickRow(a, scout.BoardType, scout.UnitName))
+            .Select(a => new PickRow(a, scout))
             .OrderBy(p => p.SameUnit).ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
-            .Select(p => new KeyValuePair<string, string>(p.Id, $"{p.Name} · {p.Detail}"))
             .ToList();
+
+    /// <summary>A dropdown of adults, each shown with the marks after their name (SPEC.md D-20); its value is the adult's ID.</summary>
+    private ComboBox AddAdultChoice(AppDialog dialog, string label, IReadOnlyList<PickRow> adults) =>
+        dialog.AddChoice(label, adults, nameof(PickRow.Id), (DataTemplate)FindResource("AdultChoice"));
 
     private void ChangeMembers(ScoutRow scout, IEnumerable<string> memberIds, string chairId)
     {
@@ -891,7 +899,7 @@ public partial class MainWindow : Window
 
         var dialog = new AppDialog(this, $"Replace {leaving.Name}?", "Replace");
         dialog.AddMessage($"**{leaving.Name}** leaves room {scout.Room} and is free for another board. The board carries on; its time isn't reset.");
-        var pick = dialog.AddChoice("Replace with", choices, null);
+        var pick = AddAdultChoice(dialog, "Replace with", choices);
         if (leaving.IsChair)
         {
             dialog.AddInfo(Severity.Informational, "", "They're the chair. The new member takes the chair if they're qualified; otherwise another qualified member on the board does.");
@@ -934,7 +942,7 @@ public partial class MainWindow : Window
         }
 
         var dialog = new AppDialog(this, "Add a member?", "Add");
-        var pick = dialog.AddChoice("Add to the board in room " + scout.Room, choices, null);
+        var pick = AddAdultChoice(dialog, "Add to the board in room " + scout.Room, choices);
         if (dialog.ShowDialog() && pick.SelectedValue is string joining)
         {
             ChangeMembers(scout, board.Members.Select(m => m.Id).Append(joining), board.ChairId);
@@ -949,7 +957,7 @@ public partial class MainWindow : Window
         }
 
         var qualified = board.Members.Where(m => m.Info.RoleFor(scout.BoardType) == BoardRoles.Chair && m.Id != board.ChairId)
-            .Select(m => new KeyValuePair<string, string>(m.Id, m.FullName)).ToList();
+            .Select(m => new PickRow(m, scout)).ToList();
         if (qualified.Count == 0)
         {
             DetailNotice.Show(Severity.Informational, "No one else can chair",
@@ -958,7 +966,7 @@ public partial class MainWindow : Window
         }
 
         var dialog = new AppDialog(this, "Change the chair?", "Change chair");
-        var pick = dialog.AddChoice("New chair", qualified, null);
+        var pick = AddAdultChoice(dialog, "New chair", qualified);
         if (dialog.ShowDialog() && pick.SelectedValue is string chair)
         {
             ChangeMembers(scout, board.Members.Select(m => m.Id), chair);
@@ -1249,15 +1257,27 @@ public partial class MainWindow : Window
 
     private void OnHelp(object sender, RoutedEventArgs e) => new HelpWindow { Owner = this }.Show();
 
-    /// <summary>Open Settings at its Support card (SPEC.md D-17).</summary>
-    private void OnDonate(object sender, RoutedEventArgs e)
+    /// <summary>File > Settings: the room timers and About, in a window beside the event.</summary>
+    private void OnSettings(object sender, RoutedEventArgs e) => OpenSettings();
+
+    /// <summary>Help > Donate: Settings at its Support card (SPEC.md D-17).</summary>
+    private void OnDonate(object sender, RoutedEventArgs e) => OpenSettings().Page.ShowSupport();
+
+    private SettingsWindow OpenSettings()
     {
-        FooterNav.SelectedIndex = 0;
-        if (SettingsHost.Content is SettingsPage settings)
+        if (_settings is { IsLoaded: true })
         {
-            settings.ShowSupport();
+            _settings.Page.Load();
+            _settings.Activate();
+            return _settings;
         }
+
+        _settings = new SettingsWindow(new SettingsPage(_svc, RefreshAll)) { Owner = this };
+        _settings.Show();
+        return _settings;
     }
+
+    private void OnExit(object sender, RoutedEventArgs e) => Close();
 
     private void OnUrlClicked(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
@@ -1299,6 +1319,7 @@ public partial class MainWindow : Window
         _minute.Stop();
         _admin?.Close();
         _qr?.Close();
+        _settings?.Close();
     }
 }
 

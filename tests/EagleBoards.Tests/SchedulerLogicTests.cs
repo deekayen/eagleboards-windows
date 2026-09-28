@@ -101,6 +101,35 @@ public class SchedulerLogicTests
         Assert.Equal(["P2", "P10", "W1", "W9", "W10", ""], sorted);
     }
 
+    [Fact]
+    public void TheYouthListStacksWaitingThenOnABoardByRoomThenFinishedNewestFirst()
+    {
+        // SPEC.md O-3 (amended): one list, three groups, each in its own order.
+        var youth = new (string Name, string Status, string RegNum, string Room, string Updated)[]
+        {
+            ("finished early", BoardStatus.Completed, "P1", AdultRoom.Disabled, "2026-09-27_18:05-0400"),
+            ("in 200A", BoardStatus.InProgress, "W1", "200A", "2026-09-27_19:00-0400"),
+            ("walk-in", BoardStatus.Registered, "W2", "", "2026-09-27_18:00-0400"),
+            ("postponed late", BoardStatus.Postponed, "W3", "", "2026-09-27_19:40-0400"),
+            ("in 102", BoardStatus.Seated, "P4", "102", "2026-09-27_19:30-0400"),
+            ("finished, another zone", BoardStatus.Completed, "P5", AdultRoom.Disabled, "2026-09-27_23:20+0000"),
+            ("pre-registered", BoardStatus.Registered, "P10", "", "2026-09-27_19:50-0400"),
+            ("in 20", BoardStatus.Seated, "P6", "20", "2026-09-27_19:45-0400"),
+            ("unreadable", BoardStatus.Completed, "P7", AdultRoom.Disabled, ""),
+            ("in 200b", BoardStatus.InProgress, "P8", "200b", "2026-09-27_18:30-0400"),
+        };
+
+        var order = youth.OrderBy(y => SchedulerLogic.QueueSortKey(y.Status, y.RegNum, y.Room, y.Updated), StringComparer.Ordinal)
+            .Select(y => y.Name).ToArray();
+
+        Assert.Equal(
+        [
+            "pre-registered", "walk-in",
+            "in 20", "in 102", "in 200A", "in 200b",
+            "postponed late", "finished, another zone", "finished early", "unreadable",
+        ], order);
+    }
+
     [Theory]
     [InlineData("Troop2", "T2")]
     [InlineData("Crew1776", "C1776")]

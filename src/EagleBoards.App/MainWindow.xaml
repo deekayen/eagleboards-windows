@@ -6,10 +6,11 @@
         Title="Eagle Board Scheduler" Width="1400" Height="900" MinWidth="1100" MinHeight="640"
         WindowState="Maximized">
 
-  <!-- Layout after Windows' NavigationView and list/details patterns: pages in
-       a sidebar on the window's base layer; the page on a content layer.
-       Event is the console: the youth queue, the rooms, and a details pane
-       that builds and runs the selected youth's board. -->
+  <!-- A menu bar on the window's base layer, and the page on a content layer
+       below it. Event is the console: the youth queue, the rooms, and a
+       details pane that builds and runs the selected youth's board (the
+       list/details pattern). Results and People are the other pages, from
+       the View menu; Settings, Admin tables and Help open windows of their own. -->
 
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -48,19 +49,6 @@
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
-
-    <!-- Sidebar entries, after NavigationView: icon and label, a pill on the selected one. -->
-    <Style x:Key="NavItem" TargetType="ListBoxItem" BasedOn="{StaticResource SubtleListItem}">
-      <Setter Property="Height" Value="40" />
-      <Setter Property="MinHeight" Value="0" />
-    </Style>
-
-    <Style x:Key="NavList" TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="ItemContainerStyle" Value="{StaticResource NavItem}" />
-    </Style>
 
     <!-- The queue: two lines per youth, time or status on the right. -->
     <DataTemplate x:Key="QueueItem" DataType="{x:Type app:ScoutRow}">
@@ -160,6 +148,21 @@
       </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- An adult's name with the marks after it (SPEC.md D-20): Wood Badge,
+         and a warning when they're in the youth's own unit. The marks sit in
+         the name's line, so they follow the last word when a name wraps. -->
+    <DataTemplate x:Key="AdultName" DataType="{x:Type app:PickRow}">
+      <TextBlock TextWrapping="Wrap"><Run Text="{Binding Name, Mode=OneWay}" /><InlineUIContainer BaselineAlignment="Center"><app:AdultMarks
+        WoodBadge="{Binding WoodBadge, Mode=OneWay}" SameUnitAs="{Binding SameUnitAs, Mode=OneWay}" /></InlineUIContainer></TextBlock>
+    </DataTemplate>
+
+    <!-- An adult as a choice in Replace and Add member: the name, the marks, then unit and role. -->
+    <DataTemplate x:Key="AdultChoice" DataType="{x:Type app:PickRow}">
+      <TextBlock><Run Text="{Binding Name, Mode=OneWay}" /><InlineUIContainer BaselineAlignment="Center"><app:AdultMarks
+        WoodBadge="{Binding WoodBadge, Mode=OneWay}" SameUnitAs="{Binding SameUnitAs, Mode=OneWay}" /></InlineUIContainer><Run
+        Text="{Binding Detail, Mode=OneWay, StringFormat=' · {0}'}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" /></TextBlock>
+    </DataTemplate>
+
     <!-- A picked member in the builder: who, and the chair choice. -->
     <DataTemplate x:Key="PickTemplate" DataType="{x:Type app:PickRow}">
       <Border Padding="12,8" Margin="0,0,0,4" CornerRadius="{DynamicResource ControlCornerRadius}"
@@ -174,16 +177,11 @@
                        MinWidth="0" Visibility="{Binding CanChair, Converter={StaticResource BoolToVis}}"
                        AutomationProperties.Name="{Binding Name, StringFormat={}{0} chairs}" />
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
-            <TextBlock x:Name="Detail" Style="{StaticResource Hint}" Text="{Binding Detail}" />
+            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AdultName}" Focusable="False" />
+            <TextBlock Style="{StaticResource Hint}" Text="{Binding Detail}" />
           </StackPanel>
         </DockPanel>
       </Border>
-      <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding SameUnit}" Value="True">
-          <Setter TargetName="Detail" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
-        </DataTrigger>
-      </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- An adult who could join the board. -->
@@ -194,15 +192,10 @@
           <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE710;" Margin="0,0,6,0" /><TextBlock Text="Add" /></StackPanel>
         </Button>
         <StackPanel VerticalAlignment="Center">
-          <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
-          <TextBlock x:Name="Detail" Style="{StaticResource Hint}" Text="{Binding Detail}" />
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AdultName}" Focusable="False" />
+          <TextBlock Style="{StaticResource Hint}" Text="{Binding Detail}" />
         </StackPanel>
       </DockPanel>
-      <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding SameUnit}" Value="True">
-          <Setter TargetName="Detail" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
-        </DataTrigger>
-      </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- A member of a seated or running board: replace or remove them. -->
@@ -220,18 +213,13 @@
             <TextBlock Text="Replace..." />
           </Button>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
-            <TextBlock x:Name="Detail" Style="{StaticResource Hint}" Text="{Binding Detail}" />
+            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AdultName}" Focusable="False" />
+            <TextBlock Style="{StaticResource Hint}" Text="{Binding Detail}" />
             <TextBlock Style="{StaticResource Hint}" Text="Chairing this board" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                        Visibility="{Binding IsChair, Converter={StaticResource BoolToVis}}" />
           </StackPanel>
         </DockPanel>
       </Border>
-      <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding SameUnit}" Value="True">
-          <Setter TargetName="Detail" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
-        </DataTrigger>
-      </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- A label over its value, for the details pane. -->
@@ -262,47 +250,58 @@
     </Style>
   </Window.Resources>
 
-  <Grid>
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="184" />
-      <ColumnDefinition Width="*" />
-    </Grid.ColumnDefinitions>
-
-    <!-- Sidebar -->
-    <DockPanel Grid.Column="0" Margin="8,8,8,12">
-      <StackPanel DockPanel.Dock="Bottom">
-        <!-- SPEC.md D-17: the way to the Support card from the event, in the
-             sidebar's foot, never in the queue, the rooms or the details pane. -->
-        <Button Click="OnDonate" Padding="12,0" Height="40" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
-                ToolTip="Ways to support this project">
-          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xEB51;" Margin="0,0,16,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" /><TextBlock Text="Donate" /></StackPanel>
-        </Button>
-        <Button Click="OnHelp" Padding="12,0" Height="40" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
-                ToolTip="How to run an event (F1)">
-          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE897;" Margin="0,0,16,0" /><TextBlock Text="Help" /></StackPanel>
-        </Button>
-        <ListBox x:Name="FooterNav" Style="{StaticResource NavList}" SelectionChanged="OnNavigate" AutomationProperties.Name="Settings">
-          <ListBoxItem Tag="Settings">
-            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE713;" Margin="0,0,16,0" /><TextBlock Text="Settings" /></StackPanel>
-          </ListBoxItem>
-        </ListBox>
-      </StackPanel>
-      <ListBox x:Name="MainNav" Style="{StaticResource NavList}" SelectionChanged="OnNavigate" AutomationProperties.Name="Pages">
-        <ListBoxItem Tag="Event" ToolTip="The event's youth, rooms and boards (Ctrl+1)">
-          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE80F;" Margin="0,0,16,0" /><TextBlock Text="Event" /></StackPanel>
-        </ListBoxItem>
-        <ListBoxItem Tag="Results" ToolTip="Every board and its result, and the report (Ctrl+2)">
-          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE9D5;" Margin="0,0,16,0" /><TextBlock Text="Results" /></StackPanel>
-        </ListBoxItem>
-        <ListBoxItem Tag="People" ToolTip="The adults signed in at this event (Ctrl+3)">
-          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE716;" Margin="0,0,16,0" /><TextBlock Text="People" /></StackPanel>
-        </ListBoxItem>
-      </ListBox>
-    </DockPanel>
+  <DockPanel>
+    <!-- The menu bar: the pages, the windows beside them, Settings, Help and
+         Donate (SPEC.md P-1, P-6, D-17). No sidebar: the Event page has the
+         window's whole width. Every command here also has a shortcut or a
+         button where the operator works. -->
+    <Menu DockPanel.Dock="Top" Margin="4,4,4,4" AutomationProperties.Name="Menu bar">
+      <MenuItem Header="_File">
+        <MenuItem Header="_Save report..." InputGestureText="Ctrl+S" Click="OnReport" ToolTip="Save the event's results as a CSV file for Excel">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE74E;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Admin tables..." Click="OnAdmin" ToolTip="View and edit every record, including roles">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Check-in _QR code..." Click="OnShowQr" ToolTip="Show the check-in address as a QR code for a tablet's camera">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE722;" /></MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="Se_ttings..." InputGestureText="Ctrl+," Click="OnSettings" ToolTip="Room timers, and about this app">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE713;" /></MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="OnExit" />
+      </MenuItem>
+      <MenuItem Header="_Edit">
+        <MenuItem x:Name="UndoMenu" Header="_Undo" InputGestureText="Ctrl+Z" Click="OnUndo" IsEnabled="False">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE7A7;" /></MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+      <MenuItem Header="_View">
+        <MenuItem x:Name="ViewEvent" Header="_Event" InputGestureText="Ctrl+1" Tag="Event" Click="OnViewPage"
+                  ToolTip="The event's youth, rooms and boards" />
+        <MenuItem x:Name="ViewResults" Header="_Results" InputGestureText="Ctrl+2" Tag="Results" Click="OnViewPage"
+                  ToolTip="Every board and its result, and the report" />
+        <MenuItem x:Name="ViewPeople" Header="_People" InputGestureText="Ctrl+3" Tag="People" Click="OnViewPage"
+                  ToolTip="The adults signed in at this event" />
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="Eagle Boards _help" InputGestureText="F1" Click="OnHelp" ToolTip="How to run an event">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE897;" /></MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <!-- SPEC.md D-17: the way to the Support card, in the window's frame,
+             never in the queue, the rooms or the details pane. -->
+        <MenuItem Header="_Donate..." Click="OnDonate" ToolTip="Ways to support this project">
+          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xEB51;" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" /></MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+    </Menu>
 
     <!-- Content layer -->
-    <Border Grid.Column="1" Background="{DynamicResource LayerFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
+    <Border Background="{DynamicResource LayerFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
       <DockPanel>
         <!-- Where the check-in stations should point. -->
         <!-- Docked, not a StatusBar: its last item only gets what's left, so a
@@ -351,28 +350,23 @@
           <!-- ============================= Event ============================== -->
           <Grid x:Name="EventPage" Margin="16">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="280" />
+              <ColumnDefinition Width="320" />
               <ColumnDefinition Width="12" />
               <ColumnDefinition Width="*" MinWidth="240" />
               <ColumnDefinition Width="12" />
               <ColumnDefinition Width="360" />
             </Grid.ColumnDefinitions>
 
-            <!-- The queue -->
+            <!-- The queue: every youth, stacked Waiting, On a board, Finished,
+                 with nothing to pick before a youth can be found (SPEC.md O-3). -->
             <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12,12,4,12">
               <DockPanel>
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,8,8">
-                  <ComboBox x:Name="QueueScopeBox" DockPanel.Dock="Right" Width="112" SelectionChanged="OnQueueViewChanged"
-                            AutomationProperties.Name="Show" ToolTip="Narrow the youth list to one group, without leaving this page">
-                    <ComboBoxItem Content="Active" Tag="Active" IsSelected="True" />
-                    <ComboBoxItem Content="Waiting" Tag="Waiting" />
-                    <ComboBoxItem Content="On boards" Tag="OnBoards" />
-                    <ComboBoxItem Content="Finished" Tag="Finished" />
-                  </ComboBox>
+                <!-- As tall as the Rooms card's command row, so the two titles line up. -->
+                <Grid DockPanel.Dock="Top" MinHeight="32" Margin="0,0,8,8">
                   <TextBlock Style="{StaticResource CardTitle}" Text="Youth" />
-                </DockPanel>
+                </Grid>
                 <TextBox x:Name="QueueFilter" app:Placeholder.Text="Find a youth" DockPanel.Dock="Top" Margin="0,0,8,8" TextChanged="OnQueueFilter"
-                         AutomationProperties.Name="Find a youth" ToolTip="Find a youth by name, unit or room" />
+                         AutomationProperties.Name="Find a youth" ToolTip="Find anyone who signed in, waiting, on a board or finished, by name, unit or room" />
                 <ListBox x:Name="QueueList" Background="Transparent" BorderThickness="0" ItemTemplate="{StaticResource QueueItem}" Padding="0,0,8,0"
                          SelectionChanged="OnQueueSelected" PreviewMouseLeftButtonDown="OnQueueClick" AutomationProperties.Name="Youth"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
@@ -638,20 +632,21 @@
                   <DataGridTextColumn Header="Room" Binding="{Binding RoomText}" SortMemberPath="Room" Width="110" />
                   <DataGridTextColumn Header="Final board role" Binding="{Binding FinalBoard}" Width="140" />
                   <DataGridTextColumn Header="Project review role" Binding="{Binding ProjectReview}" Width="160" />
-                  <!-- Volunteering toward a Wood Badge ticket item. -->
-                  <DataGridTextColumn Header="Wood Badge" Binding="{Binding WoodBadgeMark}" SortMemberPath="WoodBadge" Width="104" />
+                  <!-- Volunteering toward a Wood Badge ticket item: the mark (SPEC.md D-20), sorted on the field. -->
+                  <DataGridTemplateColumn Header="Wood Badge" SortMemberPath="WoodBadge" Width="104">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate DataType="{x:Type app:AdultRow}">
+                        <app:AdultMarks WoodBadge="{Binding IsWoodBadge, Mode=OneWay}" HorizontalAlignment="Left" Margin="-6,0,0,0" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Header="Came to support" Binding="{Binding SupportingNames}" Width="*" MinWidth="160" />
                 </DataGrid.Columns>
               </DataGrid>
             </Border>
           </DockPanel>
-
-          <!-- ============================ Settings ============================ -->
-          <ScrollViewer x:Name="SettingsPage" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-            <ContentControl x:Name="SettingsHost" Margin="16" MaxWidth="880" HorizontalAlignment="Left" Focusable="False" />
-          </ScrollViewer>
         </Grid>
       </DockPanel>
     </Border>
-  </Grid>
+  </DockPanel>
 </Window>

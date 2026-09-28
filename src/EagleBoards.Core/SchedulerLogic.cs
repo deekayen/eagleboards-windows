@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using EagleBoards.Core.Records;
 
 namespace EagleBoards.Core;
@@ -467,6 +469,56 @@ public static class SchedulerLogic
         var rank = regNum.StartsWith('P') ? 0 : regNum.StartsWith('W') ? 1 : 2;
         var digits = new string(regNum.SkipWhile(char.IsAsciiLetter).TakeWhile(char.IsAsciiDigit).ToArray());
         return (rank, int.TryParse(digits, out var n) ? n : 0);
+    }
+
+    /// <summary>
+    /// Where a youth sits in the stacked Youth list (SPEC.md O-3): Waiting in
+    /// sign-in order, then On a board by room, then Finished with the most
+    /// recent first. Compare the keys ordinally.
+    /// </summary>
+    public static string QueueSortKey(string status, string regNum, string room, string lastUpdateTime)
+    {
+        if (BoardStatus.IsWaiting(status))
+        {
+            var (rank, number) = RegNumSortKey(regNum);
+            return string.Create(CultureInfo.InvariantCulture, $"0{rank}{number:D10}");
+        }
+
+        if (BoardStatus.IsActive(status))
+        {
+            return "1" + RoomSortKey(room);
+        }
+
+        // Newest first; a stamp that can't be read goes last.
+        var ticks = DataRecord.ParseTime(lastUpdateTime)?.UtcTicks ?? 0;
+        return string.Create(CultureInfo.InvariantCulture, $"2{long.MaxValue - ticks:D19}");
+    }
+
+    /// <summary>
+    /// Rooms as people read them: the numbers in a name compared as numbers,
+    /// so 2 comes before 10 and 102 before 200A, and letters regardless of case.
+    /// </summary>
+    public static string RoomSortKey(string room)
+    {
+        var key = new StringBuilder(room.Length + 16);
+        for (var i = 0; i < room.Length;)
+        {
+            if (!char.IsAsciiDigit(room[i]))
+            {
+                key.Append(char.ToUpperInvariant(room[i++]));
+                continue;
+            }
+
+            var start = i;
+            while (i < room.Length && char.IsAsciiDigit(room[i]))
+            {
+                i++;
+            }
+
+            key.Append(room[start..i].TrimStart('0').PadLeft(10, '0'));
+        }
+
+        return key.ToString();
     }
 
     /// <summary>"Troop2" → "T2" for the narrow Unit columns; unnumbered types keep the whole word.</summary>

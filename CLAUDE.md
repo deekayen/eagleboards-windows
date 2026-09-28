@@ -25,10 +25,11 @@ runs a native WPF app instead of the Java app's browser pages.
 - `EagleBoards.Server`: headless host taking the Java jar's options. Used by
   the tests.
 - `EagleBoards.App`: the WPF app (`EagleBoards.exe`). Start-up window, the
-  main window (`MainWindow`: a sidebar of pages, Event / Results / People /
-  Settings, where Event is the youth queue, the rooms, and a details pane
-  that builds and runs the selected youth's board), `AdminWindow`,
-  `HelpWindow`. Also accepts the jar's options.
+  main window (`MainWindow`: a menu bar -- File, Edit, View, Help -- over the
+  pages Event / Results / People, where Event is the youth queue, the rooms,
+  and a details pane that builds and runs the selected youth's board; no
+  sidebar), `SettingsWindow`, `AdminWindow`, `HelpWindow`. Also accepts the
+  jar's options.
 
 ## Build, test, verify
 
@@ -159,7 +160,11 @@ runs a native WPF app instead of the Java app's browser pages.
   installs them as `Status*Brush` / `Timer*Brush` resources for light or
   dark and gives way to system colours in a contrast theme. The timers' clocks
   (stopwatch, timer clock, alarm clock) are Segoe UI Symbol glyphs, since
-  Segoe Fluent Icons has no timer or alarm clock.
+  Segoe Fluent Icons has no timer or alarm clock. The other fixed colours are
+  the Wood Badge pentagon's (SPEC.md D-20, `AdultMarks.cs`, drawn from
+  eagleboards-shared's `artwork/wood-badge.svg`).
+  Commands live in the page and details pane, in context menus, and in the
+  menu bar (SPEC.md P-1: the owner's choice over a NavigationView sidebar).
   Spacing in multiples of 4; the Windows type ramp (Semibold, never Bold);
   sentence case; no abbreviations on screen (the files keep "InProgress",
   "N/A": show `Display.*` words). Messages go in an `InfoBar` where they're
