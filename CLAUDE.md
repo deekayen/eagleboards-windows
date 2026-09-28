@@ -26,10 +26,11 @@ runs a native WPF app instead of the Java app's browser pages.
   the tests.
 - `EagleBoards.App`: the WPF app (`EagleBoards.exe`). Start-up window, the
   main window (`MainWindow`: a menu bar -- File, Edit, View, Help -- over the
-  pages Event / Results / People, where Event is the youth queue, the rooms,
-  and a details pane that builds and runs the selected youth's board; no
-  sidebar), `SettingsWindow`, `AdminWindow`, `HelpWindow`. Also accepts the
-  jar's options.
+  Event page, the youth queue, the rooms, and a details pane that builds and
+  runs the selected youth's board; and a page per table, editable in place
+  (`TablePage`): Results, People, Youth, Pre-registered, Adult history and
+  Rooms. No sidebar and no Admin window), `SettingsWindow`, `HelpWindow`.
+  Also accepts the jar's options.
 
 ## Build, test, verify
 
@@ -39,8 +40,8 @@ runs a native WPF app instead of the Java app's browser pages.
   auto-select, and each deliberate divergence from Java.
 - `bash scripts/test-board-event.sh`: the Java project's end-to-end HTTP
   event test, unchanged except for the launch lines and section 18's check of
-  the Admin window's choice lists (Java reads admin.html; this reads
-  `AdminWindow.xaml.cs`). New scenarios added in the Java repo are copied here
+  the table pages' choice lists (Java reads admin.html; this reads
+  `TablePage.cs`). New scenarios added in the Java repo are copied here
   and into the Mac version. `EB_JAR=<jar>` runs it against
   the Java server; it passes against both. `EB_KEEP=1` keeps the data files so
   two builds' output can be diffed.
@@ -129,12 +130,13 @@ runs a native WPF app instead of the Java app's browser pages.
   already seated or in review (someone has to leave) is
   `BoardService.ChangeBoardMembers`, from the details pane: the same member
   checks as seating (`CheckComposition`), leavers freed, timer not reset.
-  Never ask the operator to hand-edit member lists in the admin tables.
+  Never ask the operator to hand-edit member lists on a table page: Results
+  shows Chair and Members read-only for that reason.
 - **Undo** (SPEC.md O-2) is a stack in `BoardService`: each step records the
   fields it set (`Snap` before, `PushUndo` after), and undoing puts back only
   those, refusing (and clearing the stack) if anything has changed one since,
   as the Java version's restore does. `/restore-board` is Java's single level:
-  the last action, once. Picks and Admin-window edits stay off the stack.
+  the last action, once. Picks and table-page edits stay off the stack.
 - **No birthdate** (SPEC.md D-7): the `DOB` column stays in the youth file
   for the other versions, written empty; sign-in and imports drop it, and
   nothing shows, pre-fills or exports it. Values already on file are left

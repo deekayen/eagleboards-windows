@@ -143,7 +143,7 @@ public sealed class BoardService
     /// operator's picks survive clicking around by design.
     ///
     /// Refused, as the Java version's restore is, when anything else (a
-    /// correction in the Admin window, a door sign-in) has changed one of
+    /// correction on a table page, a door sign-in) has changed one of
     /// those fields since: putting the old value back would silently undo
     /// that change too. The whole stack is then let go, since everything
     /// older sits behind the change that can't be taken back.
@@ -753,7 +753,7 @@ public sealed class BoardService
 
         // "N/A" is what Complete leaves in a scout's Room. A Registered scout
         // holding it had a result recorded against them by mistake and was set
-        // back to Registered on the Admin window; they must be seatable.
+        // back to Registered on the Youth or Results page; they must be seatable.
         if (scout.Room != "" && scout.Room != AdultRoom.Disabled && scout.Room != room.Room)
         {
             return ActionResult.Error("ERROR: Scout Already Assigned Room: " + scout.Room);
@@ -1094,7 +1094,7 @@ public sealed class BoardService
         }
 
         // The Chair designation is binding. Promoting a Member is a deliberate
-        // edit on the Admin tables, never a side effect of seating a board
+        // edit on the table pages, never a side effect of seating a board
         // because the qualified chairs were all busy.
         var chair = Adults.Get(chairId);
         if (chair == null)
@@ -1414,7 +1414,7 @@ public sealed class BoardService
 
     /// <summary>
     /// Switch a room between final boards and project reviews, on the room
-    /// card itself rather than only the Admin tables. A board already seated
+    /// card itself rather than only the Rooms page. A board already seated
     /// there isn't disturbed (GTA 8.0.5.3): a final board may sit in a
     /// project-review room and back, as section 17 of the event test
     /// covers.
@@ -1457,7 +1457,7 @@ public sealed class BoardService
     }
 
     // ------------------------------------------------------------------
-    // Generic record edits (the Admin tables) and settings
+    // Generic record edits (the table pages) and settings
     // ------------------------------------------------------------------
 
     /// <summary>
@@ -1471,7 +1471,7 @@ public sealed class BoardService
     /// Undo stack. The Java version's Event page marks adults gone home and
     /// links them through <c>/adult-update</c>, and renames rooms through
     /// <c>/room-update</c>, so those endpoints keep its Undo (SPEC.md O-2);
-    /// this app has its own operations for those, and the Admin window's
+    /// this app has its own operations for those, and the table pages'
     /// hand edits stay off the stack.
     /// </summary>
     public string SaveRow(DataTable table, string? status, string? id, IReadOnlyDictionary<string, string> fields, bool undoable = false)

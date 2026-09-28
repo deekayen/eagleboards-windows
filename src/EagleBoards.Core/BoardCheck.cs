@@ -32,7 +32,7 @@ public static class BoardCheck
         var type = scout.BoardType;
         if (type is not (BoardTypes.Final or BoardTypes.Project))
         {
-            Block("No board type", "Set Final board or Project review for this youth in the admin tables.");
+            Block("No board type", "Set Final board or Project review for this youth on the Youth page.");
             return issues;
         }
 
@@ -82,7 +82,7 @@ public static class BoardCheck
             var chairs = picked.Where(a => a.RoleFor(type) == BoardRoles.Chair).ToList();
             if (chairs.Count == 0)
             {
-                Block("No chair", $"None of the members can chair a {kind}. Add a qualified chair, or promote someone on the admin tables.");
+                Block("No chair", $"None of the members can chair a {kind}. Add a qualified chair, or make someone a chair on the People page.");
             }
             else if (chairId == null || chairs.All(c => c.Id != chairId))
             {

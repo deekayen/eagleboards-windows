@@ -841,10 +841,10 @@ admin_edit() { # <scout-id> <field> <value>
 }
 result_of() { awk -F, -v i="$1" 'NR>1 && $2==i {print $19}' "$SCOUTS"; }
 
-# The Admin window's choice lists must match what the app acts on. It is a
-# WPF window with no endpoint to ask, so this reads how AdminWindow.xaml.cs
+# The table pages' choice lists must match what the app acts on. They are
+# WPF pages with no endpoint to ask, so this reads how TablePage.cs
 # builds each list and what the vocabulary it builds them from contains.
-ADMIN_SRC="$ROOT/src/EagleBoards.App/AdminWindow.xaml.cs"
+ADMIN_SRC="$ROOT/src/EagleBoards.App/TablePage.cs"
 VOCAB_SRC="$ROOT/src/EagleBoards.Core/Records/Vocabulary.cs"
 vocab_list() { # <class> -> the identifiers in that class's "All = [...]"
     awk -v c="class $1" '$0 ~ c {f=1} f && /All = \[/ {print; exit}' "$VOCAB_SRC" \
@@ -856,20 +856,20 @@ vocab_list() { # <class> -> the identifiers in that class's "All = [...]"
 # way to send a scout back to the queue -- left them where nothing could seat
 # them.
 case "$(grep 'StatusChoices =' "$ADMIN_SRC")" in
-    *'BoardStatus.All'*) ok "the Admin window's statuses are the app's own statuses" ;;
-    *) bad "the Admin window builds its Status list from something other than BoardStatus.All" ;;
+    *'BoardStatus.All'*) ok "the table pages' statuses are the app's own statuses" ;;
+    *) bad "the table pages build their Status list from something other than BoardStatus.All" ;;
 esac
 case " $(vocab_list BoardStatus) " in
     *" Registered "*) ok "and include Registered, to undo a result on the wrong scout" ;;
-    *) bad "the Admin window cannot set a scout back to Registered" ;;
+    *) bad "the table pages cannot set a scout back to Registered" ;;
 esac
 
 # And every Result offered must be a board's decision -- one /complete-board
 # would record. It once offered "Postponed", which is the Status of a scout
 # sent away before any board met them, not something a board decides.
 case "$(grep 'ResultChoices =' "$ADMIN_SRC")" in
-    *'BoardResults.All'*) ok "the Admin window's results are the board's decisions" ;;
-    *) bad "the Admin window builds its Result list from something other than BoardResults.All" ;;
+    *'BoardResults.All'*) ok "the table pages' results are the board's decisions" ;;
+    *) bad "the table pages build their Result list from something other than BoardResults.All" ;;
 esac
 chk "which are exactly Approved, Adjourned and NotApproved" \
     "$(vocab_list BoardResults)" "Approved Adjourned NotApproved"

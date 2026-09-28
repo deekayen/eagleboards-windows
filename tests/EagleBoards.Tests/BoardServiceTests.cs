@@ -429,13 +429,13 @@ public class BoardServiceTests
     }
 
     [Fact]
-    public void AResultOnTheWrongScoutCanBeUndoneOnTheAdminWindow()
+    public void AResultOnTheWrongScoutCanBeUndoneOnTheTablePages()
     {
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = UnderReview(box);
         Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
 
-        // What the Admin window writes: one field per edit.
+        // What a table page writes: one field per edit.
         foreach (var (field, value) in new[] { ("Status", BoardStatus.Registered), ("Result", ""), ("BoardChair", ""), ("BoardMembers", "") })
         {
             Assert.Equal("updated", s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { [field] = value }));

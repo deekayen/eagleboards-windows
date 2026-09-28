@@ -283,7 +283,7 @@ public sealed class PickRow : Row
     internal void SetChairQuietly(bool value) => Set(ref _isChair, value, nameof(IsChair));
 }
 
-/// <summary>An adult on the People page and the source of the builder's rows.</summary>
+/// <summary>An adult as the Event page knows them: the source of the builder's rows.</summary>
 public sealed class AdultRow : Row
 {
     private string _last = "", _first = "", _unitName = "", _room = "", _final = "", _project = "", _woodBadge = "", _supporting = "";
@@ -367,11 +367,6 @@ public sealed class AdultRow : Row
 
     /// <summary>IDs of the scouts this adult came to support, "|"-separated.</summary>
     public string Supporting { get => _supporting; private set => Set(ref _supporting, value); }
-
-    private string _supportingNames = "";
-
-    /// <summary>Who they came to support, by name; set by the window, which knows the youth.</summary>
-    public string SupportingNames { get => _supportingNames; set => Set(ref _supportingNames, value); }
 
     public bool IsDisabled => Room == AdultRoom.Disabled;
 

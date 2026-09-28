@@ -9,8 +9,10 @@
   <!-- A menu bar on the window's base layer, and the page on a content layer
        below it. Event is the console: the youth queue, the rooms, and a
        details pane that builds and runs the selected youth's board (the
-       list/details pattern). Results and People are the other pages, from
-       the View menu; Settings, Admin tables and Help open windows of their own. -->
+       list/details pattern). Every table is a page of its own on the View
+       menu, editable in place (TablePage): Results, People, Youth,
+       Pre-registered, Adult history and Rooms. Settings and Help open
+       windows of their own. -->
 
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -260,9 +262,6 @@
         <MenuItem Header="_Save report..." InputGestureText="Ctrl+S" Click="OnReport" ToolTip="Save the event's results as a CSV file for Excel">
           <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE74E;" /></MenuItem.Icon>
         </MenuItem>
-        <MenuItem Header="_Admin tables..." Click="OnAdmin" ToolTip="View and edit every record, including roles">
-          <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" /></MenuItem.Icon>
-        </MenuItem>
         <MenuItem Header="Check-in _QR code..." Click="OnShowQr" ToolTip="Show the check-in address as a QR code for a tablet's camera">
           <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE722;" /></MenuItem.Icon>
         </MenuItem>
@@ -281,10 +280,20 @@
       <MenuItem Header="_View">
         <MenuItem x:Name="ViewEvent" Header="_Event" InputGestureText="Ctrl+1" Tag="Event" Click="OnViewPage"
                   ToolTip="The event's youth, rooms and boards" />
-        <MenuItem x:Name="ViewResults" Header="_Results" InputGestureText="Ctrl+2" Tag="Results" Click="OnViewPage"
-                  ToolTip="Every board and its result, and the report" />
-        <MenuItem x:Name="ViewPeople" Header="_People" InputGestureText="Ctrl+3" Tag="People" Click="OnViewPage"
-                  ToolTip="The adults signed in at this event" />
+        <MenuItem Header="_Results" InputGestureText="Ctrl+2" Tag="Results" Click="OnViewPage"
+                  ToolTip="Every board and its result, and the report; correct a result here" />
+        <MenuItem Header="_People" InputGestureText="Ctrl+3" Tag="People" Click="OnViewPage"
+                  ToolTip="The adults signed in at this event; change someone's roles here" />
+        <Separator />
+        <!-- The rest of the records, each a table to read and correct. -->
+        <MenuItem Header="_Youth" InputGestureText="Ctrl+4" Tag="Youth" Click="OnViewPage"
+                  ToolTip="Every youth signed in at this event" />
+        <MenuItem Header="Pre-re_gistered" InputGestureText="Ctrl+5" Tag="PreRegistered" Click="OnViewPage"
+                  ToolTip="The event's sign-ups, from SignUpGenius or the district's list" />
+        <MenuItem Header="_Adult history" InputGestureText="Ctrl+6" Tag="AdultHistory" Click="OnViewPage"
+                  ToolTip="Every adult who has signed in at any event" />
+        <MenuItem Header="R_ooms" InputGestureText="Ctrl+7" Tag="Rooms" Click="OnViewPage"
+                  ToolTip="The rooms and what each is for" />
       </MenuItem>
       <MenuItem Header="_Help">
         <MenuItem Header="Eagle Boards _help" InputGestureText="F1" Click="OnHelp" ToolTip="How to run an event">
@@ -344,7 +353,7 @@
         <!-- Messages about the event as a whole (the import, the report). -->
         <app:InfoBar x:Name="Notice" DockPanel.Dock="Top" Margin="16,16,16,0" IsClosable="True" />
 
-        <Grid>
+        <Grid x:Name="PageHost">
           <!-- ============================= Event ============================== -->
           <Grid x:Name="EventPage" Margin="16">
             <Grid.ColumnDefinitions>
@@ -580,86 +589,8 @@
             </Border>
           </Grid>
 
-          <!-- ============================ Results ============================ -->
-          <DockPanel x:Name="ResultsPage" Margin="16" Visibility="Collapsed">
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <TextBox x:Name="BoardFilter" app:Placeholder.Text="Find a board" Style="{StaticResource SearchBox}" Margin="0,0,8,0" TextChanged="OnBoardFilter"
-                         AutomationProperties.Name="Find a board" ToolTip="Find a board by name, unit, member or result" />
-                <Button Style="{StaticResource CommandButton}" Click="OnReport" ToolTip="Save the event's results as a CSV file for Excel">
-                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE74E;" Margin="0,0,8,0" /><TextBlock Text="Save report..." /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnAdmin" ToolTip="View and edit every record">
-                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" Margin="0,0,8,0" /><TextBlock Text="Admin tables..." /></StackPanel>
-                </Button>
-              </StackPanel>
-              <TextBlock Style="{StaticResource PageTitle}" Text="Results" />
-            </DockPanel>
-            <Border Style="{StaticResource Card}">
-              <DataGrid x:Name="BoardGrid" IsReadOnly="True" AutomationProperties.Name="Boards at this event" MouseDoubleClick="OnBoardOpened"
-                        ToolTip="Double-click a board to open it on the Event page">
-                <DataGrid.Columns>
-                  <DataGridTextColumn Header="Sign-in" Binding="{Binding RegNum}" SortMemberPath="RegNumSort" Width="72" />
-                  <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="110" />
-                  <DataGridTextColumn Header="First" Binding="{Binding First}" Width="100" />
-                  <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="96" />
-                  <DataGridTextColumn Header="Board" Binding="{Binding BoardType}" Width="76" />
-                  <DataGridTemplateColumn Header="Status" CellTemplate="{StaticResource StatusCell}" SortMemberPath="StatusRank" Width="128" />
-                  <DataGridTextColumn Header="Room" Binding="{Binding RoomText}" SortMemberPath="Room" Width="68" />
-                  <DataGridTextColumn Header="Result" Binding="{Binding ResultText}" SortMemberPath="Result" Width="110" />
-                  <DataGridTextColumn Header="Chair" Binding="{Binding BoardChair}" Width="160" />
-                  <DataGridTextColumn Header="Members" Binding="{Binding BoardMembersText}" SortMemberPath="BoardMembers" Width="280" />
-                  <DataGridTextColumn Header="Leader" Binding="{Binding Leader}" Width="150" />
-                  <!-- No star column: DataGrid would squeeze the others to fit it; this scrolls instead. -->
-                  <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="320" />
-                </DataGrid.Columns>
-              </DataGrid>
-            </Border>
-          </DockPanel>
-
-          <!-- ============================ People ============================ -->
-          <DockPanel x:Name="PeoplePage" Margin="16" Visibility="Collapsed">
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <TextBox x:Name="AdultFilter" app:Placeholder.Text="Find an adult" Style="{StaticResource SearchBox}" Margin="0,0,8,0" TextChanged="OnAdultFilter"
-                         AutomationProperties.Name="Find an adult" ToolTip="Find an adult by name, unit, room or role" />
-                <Button x:Name="DisableButton" Style="{StaticResource CommandButton}" Click="OnDisableAdult" ToolTip="The selected adult has gone home">
-                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE7E8;" Margin="0,0,8,0" /><TextBlock Text="Gone home" /></StackPanel>
-                </Button>
-                <Button x:Name="EnableButton" Style="{StaticResource CommandButton}" Click="OnEnableAdult" ToolTip="The selected adult is back and available">
-                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8FA;" Margin="0,0,8,0" /><TextBlock Text="Back" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnAdmin" ToolTip="View and edit every record, including roles">
-                  <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE8A5;" Margin="0,0,8,0" /><TextBlock Text="Admin tables..." /></StackPanel>
-                </Button>
-              </StackPanel>
-              <TextBlock Style="{StaticResource PageTitle}" Text="People" />
-            </DockPanel>
-            <TextBlock DockPanel.Dock="Top" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,12"
-                       Text="Adults signed in at this event. Change someone's roles on the admin tables." />
-            <Border Style="{StaticResource Card}">
-              <DataGrid x:Name="AdultGrid" IsReadOnly="True" RowStyle="{StaticResource PeopleRowStyle}" SelectionChanged="OnAdultSelected"
-                        AutomationProperties.Name="Adults">
-                <DataGrid.Columns>
-                  <DataGridTextColumn Header="Last" Binding="{Binding Last}" Width="140" />
-                  <DataGridTextColumn Header="First" Binding="{Binding First}" Width="130" />
-                  <DataGridTextColumn Header="Unit" Binding="{Binding UnitLabel}" SortMemberPath="UnitName" Width="110" />
-                  <DataGridTextColumn Header="Room" Binding="{Binding RoomText}" SortMemberPath="Room" Width="110" />
-                  <DataGridTextColumn Header="Final board role" Binding="{Binding FinalBoard}" Width="140" />
-                  <DataGridTextColumn Header="Project review role" Binding="{Binding ProjectReview}" Width="160" />
-                  <!-- Volunteering toward a Wood Badge ticket item: the mark (SPEC.md D-20), sorted on the field. -->
-                  <DataGridTemplateColumn Header="Wood Badge" SortMemberPath="WoodBadge" Width="104">
-                    <DataGridTemplateColumn.CellTemplate>
-                      <DataTemplate DataType="{x:Type app:AdultRow}">
-                        <app:AdultMarks WoodBadge="{Binding IsWoodBadge, Mode=OneWay}" HorizontalAlignment="Left" Margin="-6,0,0,0" />
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                  </DataGridTemplateColumn>
-                  <DataGridTextColumn Header="Came to support" Binding="{Binding SupportingNames}" Width="*" MinWidth="160" />
-                </DataGrid.Columns>
-              </DataGrid>
-            </Border>
-          </DockPanel>
+          <!-- Results, People and the other tables: TablePage, added by the
+               window, one page per table on the View menu (SPEC.md P-6). -->
         </Grid>
       </DockPanel>
     </Border>

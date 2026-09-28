@@ -81,9 +81,10 @@ anything that doesn't. The check-in stations only need a web browser.
    bottom of the window (right-click it to copy), e.g. `http://192.168.1.23:8080`.
 5. Add rooms with **Add room** and run the event from the **Event** page.
    **Help › Eagle Boards help** (F1) walks through seating, starting and
-   completing boards. The menu bar has the rest: **View** switches to the
-   Results and People pages (Ctrl+1 to 3), and **File** has Save report,
-   Admin tables, the check-in QR code and Settings.
+   completing boards. The menu bar has the rest: **View** switches to a page
+   for each table (Results, People, Youth, Pre-registered, Adult history,
+   Rooms; Ctrl+2 to 7), each one editable where it is, and **File** has Save
+   report, the check-in QR code and Settings.
 
 Closing the scheduler stops the check-in site. Everything is saved as it
 happens; there is no "save" step.

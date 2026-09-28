@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -152,8 +153,10 @@ internal static class Demo
 
     private static string S(int i) => $"SCOUT:{ScoutLast[i]}:{ScoutFirst[i]}:{1001 + i}";
 
+    /// <summary>An adult as the Event page holds them (the builder picks through them).</summary>
     private static AdultRow FindAdult(MainWindow win, int i) =>
-        win.AdultGrid.Items.Cast<AdultRow>().First(a => a.Last == AdultLast[i]);
+        ((IEnumerable<AdultRow>)typeof(MainWindow).GetField("_adults", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(win)!)
+            .First(a => a.Last == AdultLast[i]);
 
     private static Dictionary<string, string> Scout(int i, string boardType, string? unit = null, string leader = "") => new()
     {

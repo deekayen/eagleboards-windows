@@ -18,8 +18,8 @@ namespace EagleBoards.App;
 /// <summary>
 /// The operator's window: a menu bar over the pages Event (the youth queue,
 /// the rooms, and a details pane that builds and runs the selected youth's
-/// board), Results and People. Settings, Admin tables, Help and the QR code
-/// open windows of their own.
+/// board), and a page per table (Results, People and the rest), editable in
+/// place. Settings, Help and the QR code open windows of their own.
 ///
 /// Data is read from and written to <see cref="BoardService"/> in-process,
 /// and every change, including a sign-in on the website, raises
@@ -39,9 +39,16 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<AdultRow> _adults = [];
     private readonly ObservableCollection<RoomCard> _rooms = [];
     private readonly ListCollectionView _queueView;
-    private readonly ListCollectionView _boardView;
-    private readonly ListCollectionView _adultView;
     private readonly ListCollectionView _roomView;
+
+    /// <summary>The table pages by name (<see cref="TableSpec.Name"/>): Results, People and the rest.</summary>
+    private readonly Dictionary<string, TablePage> _tables = new(StringComparer.Ordinal);
+
+    /// <summary>Every page and its View menu item, in the menu's order (Ctrl+1 and on).</summary>
+    private readonly List<(MenuItem Item, FrameworkElement Page)> _pages = [];
+
+    private readonly Button _goneHomeButton;
+    private readonly Button _backButton;
     private readonly DispatcherTimer _minute = new();
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private readonly DispatcherTimer _copied = new() { Interval = TimeSpan.FromSeconds(3) };
@@ -49,7 +56,6 @@ public partial class MainWindow : Window
 
     private ConfigRecord _config = new();
     private bool _quiet;
-    private AdminWindow? _admin;
     private QrWindow? _qr;
     private SettingsWindow? _settings;
 
@@ -95,13 +101,43 @@ public partial class MainWindow : Window
 
         QueueList.ItemsSource = _queueView;
 
-        _boardView = new ListCollectionView(_scouts) { Filter = o => BoardVisible((ScoutRow)o), IsLiveFiltering = true };
-        _boardView.LiveFilteringProperties.Add(nameof(ScoutRow.Status));
-        BoardGrid.ItemsSource = _boardView;
+        // Every table a page of its own, editable in place (SPEC.md P-6).
+        foreach (var spec in TableSpecs.All)
+        {
+            var table = new TablePage(_svc, spec, key => FindResource(key), spec.IsRooms ? () => OnAddRoom(this, new RoutedEventArgs()) : null);
+            _tables[spec.Name] = table;
+            PageHost.Children.Add(table);
+        }
 
-        _adultView = new ListCollectionView(_adults) { Filter = o => AdultVisible((AdultRow)o) };
-        _adultView.SortDescriptions.Add(new SortDescription(nameof(AdultRow.Last), ListSortDirection.Ascending));
-        AdultGrid.ItemsSource = _adultView;
+        var results = _tables[TableSpecs.Results.Name];
+        results.AddCommand("", "Open on Event page", "Show the selected board on the Event page", OpenBoard);
+        results.AddCommand("", "Save report...", "Save the event's results as a CSV file for Excel", () => OnReport(this, new RoutedEventArgs()));
+        var open = new MenuItem { Header = "_Open on Event page" };
+        open.Click += (_, _) => OpenBoard();
+        results.Grid.ContextMenu = new ContextMenu { Items = { open } };
+
+        var people = _tables[TableSpecs.People.Name];
+        _goneHomeButton = people.AddCommand("", "Gone home", "The selected adult has gone home", OnGoneHome);
+        _backButton = people.AddCommand("", "Back", "The selected adult is back and available", OnBack);
+        people.SelectionChanged += UpdatePeopleButtons;
+        people.Reloaded += () =>
+        {
+            var youth = _scouts.ToDictionary(s => s.Id, s => s.FullName, StringComparer.Ordinal);
+            foreach (var adult in people.Rows)
+            {
+                adult.SupportingNames = string.Join(", ", adult.Raw("Supporting").Split('|', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(id => youth.GetValueOrDefault(id, "")).Where(n => n.Length > 0));
+            }
+        };
+
+        _pages.Add((ViewEvent, EventPage));
+        foreach (var item in ((MenuItem)ViewEvent.Parent).Items.OfType<MenuItem>())
+        {
+            if (item.Tag is string name && _tables.TryGetValue(name, out var page))
+            {
+                _pages.Add((item, page));
+            }
+        }
 
         _roomView = new ListCollectionView(_rooms) { Filter = o => _foundRooms?.Contains(((RoomCard)o).Room) ?? true };
         RoomList.ItemsSource = _roomView;
@@ -166,9 +202,12 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new RelayCommand(RefreshAll), Key.F5, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnHelp(this, new RoutedEventArgs())), Key.F1, ModifierKeys.None));
         InputBindings.Add(new KeyBinding(new RelayCommand(FocusFind), Key.F, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("Event")), Key.D1, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("Results")), Key.D2, ModifierKeys.Control));
-        InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("People")), Key.D3, ModifierKeys.Control));
+        for (var i = 0; i < _pages.Count && i < 9; i++)
+        {
+            var name = (string)_pages[i].Item.Tag;
+            InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage(name)), Key.D1 + i, ModifierKeys.Control));
+        }
+
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnReport(this, new RoutedEventArgs())), Key.S, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnSettings(this, new RoutedEventArgs())), Key.OemComma, ModifierKeys.Control));
         PreviewKeyDown += OnPreviewKey;
@@ -194,15 +233,13 @@ public partial class MainWindow : Window
             _current = null;
         }
 
-        var youthNames = _scouts.ToDictionary(s => s.Id, s => s.FullName, StringComparer.Ordinal);
-        foreach (var a in _adults)
-        {
-            a.SupportingNames = string.Join(", ", a.Supporting.Split('|', StringSplitOptions.RemoveEmptyEntries)
-                .Select(id => youthNames.GetValueOrDefault(id, "")).Where(n => n.Length > 0));
-        }
-
         UpdateRoomTimers();
         ShowDetails();
+        foreach (var table in _tables.Values.Where(t => t.Visibility == Visibility.Visible))
+        {
+            table.Reload(quiet: true);
+        }
+
         UpdatePeopleButtons();
         if (_foundRooms != null)
         {
@@ -276,14 +313,30 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Event, Results or People, with the View menu's check on the page shown.</summary>
+    /// <summary>The Event page or a table page, with the View menu's check on the page shown.</summary>
     private void ShowPage(string page)
     {
-        foreach (var (item, element) in new (MenuItem, FrameworkElement)[] { (ViewEvent, EventPage), (ViewResults, ResultsPage), (ViewPeople, PeoplePage) })
+        foreach (var (item, element) in _pages)
         {
             var shown = (string)item.Tag == page;
             item.IsChecked = shown;
             element.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            if (shown && element is TablePage table)
+            {
+                table.Reload(quiet: false);
+            }
+        }
+
+        UpdatePeopleButtons();
+    }
+
+    /// <summary>The board selected on Results, on the Event page.</summary>
+    private void OpenBoard()
+    {
+        if (_tables[TableSpecs.Results.Name].Selected is { } row && _scouts.FirstOrDefault(s => s.Id == row.Id) is { } scout)
+        {
+            ShowPage("Event");
+            Open(scout);
         }
     }
 
@@ -318,17 +371,6 @@ public partial class MainWindow : Window
         var order = string.CompareOrdinal(a.QueueSort, b.QueueSort);
         return order != 0 ? order : string.CompareOrdinal(a.RegNumSort, b.RegNumSort);
     }
-
-    private bool BoardVisible(ScoutRow s) =>
-        !BoardStatus.IsWaiting(s.Status)
-        && Matches(BoardFilter.Text.Trim(), s.RegNum, s.Last, s.First, s.UnitName, s.Leader, s.Status, s.Room, s.Result, s.BoardChair, s.BoardMembers, s.Notes);
-
-    private bool AdultVisible(AdultRow a) =>
-        Matches(AdultFilter.Text.Trim(), a.Last, a.First, a.UnitName, a.UnitLabel, a.RoomText, a.FinalBoard, a.ProjectReview);
-
-    private void OnBoardFilter(object sender, TextChangedEventArgs e) => _boardView?.Refresh();
-
-    private void OnAdultFilter(object sender, TextChangedEventArgs e) => _adultView?.Refresh();
 
     private void OnAvailableFilter(object sender, TextChangedEventArgs e) => ShowDetails();
 
@@ -394,9 +436,9 @@ public partial class MainWindow : Window
     /// <summary>Ctrl+F: the find box of the page shown.</summary>
     private void FocusFind()
     {
-        var box = EventPage.IsVisible ? PersonFind : ResultsPage.IsVisible ? BoardFilter : AdultFilter;
-        box.Focus();
-        box.SelectAll();
+        var box = EventPage.IsVisible ? PersonFind : _tables.Values.FirstOrDefault(t => t.IsVisible)?.Find;
+        box?.Focus();
+        box?.SelectAll();
     }
 
     // ------------------------------------------------------------------
@@ -437,15 +479,6 @@ public partial class MainWindow : Window
             // Building a board: a free room clicked is the room for it.
             _builderRoomId = card.Id;
             ShowDetails();
-        }
-    }
-
-    private void OnBoardOpened(object sender, MouseButtonEventArgs e)
-    {
-        if (BoardGrid.SelectedItem is ScoutRow row)
-        {
-            ShowPage("Event");
-            Open(row);
         }
     }
 
@@ -1063,7 +1096,7 @@ public partial class MainWindow : Window
         if (qualified.Count == 0)
         {
             DetailNotice.Show(Severity.Informational, "No one else can chair",
-                "No other member of this board is qualified to chair. Replace someone with a qualified chair, or promote a member on the admin tables.");
+                "No other member of this board is qualified to chair. Replace someone with a qualified chair, or make a member a chair on the People page.");
             return;
         }
 
@@ -1092,30 +1125,41 @@ public partial class MainWindow : Window
     // People
     // ------------------------------------------------------------------
 
-    private void OnAdultSelected(object sender, SelectionChangedEventArgs e) => UpdatePeopleButtons();
+    private TablePage People => _tables[TableSpecs.People.Name];
 
     private void UpdatePeopleButtons()
     {
-        var adult = AdultGrid.SelectedItem as AdultRow;
-        EnableButton.IsEnabled = adult is { IsDisabled: true };
-        DisableButton.IsEnabled = adult is { Room: "" };
+        var adult = People.Selected;
+        _backButton.IsEnabled = adult is { IsDisabled: true };
+        _goneHomeButton.IsEnabled = adult is { IsDisabled: false, IsBusy: false };
     }
 
     /// <summary>Gone home. No confirmation: Undo (or Back) reverses it.</summary>
-    private void OnDisableAdult(object sender, RoutedEventArgs e)
+    private void OnGoneHome()
     {
-        if (AdultGrid.SelectedItem is AdultRow { Room: "" } a)
+        if (People.Selected is { IsDisabled: false, IsBusy: false } adult)
         {
-            Report(_svc.DisableAdult(a.Id), "Couldn't mark them gone home");
+            ReportOn(People, _svc.DisableAdult(adult.Id), "Couldn't mark them gone home");
         }
     }
 
-    private void OnEnableAdult(object sender, RoutedEventArgs e)
+    private void OnBack()
     {
-        if (AdultGrid.SelectedItem is AdultRow { IsDisabled: true } a)
+        if (People.Selected is { IsDisabled: true } adult)
         {
-            Report(_svc.EnableAdult(a.Id), "Couldn't mark them back");
+            ReportOn(People, _svc.EnableAdult(adult.Id), "Couldn't mark them back");
         }
+    }
+
+    /// <summary>A step taken on a table page: a refusal is said there, not in the details pane.</summary>
+    private void ReportOn(TablePage page, ActionResult result, string failure)
+    {
+        if (!result.Ok)
+        {
+            page.Notice.Show(Severity.Error, failure, Plain(result.Message));
+        }
+
+        RefreshAll();
     }
 
     // ------------------------------------------------------------------
@@ -1182,7 +1226,7 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
-    /// <summary>Rename the selected room, on the room card itself rather than only the Admin tables.</summary>
+    /// <summary>Rename the selected room, on the room card itself.</summary>
     private void OnRenameRoom(object sender, RoutedEventArgs e)
     {
         if (SelectedRoom is not { } room)
@@ -1325,18 +1369,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnAdmin(object sender, RoutedEventArgs e)
-    {
-        if (_admin is { IsLoaded: true })
-        {
-            _admin.Activate();
-            return;
-        }
-
-        _admin = new AdminWindow(_svc) { Owner = this };
-        _admin.Show();
-    }
-
     /// <summary>The check-in addresses as QR codes, for a tablet's camera instead of typing one in by hand.</summary>
     private void OnShowQr(object sender, RoutedEventArgs e)
     {
@@ -1419,7 +1451,6 @@ public partial class MainWindow : Window
         }
 
         _minute.Stop();
-        _admin?.Close();
         _qr?.Close();
         _settings?.Close();
     }

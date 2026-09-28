@@ -100,8 +100,16 @@ internal static class Program
                     // a youth still waiting, whom no room holds.
                     ("3a-find-in-room.png", () => w.PersonFind.Text = "duxbury"),
                     ("3b-find-elsewhere.png", () => w.PersonFind.Text = "Aldridge"),
+                    // Every table a page on the View menu, editable in place
+                    // (SPEC.md P-6); People shows the Wood Badge marks.
                     ("4-results.png", () => Invoke(w, "ShowPage", "Results")),
                     ("5-people.png", () => Invoke(w, "ShowPage", "People")),
+                    // A cell being changed: Wood Badge, whose mark turns into Yes or No.
+                    ("5a-people-editing.png", () => EditCell(w, "People", "Grimaldi", "Wood Badge")),
+                    ("7a-youth.png", () => Invoke(w, "ShowPage", "Youth")),
+                    ("7b-pre-registered.png", () => Invoke(w, "ShowPage", "PreRegistered")),
+                    ("7c-adult-history.png", () => Invoke(w, "ShowPage", "AdultHistory")),
+                    ("7d-rooms.png", () => Invoke(w, "ShowPage", "Rooms")),
                 ];
             });
 
@@ -109,8 +117,6 @@ internal static class Program
             // and its Venmo code (SPEC.md D-17), below the fold.
             var settings = new SettingsWindow(new SettingsPage(session.Service, () => { }));
             Snap(settings, outDir, "6-settings.png", _ => [("6-support.png", settings.Page.ShowSupport)]);
-
-            Snap(new AdminWindow(session.Service), outDir, "7-admin.png");
 
             // Pointed at the sandbox: the default would suggest and read the
             // machine's real data folder.
@@ -256,6 +262,17 @@ internal static class Program
         }
 
         win.Hide();
+    }
+
+    /// <summary>Open a cell's editor on a table page, as a double-click would.</summary>
+    private static void EditCell(MainWindow win, string page, string last, string header)
+    {
+        var tables = (Dictionary<string, TablePage>)typeof(MainWindow).GetField("_tables", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(win)!;
+        var grid = tables[page].Grid;
+        var row = tables[page].Rows.First(r => r["Last"] == last);
+        grid.SelectedItem = row;
+        grid.CurrentCell = new System.Windows.Controls.DataGridCellInfo(row, grid.Columns.First(c => (string)c.Header == header));
+        grid.BeginEdit();
     }
 
     internal static void Pump()
