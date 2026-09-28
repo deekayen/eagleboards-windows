@@ -1,0 +1,103 @@
+{
+  "format": 1,
+  "op": "fill",
+  "cases": [
+    {
+      "name": "a picked member with no chair gets a chair added, then members up to three, never re-adding the pick, and nothing is short",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member" },
+        { "id": "M3", "unit": "Troop9004", "final": "Member", "project": "Member" },
+        { "id": "SU", "unit": "Troop1001", "final": "Member", "project": "Member" }
+      ],
+      "picked": ["M3"],
+      "waiting": [],
+      "expect": { "chair": "FC", "members": ["M1"], "problems": [] }
+    },
+    {
+      "name": "a picked chair is kept as the chair: no chair added, two members added beside the picked chair",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member" },
+        { "id": "M3", "unit": "Troop9004", "final": "Member", "project": "Member" },
+        { "id": "SU", "unit": "Troop1001", "final": "Member", "project": "Member" }
+      ],
+      "picked": ["FC"],
+      "waiting": [],
+      "expect": { "chair": null, "members": ["M1", "M2"] }
+    },
+    {
+      "name": "a full board adds nobody",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member" },
+        { "id": "M3", "unit": "Troop9004", "final": "Member", "project": "Member" },
+        { "id": "SU", "unit": "Troop1001", "final": "Member", "project": "Member" }
+      ],
+      "picked": ["FC", "M1", "M2"],
+      "waiting": [],
+      "expect": { "chair": null, "members": [], "problems": [] }
+    },
+    {
+      "name": "three members and no chair: a chair is still added, and no more members",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member" },
+        { "id": "M3", "unit": "Troop9004", "final": "Member", "project": "Member" },
+        { "id": "SU", "unit": "Troop1001", "final": "Member", "project": "Member" }
+      ],
+      "picked": ["M1", "M2", "M3"],
+      "waiting": [],
+      "expect": { "chair": "FC", "members": [] }
+    },
+    {
+      "name": "no chair free: says so, and fills the members it can",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member" }
+      ],
+      "picked": ["M1"],
+      "waiting": [],
+      "expect": {
+        "chair": null,
+        "members": ["M2"],
+        "problems": [{ "kind": "no-chair" }, { "kind": "too-few-members", "available": 1 }]
+      }
+    },
+    {
+      "name": "never adds the scout's own unit or someone already on a board",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "SU", "unit": "Troop1001", "final": "Member", "project": "Member" },
+        { "id": "BZ", "unit": "Troop9005", "final": "Member", "project": "Member", "room": "101" }
+      ],
+      "picked": ["FC"],
+      "waiting": [],
+      "expect": { "members": [], "problems": [{ "kind": "too-few-members", "available": 0 }] }
+    },
+    {
+      "name": "with no one free to add, says a chair and members are both short",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "M9", "unit": "Troop9009", "final": "Member", "project": "Member" }
+      ],
+      "picked": ["M9"],
+      "waiting": [],
+      "expect": {
+        "chair": null,
+        "members": [],
+        "problems": [{ "kind": "no-chair" }, { "kind": "too-few-members", "available": 0 }]
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "format": 1,
+  "op": "seat-down-the-queue",
+  "cases": [
+    {
+      "name": "five boards seat at once: three Final, two Project",
+      "adults": [
+        { "id": "FC1", "unit": "Troop2001", "final": "Chair",       "project": "Chair" },
+        { "id": "FC2", "unit": "Troop2002", "final": "Chair",       "project": "Member" },
+        { "id": "FC3", "unit": "Troop2003", "final": "Chair",       "project": "Member" },
+        { "id": "PC1", "unit": "Troop2004", "final": "Member",      "project": "Chair" },
+        { "id": "PC2", "unit": "Troop2005", "final": "Member",      "project": "Chair" },
+        { "id": "M6",  "unit": "Troop2006", "final": "Member",      "project": "Member" },
+        { "id": "M7",  "unit": "Troop2007", "final": "Member",      "project": "Member" },
+        { "id": "M8",  "unit": "Troop2008", "final": "Member",      "project": "Member" },
+        { "id": "M9",  "unit": "Troop2009", "final": "Member",      "project": "Member" },
+        { "id": "M10", "unit": "Troop2010", "final": "Member",      "project": "Member" },
+        { "id": "M11", "unit": "Troop2011", "final": "Member",      "project": "Member" },
+        { "id": "M12", "unit": "Troop2012", "final": "Member",      "project": "Member" },
+        { "id": "M13", "unit": "Troop2013", "final": "Member",      "project": "Member" },
+        { "id": "M14", "unit": "Troop2014", "final": "Member",      "project": "Member" },
+        { "id": "M15", "unit": "Troop2015", "final": "Member",      "project": "Member" },
+        { "id": "M16", "unit": "Troop2016", "final": "Member",      "project": "Member" },
+        { "id": "M17", "unit": "Troop2017", "final": "Member",      "project": "Member" },
+        { "id": "M18", "unit": "Troop2018", "final": "Member",      "project": "Member" },
+        { "id": "M19", "unit": "Troop2019", "final": "Member",      "project": "Member" },
+        { "id": "M20", "unit": "Troop2020", "final": "Member",      "project": "Member" },
+        { "id": "M21", "unit": "Troop2021", "final": "Member",      "project": "Member" },
+        { "id": "M22", "unit": "Troop2022", "final": "Member",      "project": "Member" },
+        { "id": "M23", "unit": "Troop2023", "final": "Member",      "project": "Member" },
+        { "id": "M24", "unit": "Troop2024", "final": "Member",      "project": "Member" },
+        { "id": "M25", "unit": "Troop2025", "final": "Member",      "project": "Member" },
+        { "id": "U26", "unit": "Troop2026", "final": "Member",      "project": "Unavailable" },
+        { "id": "U27", "unit": "Troop2027", "final": "Member",      "project": "Unavailable" },
+        { "id": "U28", "unit": "Troop1001", "final": "Unavailable", "project": "Member" },
+        { "id": "U29", "unit": "Troop1002", "final": "Unavailable", "project": "Member" },
+        { "id": "U30", "unit": "Troop1003", "final": "Unavailable", "project": "Member" }
+      ],
+      "queue": [
+        { "id": "S1",  "unit": "Troop1001", "boardType": "Final" },
+        { "id": "S2",  "unit": "Troop1002", "boardType": "Final" },
+        { "id": "S3",  "unit": "Troop1003", "boardType": "Final" },
+        { "id": "S4",  "unit": "Troop1004", "boardType": "Final" },
+        { "id": "S5",  "unit": "Troop1005", "boardType": "Final" },
+        { "id": "S6",  "unit": "Troop1006", "boardType": "Final" },
+        { "id": "S7",  "unit": "Troop1007", "boardType": "Final" },
+        { "id": "S8",  "unit": "Troop1008", "boardType": "Final" },
+        { "id": "S9",  "unit": "Troop1009", "boardType": "Final" },
+        { "id": "S10", "unit": "Troop1010", "boardType": "Project" },
+        { "id": "S11", "unit": "Troop1011", "boardType": "Project" },
+        { "id": "S12", "unit": "Troop1012", "boardType": "Project" },
+        { "id": "S13", "unit": "Troop1013", "boardType": "Project" },
+        { "id": "S14", "unit": "Troop1014", "boardType": "Project" }
+      ],
+      "expect": { "Final": 3, "Project": 2 }
+    }
+  ]
+}

@@ -196,7 +196,8 @@ src/EagleBoards.Core     records, CSV storage, BoardService, BoardCheck (every r
 src/EagleBoards.Web      Kestrel check-in server + the embedded check-in pages (wwwroot/)
 src/EagleBoards.Server   headless console host (tests, no-desktop use)
 src/EagleBoards.App      the WPF admin app (EagleBoards.exe)
-tests/EagleBoards.Tests       xUnit: composition rules, storage format, lifecycle, auto-select
+tests/EagleBoards.Tests       xUnit: the rule and auto-select cases all three versions share, storage, lifecycle
+tests/EagleBoards.Tests/cases those cases, copied from eagleboards-shared (test-cases.lock pins the commit)
 tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and the demo GIF
 scripts/test-board-event.sh   the Java project's HTTP end-to-end event, run against this server
 scripts/test-handoff.sh       the Java and Windows versions taking turns on one event folder

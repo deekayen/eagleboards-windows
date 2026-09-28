@@ -115,8 +115,9 @@ public static class SchedulerLogic
     /// it proposes what it can, in the same preference order, and says what
     /// is short.
     ///
-    /// The same algorithm, with the same test cases, is proposeBoard in the
-    /// Java version's process_seat.js and BoardSuggestion in the Mac version.
+    /// The same algorithm is proposeBoard in the Java version's process_seat.js
+    /// and BoardSuggestion in the Mac version, and all three run the cases in
+    /// eagleboards-shared/cases (SPEC.md D-5; SharedCaseTests here).
     /// </remarks>
     public static AutoSelection AutoSelect(ScoutInfo scout, IReadOnlyList<AdultInfo> adults, IEnumerable<RoomInfo> rooms,
         IReadOnlyList<ScoutInfo>? waiting = null)

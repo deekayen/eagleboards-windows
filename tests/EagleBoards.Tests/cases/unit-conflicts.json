@@ -1,0 +1,108 @@
+{
+  "format": 1,
+  "op": "unit-conflicts",
+  "cases": [
+    {
+      "name": "adult in the scout's unit is flagged",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin", "unit": "Troop1234" }
+      ],
+      "expect": ["Robin"]
+    },
+    {
+      "name": "board with no unit overlap is clean",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Jordan", "unit": "Troop5678" },
+        { "id": "Casey",  "unit": "Troop9999" },
+        { "id": "Sam",    "unit": "Pack0042" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "EVERY same-unit member is reported, not just the first",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin",  "unit": "Troop1234" },
+        { "id": "Alex",   "unit": "Troop1234" },
+        { "id": "Jordan", "unit": "Troop5678" }
+      ],
+      "expect": ["Robin", "Alex"]
+    },
+    {
+      "name": "only the overlapping members are returned",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Jordan", "unit": "Troop5678" },
+        { "id": "Robin",  "unit": "Troop1234" },
+        { "id": "Casey",  "unit": "Troop9999" }
+      ],
+      "expect": ["Robin"]
+    },
+    {
+      "name": "an entire same-unit board is fully reported",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin",  "unit": "Troop1234" },
+        { "id": "Alex",   "unit": "Troop1234" },
+        { "id": "Jordan", "unit": "Troop1234" }
+      ],
+      "expect": ["Robin", "Alex", "Jordan"]
+    },
+    {
+      "name": "a unit that is a prefix of another does not match",
+      "youth": { "unit": "Troop12" },
+      "adults": [
+        { "id": "Robin", "unit": "Troop123" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "same number, different unit type, is not a match",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin", "unit": "Pack1234" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "blank scout unit does not match a blank member unit",
+      "youth": { "unit": "" },
+      "adults": [
+        { "id": "Robin", "unit": "" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "known scout unit does not match a blank member unit",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin", "unit": "" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "blank scout unit does not match a known member unit",
+      "youth": { "unit": "" },
+      "adults": [
+        { "id": "Robin", "unit": "Troop5678" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "differing case is not treated as the same unit",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin", "unit": "TROOP1234" }
+      ],
+      "expect": []
+    },
+    {
+      "name": "no members selected yields no conflicts",
+      "youth": { "unit": "Troop1234" },
+      "adults": [],
+      "expect": []
+    }
+  ]
+}

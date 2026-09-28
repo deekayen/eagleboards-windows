@@ -38,9 +38,10 @@ runs a native WPF app instead of the Java app's browser pages.
 ## Build, test, verify
 
 - `dotnet build -c Release` (SDK 10; `global.json` pins the major).
-- `dotnet test tests/EagleBoards.Tests -c Release`: rules (ported case for
-  case from the Java `test-seat-conflicts.js`), storage format, lifecycle,
-  auto-select, and each deliberate divergence from Java.
+- `dotnet test tests/EagleBoards.Tests -c Release`: the rule, auto-select
+  and fill-the-rest cases all three versions share (`SharedCaseTests`, see
+  below), storage format, lifecycle, the seating review, and each deliberate
+  divergence from Java.
 - `bash scripts/test-board-event.sh`: the Java project's end-to-end HTTP
   event test, unchanged except for the launch lines and section 18's check of
   the table pages' choice lists (Java reads admin.html; this reads
@@ -100,8 +101,10 @@ runs a native WPF app instead of the Java app's browser pages.
    `BoardCheck.Review` lists a proposed board's problems (block or warn) and
    the window shows them as the board is built; warnings make Seat say "Seat
    anyway" (same-unit is override-only by design). Anything absolute must also
-   be refused server-side, because the HTTP endpoints are another way in. Add a unit test for any rule you change
-   and a case in `test-board-event.sh` if it changes what the server does.
+   be refused server-side, because the HTTP endpoints are another way in. Add a
+   case for any rule you change (in eagleboards-shared `cases/` if the rule is
+   shared, a unit test here if only Windows has it) and a case in
+   `test-board-event.sh` if it changes what the server does.
 5. **Don't let a test or harness pop UI on the owner's desktop.** WPF runs
    `App.OnStartup` on the first message pump even without `Run()`, so harnesses
    use a plain `Application` plus `Theme.xaml`, never `EagleBoards.App.App`.
@@ -114,9 +117,9 @@ runs a native WPF app instead of the Java app's browser pages.
   youth able to get a full board at once, then the one using up the fewest
   chair qualifications, then the one keeping the most flexible adults, then
   the adults who have waited longest to volunteer since last free
-  (`FreeSinceTimes`). The same algorithm and test cases are in the Java
-  (`proposeBoard`) and Mac (`BoardSuggestion`) versions; change all three
-  together.
+  (`FreeSinceTimes`). The same algorithm is in the Java (`proposeBoard`) and
+  Mac (`BoardSuggestion`) versions, and all three run the same shared cases;
+  change all three together.
 - **Board lifecycle:** Registered → Seated → InProgress → Completed, or
   Registered → Postponed. Seat convenes the board (scout outside, members read
   the paperwork); Start Review brings the scout in. Room timers run on minutes
@@ -208,6 +211,16 @@ runs a native WPF app instead of the Java app's browser pages.
   the pinned commit. Change them in the shared repo (WCAG 2.2 AA: its
   `check-contrast.js` and an axe scan), then copy all five and update the
   lock. They call the `/api/*` endpoints, the API all three versions serve.
+- **The rule and auto-select cases are shared** (SPEC.md D-5): the `*.json`
+  in `tests/EagleBoards.Tests/cases/` are copies of `eagleboards-shared/cases`,
+  pinned by `test-cases.lock`, and `SharedCaseTests` runs every one, one test
+  each, through `BoardRules` and `SchedulerLogic` (`AutoSelect`, `FillBoard`,
+  `FreeSinceTimes`, `WithSupportLink`). **Never add or edit a case here**; CI
+  fails if the copies differ from the pinned commit. Add it in the shared repo
+  (its `cases/README.md` sets the format), copy the `*.json` here and update
+  the lock. `SchedulerLogicTests` keeps only what Windows alone has (the room
+  choice, locate, statuses, timers, sort orders, find a person), and
+  `BoardCheckTests` the seating review.
 
 ## Workflow
 

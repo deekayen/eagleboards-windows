@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "op": "outside-member",
+  "cases": [
+    {
+      "name": "a board entirely from the scout's unit has no outside member",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin",  "unit": "Troop1234" },
+        { "id": "Alex",   "unit": "Troop1234" },
+        { "id": "Jordan", "unit": "Troop1234" }
+      ],
+      "expect": false
+    },
+    {
+      "name": "one outside member is enough to meet the national floor",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin",  "unit": "Troop1234" },
+        { "id": "Alex",   "unit": "Troop1234" },
+        { "id": "Jordan", "unit": "Troop5678" }
+      ],
+      "expect": true
+    },
+    {
+      "name": "a fully cross-unit board meets the floor",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Jordan", "unit": "Troop5678" },
+        { "id": "Casey",  "unit": "Troop9999" }
+      ],
+      "expect": true
+    },
+    {
+      "name": "a blank member unit counts as outside (unknown, not affiliated)",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin", "unit": "Troop1234" },
+        { "id": "Pat",   "unit": "" }
+      ],
+      "expect": true
+    },
+    {
+      "name": "an unknown scout unit never blocks the bypass",
+      "youth": { "unit": "" },
+      "adults": [
+        { "id": "Robin", "unit": "Troop1234" }
+      ],
+      "expect": true
+    },
+    {
+      "name": "same number, different unit type, counts as outside",
+      "youth": { "unit": "Troop1234" },
+      "adults": [
+        { "id": "Robin", "unit": "Pack1234" }
+      ],
+      "expect": true
+    }
+  ]
+}

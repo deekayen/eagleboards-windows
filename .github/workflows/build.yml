@@ -34,6 +34,35 @@ jobs:
             fi
           done
           echo "check-in pages match eagleboards-shared@$SHA"
+      - name: Rule and auto-select cases match eagleboards-shared (SPEC.md D-5)
+        shell: bash
+        # The cases are written once, in eagleboards-shared/cases, and every
+        # version runs all of them (SharedCaseTests). test-cases.lock pins the
+        # commit; a case edited, added or dropped here instead of there fails
+        # the build. The whole folder is fetched, so a case added there and
+        # not copied here is caught too. CRs are stripped, as for the pages.
+        run: |
+          SHA=$(tr -d '[:space:]' < test-cases.lock)
+          ours=tests/EagleBoards.Tests/cases
+          mkdir shared-cases
+          curl -sfL --retry 3 "https://codeload.github.com/deekayen/eagleboards-shared/tar.gz/$SHA" -o shared-cases.tar.gz \
+            || { echo "FAIL: could not fetch eagleboards-shared@$SHA"; exit 1; }
+          tar -xzf shared-cases.tar.gz -C shared-cases --strip-components=1
+          (cd shared-cases/cases && ls *.json) > shared-cases.txt
+          (cd "$ours" && ls *.json) > our-cases.txt
+          if ! cmp -s shared-cases.txt our-cases.txt; then
+            echo "FAIL: $ours does not hold the same files as eagleboards-shared@$SHA/cases:"
+            diff shared-cases.txt our-cases.txt || true
+            exit 1
+          fi
+          while read -r f; do
+            if ! cmp -s <(tr -d '\r' < "shared-cases/cases/$f") <(tr -d '\r' < "$ours/$f"); then
+              echo "FAIL: $ours/$f differs from eagleboards-shared@$SHA."
+              echo "      Change it in eagleboards-shared/cases, copy the *.json here, and update test-cases.lock."
+              exit 1
+            fi
+          done < shared-cases.txt
+          echo "rule and auto-select cases match eagleboards-shared@$SHA ($(wc -l < shared-cases.txt | tr -d ' ') files)"
       - name: Build
         run: dotnet build EagleBoards.slnx -c Release
 

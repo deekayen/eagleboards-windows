@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "op": "board-size",
+  "cases": [
+    { "name": "no members at all is refused (board of review)",         "boardType": "Final",   "count": 0,  "expect": "too-few" },
+    { "name": "one member is refused (board of review)",                 "boardType": "Final",   "count": 1,  "expect": "too-few" },
+    { "name": "two members is refused (below the national minimum)",     "boardType": "Final",   "count": 2,  "expect": "too-few" },
+    { "name": "three members is the district's working size",           "boardType": "Final",   "count": 3,  "expect": "ok" },
+    { "name": "four members is legal, confirm first",                    "boardType": "Final",   "count": 4,  "expect": "over-preferred" },
+    { "name": "five members is legal, confirm first",                    "boardType": "Final",   "count": 5,  "expect": "over-preferred" },
+    { "name": "six members is the national maximum, still legal",        "boardType": "Final",   "count": 6,  "expect": "over-preferred" },
+    { "name": "seven members is refused (above the national maximum)",   "boardType": "Final",   "count": 7,  "expect": "too-many" },
+    { "name": "a wildly oversized board is refused",                     "boardType": "Final",   "count": 20, "expect": "too-many" },
+    { "name": "no members at all is refused (project review)",           "boardType": "Project", "count": 0,  "expect": "too-few" },
+    { "name": "one member is refused (project review)",                  "boardType": "Project", "count": 1,  "expect": "too-few" },
+    { "name": "two members is the district's working size",             "boardType": "Project", "count": 2,  "expect": "ok" },
+    { "name": "three members is legal, confirm first",                   "boardType": "Project", "count": 3,  "expect": "over-preferred" },
+    { "name": "six members is the maximum, still legal",                 "boardType": "Project", "count": 6,  "expect": "over-preferred" },
+    { "name": "seven members is refused",                                "boardType": "Project", "count": 7,  "expect": "too-many" },
+    { "name": "a wildly oversized project review is refused",            "boardType": "Project", "count": 20, "expect": "too-many" }
+  ]
+}

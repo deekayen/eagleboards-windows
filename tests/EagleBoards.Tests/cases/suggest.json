@@ -1,0 +1,211 @@
+{
+  "format": 1,
+  "op": "suggest",
+  "cases": [
+    {
+      "name": "member-only adults fill the member seats, not a project chair",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "PC", "unit": "Troop9002", "final": "Member", "project": "Chair" },
+        { "id": "M1", "unit": "Troop9003", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9004", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC", "members": ["M1", "M2"], "problems": [] }
+    },
+    {
+      "name": "a chair who can chair only this kind is used before one who can chair both",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "BOTH", "unit": "Troop9001", "final": "Chair",  "project": "Chair" },
+        { "id": "FC",   "unit": "Troop9002", "final": "Chair",  "project": "Member" },
+        { "id": "M1",   "unit": "Troop9003", "final": "Member", "project": "Member" },
+        { "id": "M2",   "unit": "Troop9004", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC" }
+    },
+    {
+      "name": "when member-only adults run out, a chair-capable adult fills the seat",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "PC", "unit": "Troop9002", "final": "Member", "project": "Chair" },
+        { "id": "M1", "unit": "Troop9003", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC", "members": ["M1", "PC"], "problems": [] }
+    },
+    {
+      "name": "a spare chair fills in for a missing member",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC1", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "FC2", "unit": "Troop9002", "final": "Chair",  "project": "Member" },
+        { "id": "M",   "unit": "Troop9003", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC1", "members": ["M", "FC2"], "problems": [] }
+    },
+    {
+      "name": "a project review needs one member beside the chair",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Project" },
+      "adults": [
+        { "id": "PC", "unit": "Troop9001", "final": "Member", "project": "Chair" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "PC", "members": ["M1"], "problems": [] }
+    },
+    {
+      "name": "an adult who cannot serve the next scout's troop is used here instead",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Project" },
+      "adults": [
+        { "id": "P1", "unit": "Troop3001", "final": "Member", "project": "Chair" },
+        { "id": "P2", "unit": "Troop3002", "final": "Member", "project": "Chair" },
+        { "id": "B",  "unit": "Troop4001", "final": "Member", "project": "Member" },
+        { "id": "A",  "unit": "Troop2001", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [
+        { "id": "T", "unit": "Troop2001", "boardType": "Project" }
+      ],
+      "expect": { "chair": "P1", "members": ["A"] }
+    },
+    {
+      "name": "a scout still waiting who can be seated outranks a chair kept for later",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC1", "unit": "Troop3001", "final": "Chair",  "project": "Member" },
+        { "id": "FC2", "unit": "Troop3002", "final": "Chair",  "project": "Member" },
+        { "id": "M",   "unit": "Troop3003", "final": "Member", "project": "Member" },
+        { "id": "Y",   "unit": "Troop2001", "final": "Member", "project": "Chair" },
+        { "id": "Z",   "unit": "Troop2001", "final": "Member", "project": "Member" },
+        { "id": "W",   "unit": "Troop3004", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [
+        { "id": "T", "unit": "Troop2001", "boardType": "Final" }
+      ],
+      "expect": { "chair": "FC1", "members": ["Z", "Y"] }
+    },
+    {
+      "name": "not the scout's unit, not busy, not gone home, not Unavailable",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "SAME", "unit": "Troop1001", "final": "Chair",       "project": "Chair" },
+        { "id": "BUSY", "unit": "Troop9001", "final": "Chair",       "project": "Chair", "room": "101" },
+        { "id": "GONE", "unit": "Troop9002", "final": "Chair",       "project": "Chair", "room": "N/A" },
+        { "id": "NOPE", "unit": "Troop9003", "final": "Unavailable", "project": "Member" },
+        { "id": "FC",   "unit": "Troop9004", "final": "Chair",       "project": "Member" },
+        { "id": "M1",   "unit": "Troop9005", "final": "Member",      "project": "Member" },
+        { "id": "M2",   "unit": "Troop9006", "final": "Member",      "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC", "members": ["M1", "M2"] }
+    },
+    {
+      "name": "with no chair it still proposes the members, and says so",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "M1", "unit": "Troop9001", "final": "Member", "project": "Member" },
+        { "id": "M2", "unit": "Troop9002", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": null, "members": ["M1", "M2"], "problems": [{ "kind": "no-chair" }] }
+    },
+    {
+      "name": "with too few members it proposes what there is, and says so",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC", "members": ["M1"], "problems": [{ "kind": "too-few-members", "available": 1 }] }
+    },
+    {
+      "name": "with only chairs free, the spare chair is proposed as a member, and it says how many are short",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC1", "unit": "Troop9001", "final": "Chair", "project": "Member" },
+        { "id": "FC2", "unit": "Troop9002", "final": "Chair", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": { "chair": "FC1", "members": ["FC2"], "problems": [{ "kind": "too-few-members", "available": 1 }] }
+    },
+    {
+      "name": "with no chair and too few members it says both",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "M", "unit": "Troop9001", "final": "Member", "project": "Member" }
+      ],
+      "waiting": [],
+      "expect": {
+        "chair": null,
+        "members": ["M"],
+        "problems": [{ "kind": "no-chair" }, { "kind": "too-few-members", "available": 1 }]
+      }
+    },
+    {
+      "name": "among equals, those who have waited longest are proposed, not the first to sign in",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member", "freeSince": "2026-09-24_19:00-0400" },
+        { "id": "M1", "unit": "Troop9002", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:40-0400" },
+        { "id": "M2", "unit": "Troop9003", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:10-0400" },
+        { "id": "M3", "unit": "Troop9004", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:20-0400" }
+      ],
+      "waiting": [],
+      "expect": { "members": ["M2", "M3"] }
+    },
+    {
+      "name": "waiting longest does not outrank keeping a chair free",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member", "freeSince": "2026-09-24_19:00-0400" },
+        { "id": "PC", "unit": "Troop9002", "final": "Member", "project": "Chair",  "freeSince": "2026-09-24_18:30-0400" },
+        { "id": "M1", "unit": "Troop9003", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:30-0400" },
+        { "id": "M2", "unit": "Troop9004", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:35-0400" }
+      ],
+      "waiting": [],
+      "expect": { "members": ["M1", "M2"] }
+    },
+    {
+      "name": "an unattached volunteer is proposed before a scout's leader who has waited longer",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC",   "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "LEAD", "unit": "Troop9002", "final": "Member", "project": "Member", "supporting": "SCOUT:Other:Oli:3001", "freeSince": "2026-09-24_18:00-0400" },
+        { "id": "V1",   "unit": "Troop9003", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:30-0400" },
+        { "id": "V2",   "unit": "Troop9004", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:40-0400" }
+      ],
+      "waiting": [],
+      "expect": { "members": ["V1", "V2"] }
+    },
+    {
+      "name": "a Wood Badge volunteer counts as here for any board, even with a scout",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC",   "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "LEAD", "unit": "Troop9002", "final": "Member", "project": "Member", "supporting": "SCOUT:Other:Oli:3001", "freeSince": "2026-09-24_18:00-0400" },
+        { "id": "WB",   "unit": "Troop9003", "final": "Member", "project": "Member", "supporting": "SCOUT:Other:Oli:3001", "woodBadge": "Y", "freeSince": "2026-09-24_19:00-0400" },
+        { "id": "V",    "unit": "Troop9004", "final": "Member", "project": "Member", "freeSince": "2026-09-24_19:30-0400" }
+      ],
+      "waiting": [],
+      "expect": { "members": ["WB", "V"] }
+    },
+    {
+      "name": "coming for any board does not outrank keeping a chair free",
+      "youth": { "id": "S", "unit": "Troop1001", "boardType": "Final" },
+      "adults": [
+        { "id": "FC", "unit": "Troop9001", "final": "Chair",  "project": "Member" },
+        { "id": "PC", "unit": "Troop9002", "final": "Member", "project": "Chair" },
+        { "id": "L1", "unit": "Troop9003", "final": "Member", "project": "Member", "supporting": "SCOUT:A:A:1" },
+        { "id": "L2", "unit": "Troop9004", "final": "Member", "project": "Member", "supporting": "SCOUT:B:B:2" }
+      ],
+      "waiting": [],
+      "expect": { "members": ["L1", "L2"] }
+    }
+  ]
+}

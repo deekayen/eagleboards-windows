@@ -19,4 +19,11 @@
     <ProjectReference Include="..\..\src\EagleBoards.Web\EagleBoards.Web.csproj" />
   </ItemGroup>
 
+  <!-- The rule and auto-select cases all three versions share (SPEC.md D-5):
+       a copy of eagleboards-shared/cases pinned by test-cases.lock, read by
+       SharedCaseTests from beside the test assembly. -->
+  <ItemGroup>
+    <None Update="cases\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

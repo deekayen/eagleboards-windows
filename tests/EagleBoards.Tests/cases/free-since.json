@@ -1,0 +1,91 @@
+{
+  "format": 1,
+  "op": "free-since",
+  "cases": [
+    {
+      "name": "someone who came off a completed board has waited since it finished",
+      "adults": [
+        { "id": "ADULT:Able:Ann:1",               "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Baker:Bo:2",               "regTime": "2026-09-24_19:10-0400" },
+        { "id": "ADULT:Cole:Cy:3",                "regTime": "2026-09-24_19:05-0400" },
+        { "id": "ADULT:Whitmore~ Jr.:Lysander:4", "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Lee:Al:1",                 "regTime": "2026-09-24_19:00-0400" }
+      ],
+      "boards": [
+        { "status": "Completed",  "members": "ADULT:Able:Ann:1,ADULT:Other:Oz:9",                            "lastUpdate": "2026-09-24_19:40-0400" },
+        { "status": "Completed",  "members": "ADULT:X:X:9~ADULT:Whitmore~ Jr.:Lysander:4~ADULT:Lee:Al:12",   "lastUpdate": "2026-09-24_19:50-0400" },
+        { "status": "Registered", "members": "",                                                             "lastUpdate": "2026-09-24_20:00-0400" },
+        { "status": "Seated",     "members": "ADULT:Cole:Cy:3",                                              "lastUpdate": "2026-09-24_20:05-0400" }
+      ],
+      "expect": { "ADULT:Able:Ann:1": "2026-09-24_19:40-0400" }
+    },
+    {
+      "name": "someone who has not sat has waited since they signed in",
+      "adults": [
+        { "id": "ADULT:Able:Ann:1",               "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Baker:Bo:2",               "regTime": "2026-09-24_19:10-0400" },
+        { "id": "ADULT:Cole:Cy:3",                "regTime": "2026-09-24_19:05-0400" },
+        { "id": "ADULT:Whitmore~ Jr.:Lysander:4", "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Lee:Al:1",                 "regTime": "2026-09-24_19:00-0400" }
+      ],
+      "boards": [
+        { "status": "Completed",  "members": "ADULT:Able:Ann:1,ADULT:Other:Oz:9",                            "lastUpdate": "2026-09-24_19:40-0400" },
+        { "status": "Completed",  "members": "ADULT:X:X:9~ADULT:Whitmore~ Jr.:Lysander:4~ADULT:Lee:Al:12",   "lastUpdate": "2026-09-24_19:50-0400" },
+        { "status": "Registered", "members": "",                                                             "lastUpdate": "2026-09-24_20:00-0400" },
+        { "status": "Seated",     "members": "ADULT:Cole:Cy:3",                                              "lastUpdate": "2026-09-24_20:05-0400" }
+      ],
+      "expect": { "ADULT:Baker:Bo:2": "2026-09-24_19:10-0400" }
+    },
+    {
+      "name": "a board still running does not count as their last one",
+      "adults": [
+        { "id": "ADULT:Able:Ann:1",               "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Baker:Bo:2",               "regTime": "2026-09-24_19:10-0400" },
+        { "id": "ADULT:Cole:Cy:3",                "regTime": "2026-09-24_19:05-0400" },
+        { "id": "ADULT:Whitmore~ Jr.:Lysander:4", "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Lee:Al:1",                 "regTime": "2026-09-24_19:00-0400" }
+      ],
+      "boards": [
+        { "status": "Completed",  "members": "ADULT:Able:Ann:1,ADULT:Other:Oz:9",                            "lastUpdate": "2026-09-24_19:40-0400" },
+        { "status": "Completed",  "members": "ADULT:X:X:9~ADULT:Whitmore~ Jr.:Lysander:4~ADULT:Lee:Al:12",   "lastUpdate": "2026-09-24_19:50-0400" },
+        { "status": "Registered", "members": "",                                                             "lastUpdate": "2026-09-24_20:00-0400" },
+        { "status": "Seated",     "members": "ADULT:Cole:Cy:3",                                              "lastUpdate": "2026-09-24_20:05-0400" }
+      ],
+      "expect": { "ADULT:Cole:Cy:3": "2026-09-24_19:05-0400" }
+    },
+    {
+      "name": "a name with a comma is found in a list read back after a restart",
+      "adults": [
+        { "id": "ADULT:Able:Ann:1",               "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Baker:Bo:2",               "regTime": "2026-09-24_19:10-0400" },
+        { "id": "ADULT:Cole:Cy:3",                "regTime": "2026-09-24_19:05-0400" },
+        { "id": "ADULT:Whitmore~ Jr.:Lysander:4", "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Lee:Al:1",                 "regTime": "2026-09-24_19:00-0400" }
+      ],
+      "boards": [
+        { "status": "Completed",  "members": "ADULT:Able:Ann:1,ADULT:Other:Oz:9",                            "lastUpdate": "2026-09-24_19:40-0400" },
+        { "status": "Completed",  "members": "ADULT:X:X:9~ADULT:Whitmore~ Jr.:Lysander:4~ADULT:Lee:Al:12",   "lastUpdate": "2026-09-24_19:50-0400" },
+        { "status": "Registered", "members": "",                                                             "lastUpdate": "2026-09-24_20:00-0400" },
+        { "status": "Seated",     "members": "ADULT:Cole:Cy:3",                                              "lastUpdate": "2026-09-24_20:05-0400" }
+      ],
+      "expect": { "ADULT:Whitmore~ Jr.:Lysander:4": "2026-09-24_19:50-0400" }
+    },
+    {
+      "name": "an ID that is the start of another's is not mistaken for it",
+      "adults": [
+        { "id": "ADULT:Able:Ann:1",               "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Baker:Bo:2",               "regTime": "2026-09-24_19:10-0400" },
+        { "id": "ADULT:Cole:Cy:3",                "regTime": "2026-09-24_19:05-0400" },
+        { "id": "ADULT:Whitmore~ Jr.:Lysander:4", "regTime": "2026-09-24_19:00-0400" },
+        { "id": "ADULT:Lee:Al:1",                 "regTime": "2026-09-24_19:00-0400" }
+      ],
+      "boards": [
+        { "status": "Completed",  "members": "ADULT:Able:Ann:1,ADULT:Other:Oz:9",                            "lastUpdate": "2026-09-24_19:40-0400" },
+        { "status": "Completed",  "members": "ADULT:X:X:9~ADULT:Whitmore~ Jr.:Lysander:4~ADULT:Lee:Al:12",   "lastUpdate": "2026-09-24_19:50-0400" },
+        { "status": "Registered", "members": "",                                                             "lastUpdate": "2026-09-24_20:00-0400" },
+        { "status": "Seated",     "members": "ADULT:Cole:Cy:3",                                              "lastUpdate": "2026-09-24_20:05-0400" }
+      ],
+      "expect": { "ADULT:Lee:Al:1": "2026-09-24_19:00-0400" }
+    }
+  ]
+}

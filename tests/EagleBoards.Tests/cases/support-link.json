@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "op": "support-link",
+  "cases": [
+    {
+      "name": "links a scout to an adult who supports nobody yet",
+      "supporting": "",
+      "youth": "SCOUT:A:A:1",
+      "linked": true,
+      "expect": "SCOUT:A:A:1"
+    },
+    {
+      "name": "adds a second scout after the first",
+      "supporting": "SCOUT:A:A:1",
+      "youth": "SCOUT:B:B:2",
+      "linked": true,
+      "expect": "SCOUT:A:A:1|SCOUT:B:B:2"
+    },
+    {
+      "name": "never lists a scout twice",
+      "supporting": "SCOUT:A:A:1|SCOUT:B:B:2",
+      "youth": "SCOUT:A:A:1",
+      "linked": true,
+      "expect": "SCOUT:B:B:2|SCOUT:A:A:1"
+    },
+    {
+      "name": "unlinks one scout and keeps the rest",
+      "supporting": "SCOUT:A:A:1|SCOUT:B:B:2",
+      "youth": "SCOUT:A:A:1",
+      "linked": false,
+      "expect": "SCOUT:B:B:2"
+    },
+    {
+      "name": "unlinking the last scout leaves nothing",
+      "supporting": "SCOUT:A:A:1",
+      "youth": "SCOUT:A:A:1",
+      "linked": false,
+      "expect": ""
+    },
+    {
+      "name": "an ID holding '~' from a comma name is kept whole",
+      "supporting": "SCOUT:Doe~ Jr.:Jan:1",
+      "youth": "SCOUT:B:B:2",
+      "linked": true,
+      "expect": "SCOUT:Doe~ Jr.:Jan:1|SCOUT:B:B:2"
+    }
+  ]
+}

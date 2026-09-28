@@ -2,8 +2,8 @@
 # ------------------------------------------------------------------------
 # test-board-event.sh — end-to-end regression test for a board event.
 #
-# scripts/test-seat-conflicts.js pins down the composition RULES as pure
-# functions. This pins down what the SERVER does with them across a whole
+# scripts/test-cases.js pins down the composition RULES as pure functions,
+# from the cases all three versions share. This pins down what the SERVER does with them across a whole
 # event: boards convening and starting, adults committed to one room and
 # released when the review finishes, boards postponed and reset, and the
 # rules that must hold even when the request does not come from our own UI.
