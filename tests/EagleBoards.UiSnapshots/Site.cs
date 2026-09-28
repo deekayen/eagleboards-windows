@@ -16,7 +16,7 @@ namespace EagleBoards.UiSnapshots;
 /// cast of famous Eagle Scouts, the same scenes the Mac and Java pages show
 /// (eagleboards-shared WEBSITE.md, "Re-shooting"):
 ///
-///   evening.png         dark, mid-event, Arthur Eldred's overrunning board open
+///   event.png           dark, mid-event, Arthur Eldred's overrunning board open
 ///   seat-board.gif      dark, Bill Amend seated with Guion Bluford and Steve Fossett in 200B
 ///   complete-board.gif  light, Arthur Eldred's board completed and room 101 freed
 ///   checkin.png, youth.png, adult.png
@@ -86,14 +86,14 @@ internal static class Site
         var session = Task.Run(() => EventSession.StartAsync(plan)).GetAwaiter().GetResult();
         try
         {
-            SeedEvening(session.Service);
+            SeedEvent(session.Service);
             session = Program.Restart(session, plan);
             _now = At(20, 0);
 
-            // Dark: the evening, then Bill Amend's board seated.
+            // Dark: the event, then Bill Amend's board seated.
             var win = Open(session);
             Select(win, "Eldred");
-            SavePng(Program.Render(win), Path.Combine(outDir, "evening.png"));
+            SavePng(Program.Render(win), Path.Combine(outDir, "event.png"));
 
             win.QueueList.SelectedItem = null;
             win.RoomList.SelectedItem = null;
@@ -167,7 +167,7 @@ internal static class Site
         var config = Path.Combine(dir, "config.properties");
         File.WriteAllText(config, "Type=CONFIG\nID=DEFAULT\nName=DEFAULT\n");
         var eventDir = Path.Combine(dir, now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-        SeedEvening(BoardService.Open(new EventOptions { DataDirectory = eventDir, AdultHistoryPath = history, ConfigPath = config }));
+        SeedEvent(BoardService.Open(new EventOptions { DataDirectory = eventDir, AdultHistoryPath = history, ConfigPath = config }));
 
         Console.WriteLine("site event: " + eventDir);
         return 0;
@@ -185,7 +185,7 @@ internal static class Site
     /// 103 convening for 12, 200A yellow at 28, 200B free; Bill Amend has
     /// waited 53 minutes, Albert Belle 45 and Thomas Cech 39.
     /// </summary>
-    private static void SeedEvening(BoardService s)
+    private static void SeedEvent(BoardService s)
     {
         foreach (var (room, type) in new[] { ("101", BoardTypes.Final), ("102", BoardTypes.Final), ("103", BoardTypes.Final), ("200A", BoardTypes.Project), ("200B", BoardTypes.Project) })
         {

@@ -12,7 +12,7 @@ using EagleBoards.Core.Records;
 namespace EagleBoards.UiSnapshots;
 
 /// <summary>
-/// Opens each window off-screen over a synthetic evening and saves a PNG of
+/// Opens each window off-screen over a synthetic event and saves a PNG of
 /// it, in the light theme, or the dark one with --dark. Every name here is
 /// made up; nothing reads a real data folder.
 /// </summary>

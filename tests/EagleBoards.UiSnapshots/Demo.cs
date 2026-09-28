@@ -14,8 +14,8 @@ namespace EagleBoards.UiSnapshots;
 
 /// <summary>
 /// Renders the README's demo: one board's trip from sign-in to result,
-/// driven through the scheduler's own handlers over a made-up evening. The
-/// record clock is simulated, so room timers read like a real night. Every
+/// driven through the scheduler's own handlers over a made-up event. The
+/// record clock is simulated, so room timers read like a real event. Every
 /// name is invented; nothing reads a real data folder.
 /// </summary>
 internal static class Demo
@@ -71,7 +71,7 @@ internal static class Demo
         var session = Task.Run(() => EventSession.StartAsync(plan)).GetAwaiter().GetResult();
         try
         {
-            SeedEvening(session.Service);
+            SeedEvent(session.Service);
             session = Program.Restart(session, plan);
             var svc = session.Service;
             _now = At(19, 31);
@@ -165,8 +165,8 @@ internal static class Demo
         ["BoardType"] = boardType, ["Email"] = $"s{i}@example.org", ["Leader"] = leader,
     };
 
-    /// <summary>An hour into the evening: two boards under way, one done, one postponed, a few waiting.</summary>
-    private static void SeedEvening(BoardService s)
+    /// <summary>An hour into the event: two boards under way, one done, one postponed, a few waiting.</summary>
+    private static void SeedEvent(BoardService s)
     {
         foreach (var (room, type) in new[] { ("101", "Final"), ("102", "Final"), ("103", "Final"), ("104", "Final"), ("201", "Project"), ("202", "Project") })
         {
