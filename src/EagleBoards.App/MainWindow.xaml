@@ -348,7 +348,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <TextBlock x:Name="CopiedText" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="0,0,16,0" />
-            <Button x:Name="QrButton" Click="OnShowQr" Padding="8,2" VerticalAlignment="Center" ToolTip="Show the check-in address as a QR code for a tablet's camera">
+            <Button x:Name="QrButton" Click="OnShowQr" Padding="8,2" Margin="0,0,16,0" VerticalAlignment="Center" ToolTip="Show the check-in address as a QR code for a tablet's camera">
               <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE722;" Margin="0,0,6,0" /><TextBlock Text="QR code..." /></StackPanel>
             </Button>
           </StackPanel>
