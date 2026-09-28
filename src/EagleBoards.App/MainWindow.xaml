@@ -306,12 +306,10 @@
         <!-- Where the check-in stations should point. -->
         <!-- Docked, not a StatusBar: its last item only gets what's left, so a
              long data path pushed the others off the edge. The path gives way.
-             No clock: the taskbar has one. -->
+             No clock: the taskbar has one, and no Undo: Edit › Undo and Ctrl+Z
+             have it. -->
         <DockPanel DockPanel.Dock="Bottom" Margin="16,6,16,8" LastChildFill="True">
           <TextBlock x:Name="ImportText" DockPanel.Dock="Right" Style="{StaticResource Secondary}" Margin="16,0,0,0" VerticalAlignment="Center" />
-          <Button x:Name="UndoButton" DockPanel.Dock="Right" Click="OnUndo" Padding="8,2" Margin="16,0,0,0" VerticalAlignment="Center" IsEnabled="False">
-            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE7A7;" Margin="0,0,6,0" /><TextBlock Text="Undo" /></StackPanel>
-          </Button>
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock x:Name="UrlLabel" Text="Check-in address: " VerticalAlignment="Center" />
             <ItemsControl x:Name="UrlList" VerticalAlignment="Center" Focusable="False">

@@ -202,11 +202,10 @@ public partial class MainWindow : Window
         UpdateRoomTimers();
         ShowDetails();
         UpdatePeopleButtons();
-        UndoButton.IsEnabled = _svc.CanUndo;
-        UndoButton.ToolTip = _svc.UndoDescription is { } what ? $"Undo {what} (Ctrl+Z)" : "Nothing to undo (Ctrl+Z)";
 
-        // Edit > Undo names the step, as the Mac's does. A name's own
-        // underscore mustn't become an access key.
+        // Edit > Undo (and Ctrl+Z) is the one way to undo, and names the
+        // step, as the Mac's does. A name's own underscore mustn't become an
+        // access key.
         UndoMenu.IsEnabled = _svc.CanUndo;
         UndoMenu.Header = _svc.UndoDescription is { } step ? "_Undo " + step.Replace("_", "__", StringComparison.Ordinal) : "_Undo";
     }
