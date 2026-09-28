@@ -101,13 +101,14 @@ internal static class Program
                     ("3a-find-in-room.png", () => w.PersonFind.Text = "duxbury"),
                     ("3b-find-elsewhere.png", () => w.PersonFind.Text = "Aldridge"),
                     // Every table a page on the View menu, editable in place
-                    // (SPEC.md P-6); People shows the Wood Badge marks.
+                    // (SPEC.md P-6); Adults shows the Wood Badge marks.
                     ("4-results.png", () => Invoke(w, "ShowPage", "Results")),
-                    ("5-people.png", () => Invoke(w, "ShowPage", "People")),
+                    ("5-adults.png", () => Invoke(w, "ShowPage", "Adults")),
                     // A cell being changed: Wood Badge, whose mark turns into Yes or No.
-                    ("5a-people-editing.png", () => EditCell(w, "People", "Grimaldi", "Wood Badge")),
+                    ("5a-adults-editing.png", () => EditCell(w, "Adults", "Grimaldi", "Wood Badge")),
                     ("7a-youth.png", () => Invoke(w, "ShowPage", "Youth")),
                     ("7b-pre-registered.png", () => Invoke(w, "ShowPage", "PreRegistered")),
+                    // Read-only, with the last event each adult came to.
                     ("7c-adult-history.png", () => Invoke(w, "ShowPage", "AdultHistory")),
                     ("7d-rooms.png", () => Invoke(w, "ShowPage", "Rooms")),
                 ];
@@ -144,6 +145,11 @@ internal static class Program
             var choice = (System.Windows.Controls.ComboBox)Invoke(main, "AddAdultChoice", member, "Add to the board in room 101", Invoke(main, "JoinChoices", bram)!)!;
             choice.SelectedItem = choice.Items.Cast<PickRow>().First(p => p.WoodBadge);
             Snap(member, outDir, "13-choice-dialog.png");
+
+            // Adults > Add adult, searching the adult history.
+            var (addAdult, search, _) = AddAdultDialog.Build(owner, session.Service);
+            search.Text = "ar";
+            Snap(addAdult, outDir, "14-add-adult.png");
         }
         finally
         {

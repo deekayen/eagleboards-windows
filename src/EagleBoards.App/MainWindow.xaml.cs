@@ -18,8 +18,8 @@ namespace EagleBoards.App;
 /// <summary>
 /// The operator's window: a menu bar over the pages Event (the youth queue,
 /// the rooms, and a details pane that builds and runs the selected youth's
-/// board), and a page per table (Results, People and the rest), editable in
-/// place. Settings, Help and the QR code open windows of their own.
+/// board), and a page per table (Results, Adults and the rest), editable in
+/// place, besides the read-only Adult history CSV. Settings, Help and the QR code open windows of their own.
 ///
 /// Data is read from and written to <see cref="BoardService"/> in-process,
 /// and every change, including a sign-in on the website, raises
@@ -41,13 +41,14 @@ public partial class MainWindow : Window
     private readonly ListCollectionView _queueView;
     private readonly ListCollectionView _roomView;
 
-    /// <summary>The table pages by name (<see cref="TableSpec.Name"/>): Results, People and the rest.</summary>
+    /// <summary>The table pages by name (<see cref="TableSpec.Name"/>): Results, Adults and the rest.</summary>
     private readonly Dictionary<string, TablePage> _tables = new(StringComparer.Ordinal);
 
     /// <summary>Every page and its View menu item, in the menu's order (Ctrl+1 and on).</summary>
     private readonly List<(MenuItem Item, FrameworkElement Page)> _pages = [];
 
     private readonly Button _goneHomeButton;
+    private readonly Button _signInButton;
     private readonly Button _backButton;
     private readonly DispatcherTimer _minute = new();
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
@@ -116,19 +117,24 @@ public partial class MainWindow : Window
         open.Click += (_, _) => OpenBoard();
         results.Grid.ContextMenu = new ContextMenu { Items = { open } };
 
-        var people = _tables[TableSpecs.People.Name];
-        _goneHomeButton = people.AddCommand("", "Gone home", "The selected adult has gone home", OnGoneHome);
-        _backButton = people.AddCommand("", "Back", "The selected adult is back and available", OnBack);
-        people.SelectionChanged += UpdatePeopleButtons;
-        people.Reloaded += () =>
+        var adults = _tables[TableSpecs.Adults.Name];
+        adults.AddCommand("", "Add adult...", "Sign in an adult who would rather not use the tablet", OnAddAdult);
+        _goneHomeButton = adults.AddCommand("", "Gone home", "The selected adult has gone home", OnGoneHome);
+        _backButton = adults.AddCommand("", "Back", "The selected adult is back and available", OnBack);
+        adults.SelectionChanged += UpdateAdultButtons;
+        adults.Reloaded += () =>
         {
             var youth = _scouts.ToDictionary(s => s.Id, s => s.FullName, StringComparer.Ordinal);
-            foreach (var adult in people.Rows)
+            foreach (var adult in adults.Rows)
             {
                 adult.SupportingNames = string.Join(", ", adult.Raw("Supporting").Split('|', StringSplitOptions.RemoveEmptyEntries)
                     .Select(id => youth.GetValueOrDefault(id, "")).Where(n => n.Length > 0));
             }
         };
+
+        var history = _tables[TableSpecs.AdultHistory.Name];
+        _signInButton = history.AddCommand("", "Sign in for today", "Put the selected adult on today's list, as if they had signed in at the tablet", OnSignInFromHistory);
+        history.SelectionChanged += UpdateAdultButtons;
 
         _pages.Add((ViewEvent, EventPage));
         foreach (var item in ((MenuItem)ViewEvent.Parent).Items.OfType<MenuItem>())
@@ -240,7 +246,7 @@ public partial class MainWindow : Window
             table.Reload(quiet: true);
         }
 
-        UpdatePeopleButtons();
+        UpdateAdultButtons();
         if (_foundRooms != null)
         {
             UpdatePersonFind();
@@ -334,7 +340,7 @@ public partial class MainWindow : Window
             }
         }
 
-        UpdatePeopleButtons();
+        UpdateAdultButtons();
     }
 
     /// <summary>The board selected on Results, on the Event page.</summary>
@@ -1103,7 +1109,7 @@ public partial class MainWindow : Window
         if (qualified.Count == 0)
         {
             DetailNotice.Show(Severity.Informational, "No one else can chair",
-                "No other member of this board is qualified to chair. Replace someone with a qualified chair, or make a member a chair on the People page.");
+                "No other member of this board is qualified to chair. Replace someone with a qualified chair, or make a member a chair on the Adults page.");
             return;
         }
 
@@ -1129,32 +1135,57 @@ public partial class MainWindow : Window
     private static string Plain(string message) => message.StartsWith("ERROR: ", StringComparison.Ordinal) ? message[7..] : message;
 
     // ------------------------------------------------------------------
-    // People
+    // Adults
     // ------------------------------------------------------------------
 
-    private TablePage People => _tables[TableSpecs.People.Name];
+    private TablePage Adults => _tables[TableSpecs.Adults.Name];
 
-    private void UpdatePeopleButtons()
+    private TablePage History => _tables[TableSpecs.AdultHistory.Name];
+
+    private void UpdateAdultButtons()
     {
-        var adult = People.Selected;
+        var adult = Adults.Selected;
         _backButton.IsEnabled = adult is { IsDisabled: true };
         _goneHomeButton.IsEnabled = adult is { IsDisabled: false, IsBusy: false };
+        _signInButton.IsEnabled = History.Selected is { } known && !_adults.Any(a => a.Id == known.Id);
+    }
+
+    /// <summary>Add adult: someone who would rather not use the tablet signs in here.</summary>
+    private void OnAddAdult()
+    {
+        if (AddAdultDialog.Show(this, _svc))
+        {
+            RefreshAll();
+        }
+    }
+
+    /// <summary>
+    /// Sign in for today, from the adult history. Their Last event becomes
+    /// Today, which shows it worked (SPEC.md D-14).
+    /// </summary>
+    private void OnSignInFromHistory()
+    {
+        if (History.Selected is { } known && !_adults.Any(a => a.Id == known.Id))
+        {
+            AddAdultDialog.SignInFromHistory(_svc, known);
+            RefreshAll();
+        }
     }
 
     /// <summary>Gone home. No confirmation: Undo (or Back) reverses it.</summary>
     private void OnGoneHome()
     {
-        if (People.Selected is { IsDisabled: false, IsBusy: false } adult)
+        if (Adults.Selected is { IsDisabled: false, IsBusy: false } adult)
         {
-            ReportOn(People, _svc.DisableAdult(adult.Id), "Couldn't mark them gone home");
+            ReportOn(Adults, _svc.DisableAdult(adult.Id), "Couldn't mark them gone home");
         }
     }
 
     private void OnBack()
     {
-        if (People.Selected is { IsDisabled: true } adult)
+        if (Adults.Selected is { IsDisabled: true } adult)
         {
-            ReportOn(People, _svc.EnableAdult(adult.Id), "Couldn't mark them back");
+            ReportOn(Adults, _svc.EnableAdult(adult.Id), "Couldn't mark them back");
         }
     }
 

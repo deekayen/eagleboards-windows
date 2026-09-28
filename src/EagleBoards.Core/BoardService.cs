@@ -1465,66 +1465,99 @@ public sealed class BoardService
     /// "inserted", "updated" or "deleted"; every field named in
     /// <paramref name="fields"/> that is one of the table's columns is written.
     /// Returns <paramref name="status"/> on success and "invalid" otherwise:
-    /// no ID, updating a record that doesn't exist, inserting one that does.
+    /// no ID, updating a record that doesn't exist, inserting one that does,
+    /// or an edit a table may not make (<see cref="Refusal"/>).
+    ///
+    /// An adult's name, unit, contact and roles (<see cref="AdultRegFields"/>)
+    /// are one set of facts in tonight's adults and the adult history, as a
+    /// sign-in carries them (SPEC.md P-6): an edit to them here is made to the
+    /// same adult in the history too, so someone promoted to chair tonight is
+    /// a chair the next time they sign in. Wood Badge, whom they came to
+    /// support and their room belong to tonight alone.
     ///
     /// <paramref name="undoable"/> puts an edit to an adult or a room on the
     /// Undo stack. The Java version's Event page marks adults gone home and
     /// links them through <c>/adult-update</c>, and renames rooms through
     /// <c>/room-update</c>, so those endpoints keep its Undo (SPEC.md O-2);
     /// this app has its own operations for those, and the table pages'
-    /// hand edits stay off the stack.
+    /// hand edits stay off the stack. So does an edit to an adult's facts
+    /// wherever it comes from: undoing it tonight alone would leave the
+    /// history disagreeing.
     /// </summary>
-    public string SaveRow(DataTable table, string? status, string? id, IReadOnlyDictionary<string, string> fields, bool undoable = false)
+    public string SaveRow(DataTable table, string? status, string? id, IReadOnlyDictionary<string, string> fields, bool undoable = false) =>
+        SaveRow(table, status, id, fields, out _, undoable);
+
+    /// <inheritdoc cref="SaveRow(DataTable, string?, string?, IReadOnlyDictionary{string, string}, bool)"/>
+    /// <param name="refusal">Why the edit was refused, in words for the operator; null if it wasn't, or failed for another reason.</param>
+    public string SaveRow(DataTable table, string? status, string? id, IReadOnlyDictionary<string, string> fields, out string? refusal, bool undoable = false)
     {
         string action;
+        var facts = fields.Where(f => AdultRegFields.Contains(f.Key)).ToDictionary(f => f.Key, f => f.Value, StringComparer.Ordinal);
         lock (_lock)
         {
+            refusal = Refusal(table, status, id == null ? null : Table(table).Find(id), fields);
+            if (refusal != null)
+            {
+                Trace("refused: " + refusal);
+                return "invalid";
+            }
+
             action = SaveRowLocked(Table(table), status, id, fields,
-                undoable && table is (DataTable.Adults or DataTable.Rooms) && status is not ("inserted" or "deleted"));
+                undoable && table is (DataTable.Adults or DataTable.Rooms) && status is not ("inserted" or "deleted") && facts.Count == 0);
+            if (table == DataTable.Adults && action == "updated" && facts.Count > 0 && AdultHistory.Get(id!) != null)
+            {
+                SaveRowLocked(AdultHistory, "updated", id, facts, false);
+            }
         }
 
         if (action != "invalid")
         {
-            OnChanged(table);
+            OnChanged(table == DataTable.Adults && facts.Count > 0 ? [table, DataTable.AdultHistory] : [table]);
         }
 
         return action;
     }
 
     /// <summary>
-    /// An edit to an adult on a table page: tonight's (People) or the adult
-    /// history's. The fields a sign-in carries between the two (name, unit,
-    /// contact, roles; <see cref="AdultRegFields"/>) are changed in both, so
-    /// a role corrected in the history is the one the Event page seats by,
-    /// and one corrected tonight is the one the next event's sign-in fills
-    /// in. Tonight-only fields (room, Wood Badge, who they came to support)
-    /// stay where they were edited. Off the Undo stack, like any table edit.
+    /// Why a table may not make this edit, in words for the operator, or null
+    /// to allow it (SPEC.md P-6). The adult history is read-only: a sign-in
+    /// writes it, and an edit to tonight's adults reaches it. A board is
+    /// seated, started, reset and completed only through the Event page's
+    /// steps, which give the youth a room and members and take them back, so
+    /// an edit never sets Seated or In review, nor changes the status of a
+    /// board that is sitting. The rest of a youth's record still corrects,
+    /// and a finished youth's status can still be set back to waiting.
     /// </summary>
-    public string SaveAdultEdit(DataTable table, string id, IReadOnlyDictionary<string, string> fields)
+    private static string? Refusal(DataTable table, string? status, DataRecord? record, IReadOnlyDictionary<string, string> fields)
     {
-        if (table is not (DataTable.Adults or DataTable.AdultHistory))
+        if (table == DataTable.AdultHistory)
         {
-            throw new ArgumentOutOfRangeException(nameof(table));
+            return "The adult history is read-only. Change an adult on the Adults page, and the history follows.";
         }
 
-        string action;
-        lock (_lock)
+        if (table != DataTable.Scouts || status == "deleted" || !fields.TryGetValue("Status", out var newStatus))
         {
-            action = SaveRowLocked(Table(table), "updated", id, fields, false);
-            var other = table == DataTable.Adults ? AdultHistory : Adults;
-            var shared = fields.Where(f => AdultRegFields.Contains(f.Key)).ToDictionary(f => f.Key, f => f.Value, StringComparer.Ordinal);
-            if (action != "invalid" && shared.Count > 0 && other.Get(id) != null)
-            {
-                SaveRowLocked(other, "updated", id, shared, false);
-            }
+            return null;
         }
 
-        if (action != "invalid")
+        var oldStatus = record?.GetValue("Status") ?? "";
+        if (newStatus == oldStatus)
         {
-            OnChanged(DataTable.Adults, DataTable.AdultHistory);
+            return null;
         }
 
-        return action;
+        var name = record is PersonRecord person ? person.FullName : fields.GetValueOrDefault("First", "") + " " + fields.GetValueOrDefault("Last", "");
+        if (BoardStatus.IsActive(newStatus))
+        {
+            return $"{name} can be seated, or their review started, only on the Event page, where the board gets its room and members.";
+        }
+
+        if (BoardStatus.IsActive(oldStatus))
+        {
+            return $"{name}'s board is in room {record!.GetValue("Room")}. Reset it or complete it on the Event page, which frees the room and its members.";
+        }
+
+        return null;
     }
 
     private string SaveRowLocked(IDataRecordFile file, string? status, string? id, IReadOnlyDictionary<string, string> fields, bool undoable)

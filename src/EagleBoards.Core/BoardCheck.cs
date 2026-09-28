@@ -43,7 +43,7 @@ public static class BoardCheck
         {
             if (a.Room == AdultRoom.Disabled)
             {
-                Block("Gone home", $"**{a.First} {a.Last}** has gone home for tonight. Remove them, or mark them back on the People page.");
+                Block("Gone home", $"**{a.First} {a.Last}** has gone home for tonight. Remove them, or mark them back on the Adults page.");
             }
             else if (!a.IsFree)
             {
@@ -82,7 +82,7 @@ public static class BoardCheck
             var chairs = picked.Where(a => a.RoleFor(type) == BoardRoles.Chair).ToList();
             if (chairs.Count == 0)
             {
-                Block("No chair", $"None of the members can chair a {kind}. Add a qualified chair, or make someone a chair on the People page.");
+                Block("No chair", $"None of the members can chair a {kind}. Add a qualified chair, or make someone a chair on the Adults page.");
             }
             else if (chairId == null || chairs.All(c => c.Id != chairId))
             {

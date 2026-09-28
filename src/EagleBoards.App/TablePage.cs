@@ -74,6 +74,25 @@ public sealed class RecordRow : Row
     /// <summary>A room's members, the same way.</summary>
     public string LeadersText => Display.List(Raw("Leaders"));
 
+    /// <summary>
+    /// The last event an adult signed in at, from the history's
+    /// "(2026-08-25)(2026-09-27)"; "Today" once they have signed in today.
+    /// </summary>
+    public string LastEvent
+    {
+        get
+        {
+            var dates = System.Text.RegularExpressions.Regex.Matches(Raw("BoardHistory"), @"\d{4}-\d{2}-\d{2}");
+            if (dates.Count == 0)
+            {
+                return "";
+            }
+
+            var last = dates[^1].Value;
+            return last == DataRecord.Clock().ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ? "Today" : last;
+        }
+    }
+
     /// <summary>Who an adult came to support, by name; set by the window, which knows the youth.</summary>
     public string SupportingNames { get => _supportingNames; set => Set(ref _supportingNames, value); }
 
@@ -118,17 +137,18 @@ public sealed record TableColumn(string Field, string Header, double Width, Colu
 /// <summary>
 /// One table as a page of the main window. <paramref name="ExportName"/> null
 /// means no Export button; <paramref name="Filter"/> narrows which records
-/// the page is about.
+/// the page is about. <paramref name="ReadOnly"/> shows a table as it is kept,
+/// with Find and Export only.
 /// </summary>
 public sealed record TableSpec(string Name, string Title, string Description, string FindHint, DataTable Table, TableColumn[] Columns,
     string? ExportName, bool CanDelete = true, bool IsRooms = false, int Frozen = 2, string? SortField = null,
-    Func<RecordRow, bool>? Filter = null, string? RowStyle = null);
+    Func<RecordRow, bool>? Filter = null, string? RowStyle = null, bool ReadOnly = false);
 
 /// <summary>
 /// Every table the operator can see and correct, each a page on the View
 /// menu (SPEC.md P-6): the Java app's admin.html tabs, editable in place.
-/// Results and People are the Boards and Adults tables, with what the
-/// operator does there (Save report, Gone home) beside them.
+/// Results is the Boards table, and Adults tonight's adults, with what the
+/// operator does there (Save report, Gone home, Add adult) beside them.
 /// </summary>
 public static class TableSpecs
 {
@@ -160,8 +180,11 @@ public static class TableSpecs
             new("Leader", "Leader", 140), new("Notes", "Notes", 320),
         ], ExportName: null, CanDelete: false, Frozen: 3, Filter: r => !BoardStatus.IsWaiting(r.Status));
 
-    public static readonly TableSpec People = new("People", "People",
-        "The adults signed in at this event. Double-click a cell to change it: someone's roles, unit or Wood Badge.", "Find an adult", DataTable.Adults,
+    // The adults page lists only adults, so it is Adults, not People (SPEC.md
+    // P-6). A change to someone's name, unit, contact or roles is made in the
+    // adult history too (BoardService.SaveRow).
+    public static readonly TableSpec Adults = new("Adults", "Adults",
+        "The adults signed in at this event. Double-click a cell to change it: someone's roles, unit or Wood Badge. Their name, unit, contact and roles change in the adult history too.", "Find an adult", DataTable.Adults,
         [
             new("RegTime", "Signed in", 88, ColumnKind.ReadOnly, Path: "[" + DataRecord.RegTimeHmField + "]"),
             new("Last", "Last", 120), new("First", "First", 110), new("UnitType", "Unit type", 90, ColumnKind.Choice, UnitTypeChoices),
@@ -171,7 +194,7 @@ public static class TableSpecs
             new("ProjectReview", "Project review role", 150, ColumnKind.Choice, RoleChoices),
             new("WoodBadge", "Wood Badge", 104, ColumnKind.WoodBadge, WoodBadgeChoices),
             new("Supporting", "Came to support", 200, ColumnKind.ReadOnly, Path: nameof(RecordRow.SupportingNames)),
-        ], "Adults", Frozen: 3, SortField: "Last", RowStyle: "PeopleRowStyle");
+        ], "Adults", Frozen: 3, SortField: "Last", RowStyle: "AdultsRowStyle");
 
     public static readonly TableSpec Youth = new("Youth", "Youth",
         "Every youth signed in at this event, in sign-in order. Double-click a cell to change it; a status changes on the Event page.", "Find a youth", DataTable.Scouts,
@@ -192,15 +215,17 @@ public static class TableSpecs
             new("Email", "Email", 190), new("BoardType", "Board", 110, ColumnKind.Choice, BoardTypeChoices),
         ], "YouthScheduled");
 
-    public static readonly TableSpec AdultHistory = new("AdultHistory", "Adult history",
-        "Every adult who has signed in at any event, kept from one event to the next.", "Find an adult", DataTable.AdultHistory,
+    // The adult history as it is kept, read-only (SPEC.md P-6): a sign-in
+    // writes it, and a change on Adults reaches it.
+    public static readonly TableSpec AdultHistory = new("AdultHistory", "Adult history CSV",
+        "Every adult who has signed in at any event, as the adult history keeps them from one event to the next. It can't be edited here: a sign-in writes it, and a change on Adults reaches it.", "Find an adult", DataTable.AdultHistory,
         [
-            new("Last", "Last", 120), new("First", "First", 120), new("UnitType", "Unit type", 90, ColumnKind.Choice, UnitTypeChoices),
-            new("Unit", "Unit", 70), new("Email", "Email", 200), new("Phone", "Phone", 110),
-            new("FinalBoard", "Final board role", 130, ColumnKind.Choice, RoleChoices),
-            new("ProjectReview", "Project review role", 150, ColumnKind.Choice, RoleChoices),
-            new("BoardHistory", "Events signed in", 300, ColumnKind.ReadOnly),
-        ], "AdultHistory", SortField: "Last");
+            new("Last", "Last", 120, ColumnKind.ReadOnly), new("First", "First", 120, ColumnKind.ReadOnly),
+            new("UnitType", "Unit type", 90, ColumnKind.ReadOnly), new("Unit", "Unit", 70, ColumnKind.ReadOnly),
+            new("Email", "Email", 200, ColumnKind.ReadOnly), new("Phone", "Phone", 110, ColumnKind.ReadOnly),
+            new("FinalBoard", "Final board role", 130, ColumnKind.ReadOnly), new("ProjectReview", "Project review role", 150, ColumnKind.ReadOnly),
+            new("BoardHistory", "Last event", 110, ColumnKind.ReadOnly, Path: nameof(RecordRow.LastEvent)),
+        ], "AdultHistory", CanDelete: false, SortField: "Last", ReadOnly: true);
 
     public static readonly TableSpec Rooms = new("Rooms", "Rooms",
         "The rooms and what each is for. Rename, switch and move boards from the Event page.", "Find a room", DataTable.Rooms,
@@ -210,7 +235,7 @@ public static class TableSpecs
         ], "Rooms", CanDelete: false, IsRooms: true, Frozen: 1);
 
     /// <summary>The View menu's table pages, in its order after Event.</summary>
-    public static readonly TableSpec[] All = [Results, People, Youth, PreRegistered, AdultHistory, Rooms];
+    public static readonly TableSpec[] All = [Results, Adults, Youth, PreRegistered, AdultHistory, Rooms];
 }
 
 /// <summary>
@@ -230,7 +255,7 @@ public sealed class TablePage : DockPanel
     private int _pageCommands = 1;
     private bool _editing;
 
-    /// <param name="resource">The main window's resources: the status pill and People's row style.</param>
+    /// <param name="resource">The main window's resources: the status pill and Adults' row style.</param>
     /// <param name="addRoom">What Add room does (the Event page's dialog); Rooms only.</param>
     public TablePage(BoardService svc, TableSpec spec, Func<string, object> resource, Action? addRoom = null)
     {
@@ -274,7 +299,7 @@ public sealed class TablePage : DockPanel
             _view.SortDescriptions.Add(new SortDescription("[" + spec.SortField + "]", ListSortDirection.Ascending));
         }
 
-        Grid = new DataGrid { ItemsSource = _view, IsReadOnly = false, FrozenColumnCount = spec.Frozen };
+        Grid = new DataGrid { ItemsSource = _view, IsReadOnly = spec.ReadOnly, FrozenColumnCount = spec.Frozen };
         AutomationProperties.SetName(Grid, spec.Title);
         if (spec.RowStyle != null)
         {
@@ -413,16 +438,18 @@ public sealed class TablePage : DockPanel
     }
 
     /// <summary>
-    /// Save one changed cell. An adult's name, unit, contact and roles are
-    /// the same on People and Adult history: a change to one is made to both.
+    /// Save one changed cell. An adult's name, unit, contact and roles
+    /// change in the adult history too (<see cref="BoardService.SaveRow"/>).
     /// </summary>
     private void OnEdited(RecordRow row, string field, string value)
     {
-        var fields = new Dictionary<string, string> { [field] = value };
-        var action = Spec.Table is DataTable.Adults or DataTable.AdultHistory
-            ? _svc.SaveAdultEdit(Spec.Table, row.Id, fields)
-            : _svc.SaveRow(Spec.Table, "updated", row.Id, fields);
-        if (action == "invalid")
+        var action = _svc.SaveRow(Spec.Table, "updated", row.Id, new Dictionary<string, string> { [field] = value }, out var refusal);
+        if (refusal != null)
+        {
+            Notice.Show(Severity.Warning, "That can't be changed here", refusal);
+            Dispatcher.BeginInvoke(() => Reload(quiet: false));
+        }
+        else if (action == "invalid")
         {
             Notice.Show(Severity.Warning, "That record is gone", "It may have been deleted. The table has been reloaded.");
             Dispatcher.BeginInvoke(() => Reload(quiet: false));

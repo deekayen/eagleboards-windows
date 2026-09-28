@@ -82,9 +82,11 @@ anything that doesn't. The check-in stations only need a web browser.
 5. Add rooms with **Add room** and run the event from the **Event** page.
    **Help › Eagle Boards help** (F1) walks through seating, starting and
    completing boards. The menu bar has the rest: **View** switches to a page
-   for each table (Results, People, Youth, Pre-registered, Adult history,
-   Rooms; Ctrl+2 to 7), each one editable where it is, and **File** has Save
-   report, the check-in QR code and Settings.
+   for each table (Results, Adults, Youth, Pre-registered, Adult history
+   CSV, Rooms; Ctrl+2 to 7), each one editable where it is but the adult
+   history, and **File** has Save report, the check-in QR code and Settings.
+   An adult who would rather not use the tablet is signed in with **Add
+   adult** on the Adults page.
 
 Closing the scheduler stops the check-in site. Everything is saved as it
 happens; there is no "save" step.
@@ -137,7 +139,7 @@ Just never run both at once: they would fight over the port and the files.
   Check-in stations (any browser)             Admin computer
      /  /youth_register  /adult_register      EagleBoards.exe
               |                                 |  Menu bar; Event, Results
-              |  HTTP, venue network            |  and People pages
+              |  HTTP, venue network            |  and Adults pages
               +---------------> Kestrel <-------+  (in-process, no browser)
                                    |
                               BoardService  --  CSV files in the data folder

@@ -1013,9 +1013,12 @@ accepted "undo start review" "$(restore)"
 chk "undo puts the scout back to Seated" "$(status_of "$U1")" "Seated"
 
 # Undo is refused, not guessed at, once something else has changed the same
-# field it would restore -- here, a correction made on the Admin page.
-start "$U1" >/dev/null
-admin_edit "$U1" Status "Seated"
+# field it would restore -- here, a correction made on the Admin page. (This
+# changed the Status once; a table no longer sets a sitting board's status,
+# section 25, so it changes the chair the seat would restore.)
+reset "$U1" >/dev/null
+seat 101 "$U1" "$FC1" "$M1" "$M2" >/dev/null
+admin_edit "$U1" BoardChair "Someone Else"
 refused "undo refuses once something else changed the same field" "$(restore)"
 reset "$U1" >/dev/null
 
@@ -1200,6 +1203,91 @@ case "$(api_post /api/adult-lookup "adele@example.org")" in
     *) bad "adult lookup lost the phone number" ;;
 esac
 chk "and it is in the adult grid read" "$(curl -s "$B/adult-cells?cols=Last,Phone" | grep -c '555-0102')" "1"
+
+# ----------------------------- 25. a table never seats, starts or ends a board
+echo
+echo "== 25. a table never seats, starts or ends a board =="
+
+# SPEC.md P-6. A table corrects a status, but a board is seated, started,
+# reset and completed only through the Event page's steps, which give the
+# scout a room and members and take them back. A waiting scout set to
+# Seated on the Admin page was left "seated" with no room and no board.
+admin_post() { # <path> <id> <field> <value> -> the grid's answer
+    curl -s -X POST --data-urlencode "!nativeeditor_status=updated" \
+        --data-urlencode "gr_id=$2" --data-urlencode "$3=$4" "$B$1"
+}
+table_refused() { # <what> <answer>
+    case "$2" in
+        *'type="invalid"'*'Event page'*) ok "$1" ;;
+        *) bad "$1 -- the table answered: $2" ;;
+    esac
+}
+TABLED=$(xscout Tablerow Tamsin 3501 Final)
+table_refused "a waiting scout is not seated from a table" "$(admin_post /youth-update "$TABLED" Status Seated)"
+table_refused "nor put in review"                          "$(admin_post /youth-update "$TABLED" Status InProgress)"
+chk "and stays waiting, with no room" "$(status_of "$TABLED")|$(room_of "$TABLED")" "Registered|"
+seat 101 "$TABLED" "$FC1" "$M1" "$M2" >/dev/null
+table_refused "a seated board is not sent back to waiting from a table" \
+    "$(admin_post /youth-update "$TABLED" Status Registered)"
+start "$TABLED" >/dev/null
+table_refused "nor a review completed from one" "$(admin_post /youth-update "$TABLED" Status Completed)"
+admin_edit "$TABLED" Notes "Strong answers"
+chk "the rest of a sitting board's record still corrects" \
+    "$(awk -F, -v i="$TABLED" 'NR>1 && $2==i {print $24}' "$SCOUTS")" "Strong answers"
+chk "and the room and members stay with it" "$(status_of "$TABLED") $(busy_adults)" "InProgress 3"
+complete "$TABLED" Approved >/dev/null
+chk "nobody committed after section 25" "$(busy_adults)" "0"
+
+# ------------------ 26. the Adults tab and the read-only Adult history CSV
+echo
+echo "== 26. an adult's facts: edited on the Adults tab, kept in the history =="
+
+# SPEC.md P-6. An adult's name, unit, contact and roles are one set of facts
+# in tonight's adults and the adult history, as a sign-in carries them. The
+# history is read-only; an edit on the Adults tab reaches it. A role changed
+# in one table alone once left the Event page seating by the other.
+case "$(admin_post /adult-history-update "$M6" FinalBoard Chair)" in
+    *'type="invalid"'*'read-only'*) ok "the adult history is read-only" ;;
+    *) bad "the adult history took an edit" ;;
+esac
+chk "and unchanged" "$(history_col "$M6" 11)" "Member"
+refused "a plain member cannot chair" "$(seat 102 "$TABLED" "$M6" "$M7" "$M8")"
+case "$(admin_post /adult-update "$M6" FinalBoard Chair)" in
+    *'type="updated"'*) ok "a member is promoted on the Adults tab" ;;
+    *) bad "the Adults tab refused a promotion" ;;
+esac
+chk "and is a chair in the history too, for their next sign-in" "$(history_col "$M6" 11)" "Chair"
+admin_post /adult-update "$M6" Phone 555-0106 >/dev/null
+chk "their contact follows too" "$(history_col "$M6" 6)" "555-0106"
+admin_post /adult-update "$M6" WoodBadge Y >/dev/null
+chk "but Wood Badge stays with tonight" "$(adult_col "$M6" 17)|$(history_col "$M6" 17)" "Y|"
+CHAIRED=$(xscout Chairwell Corin 3502 Final)
+accepted "the promoted chair is seated as one" "$(seat 102 "$CHAIRED" "$M6" "$M7" "$M8")"
+start "$CHAIRED" >/dev/null
+complete "$CHAIRED" Approved >/dev/null
+chk "nobody committed after section 26" "$(busy_adults)" "0"
+
+# ----------------------- 27. an adult signed in by hand, from the history
+echo
+echo "== 27. an adult signed in by hand, filled in from the adult history =="
+
+# The Admin page's Add adult, for someone who won't use the tablet, posts to
+# /register-adult as the tablet does. Filled in from the adult history, it
+# carries that record's ID, as the tablet's email lookup does, so a name
+# corrected in the form still signs in the same person.
+post --data "Last=Handley&First=Harriet&Email=hh@example.org&UnitType=Troop&Unit=3601&ProjectReview=Member&FinalBoard=Chair" \
+     "$B/register-adult"
+HAND="ADULT:Handley:Harriet:3601"
+post --data-urlencode "!nativeeditor_status=deleted" --data-urlencode "gr_id=$HAND" "$B/adult-update"
+chk "an adult taken off tonight's list" "$(adult_col "$HAND" 2)" ""
+history_rows=$(awk 'END {print NR}' "$WORK/AdultHistory.csv")
+post --data-urlencode "ID=$HAND" --data-urlencode "Last=Handley" --data-urlencode "First=Harriet Ann" \
+     --data-urlencode "Email=hh@example.org" --data-urlencode "UnitType=Troop" --data-urlencode "Unit=3601" \
+     --data-urlencode "ProjectReview=Member" --data-urlencode "FinalBoard=Chair" "$B/register-adult"
+chk "is signed in by hand as the same adult" "$(adult_col "$HAND" 4)" "Harriet Ann"
+chk "still a chair"                           "$(adult_col "$HAND" 11)" "Chair"
+chk "with no second history record"           "$(awk 'END {print NR}' "$WORK/AdultHistory.csv")" "$history_rows"
+chk "and the corrected name in the history"   "$(history_col "$HAND" 4)" "Harriet Ann"
 
 echo
 echo "== the event ends clean =="

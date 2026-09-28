@@ -308,6 +308,33 @@ internal sealed class AppDialog : Window
         return combo;
     }
 
+    /// <summary>Fields side by side, each with its label above it: a first and last name, say.</summary>
+    public void AddRow(params (string Label, Control Control)[] fields)
+    {
+        var row = new Grid();
+        for (var i = 0; i < fields.Length; i++)
+        {
+            if (i > 0)
+            {
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+            }
+
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var (label, control) = fields[i];
+            AutomationProperties.SetName(control, label);
+            var group = new StackPanel();
+            group.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 8) });
+            group.Children.Add(control);
+            Grid.SetColumn(group, i * 2);
+            row.Children.Add(group);
+        }
+
+        Add(row);
+    }
+
+    /// <summary>Anything else the dialog needs, in order with its fields.</summary>
+    public void AddContent(FrameworkElement element) => Add(element);
+
     public new bool ShowDialog()
     {
         Loaded += (_, _) =>

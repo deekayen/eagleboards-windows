@@ -178,32 +178,58 @@ public class BoardServiceTests
     }
 
     [Fact]
-    public void AnAdultEditedOnATablePageIsTheSameInTheHistoryAndTonight()
+    public void AnAdultEditedOnAdultsIsEditedInTheReadOnlyHistoryToo()
     {
-        // SPEC.md P-6: a role corrected in Adult history is the one the Event
-        // page seats by; one corrected on People carries to the next sign-in.
+        // SPEC.md P-6: a role corrected on Adults carries to the next sign-in;
+        // the Adult history CSV itself is read-only (event test section 26).
         using var box = new Sandbox();
         var s = box.Open();
         s.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Member"));
         const string id = "ADULT:Able:Ann:2001";
         string History(string field) => s.Snapshot(DataTable.AdultHistory).Single(r => r["ID"] == id)[field];
 
-        Assert.Equal("updated", s.SaveAdultEdit(DataTable.AdultHistory, id, new Dictionary<string, string> { ["FinalBoard"] = "Chair" }));
-        Assert.Equal("Chair", AdultRow(s, id)["FinalBoard"]);
+        Assert.Equal("invalid", s.SaveRow(DataTable.AdultHistory, "updated", id, new Dictionary<string, string> { ["FinalBoard"] = "Chair" }, out var refusal));
+        Assert.Contains("read-only", refusal);
+        Assert.Equal("Member", History("FinalBoard"));
+        Assert.Equal("invalid", s.SaveRow(DataTable.AdultHistory, "deleted", id, new Dictionary<string, string>()));
 
-        s.SaveAdultEdit(DataTable.Adults, id, new Dictionary<string, string> { ["ProjectReview"] = "Unavailable", ["Phone"] = "555-0142" });
-        Assert.Equal("Unavailable", History("ProjectReview"));
+        Assert.Equal("updated", s.SaveRow(DataTable.Adults, "updated", id, new Dictionary<string, string> { ["FinalBoard"] = "Chair", ["Phone"] = "555-0142" }, undoable: true));
+        Assert.Equal("Chair", History("FinalBoard"));
         Assert.Equal("555-0142", History("Phone"));
 
+        // Off the Undo stack even from /adult-update: undoing it tonight alone
+        // would leave the history disagreeing.
+        Assert.False(s.CanUndo);
+
         // Tonight-only answers stay tonight's.
-        s.SaveAdultEdit(DataTable.Adults, id, new Dictionary<string, string> { ["WoodBadge"] = "Y" });
+        s.SaveRow(DataTable.Adults, "updated", id, new Dictionary<string, string> { ["WoodBadge"] = "Y" });
         Assert.Equal("Y", AdultRow(s, id)["WoodBadge"]);
         Assert.Equal("", History("WoodBadge"));
+    }
 
-        // Someone in the history who hasn't signed in tonight is edited there alone.
-        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "night2"), AdultHistoryPath = box.HistoryPath, ConfigPath = box.ConfigPath });
-        Assert.Equal("updated", s2.SaveAdultEdit(DataTable.AdultHistory, id, new Dictionary<string, string> { ["FinalBoard"] = "Member" }));
-        Assert.Empty(s2.Snapshot(DataTable.Adults));
+    [Fact]
+    public void ATableNeverSeatsStartsOrEndsABoard()
+    {
+        // SPEC.md P-6 (event test section 25): a board is seated, started,
+        // reset and completed only through the Event page's steps, which give
+        // it a room and members and take them back.
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvening(box);
+        string Edit(string status) => s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["Status"] = status }, out var why) + "|" + why;
+
+        Assert.StartsWith("invalid|Alex Aldridge can be seated", Edit(BoardStatus.Seated));
+        Assert.StartsWith("invalid|", Edit(BoardStatus.InProgress));
+        Assert.Equal(BoardStatus.Registered, Status(s, scout));
+
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+        Assert.Contains("board is in room 101", Edit(BoardStatus.Registered));
+        Assert.True(s.StartReview(scout).Ok);
+        Assert.StartsWith("invalid|", Edit(BoardStatus.Completed));
+
+        // The rest of a sitting board's record still corrects.
+        Assert.Equal("updated", s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["Notes"] = "Strong answers" }));
+        Assert.Equal(BoardStatus.InProgress, Status(s, scout));
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
     }
 
     [Fact]
@@ -458,13 +484,15 @@ public class BoardServiceTests
     }
 
     [Fact]
-    public void AResultOnTheWrongScoutCanBeUndoneOnTheTablePages()
+    public void AResultOnTheWrongScoutCanBeCorrectedThroughYouthUpdate()
     {
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = UnderReview(box);
         Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
 
-        // What a table page writes: one field per edit.
+        // What /youth-update takes, one field per edit (event test section 18).
+        // A finished youth's status can go back to waiting; section 25 refuses
+        // only a board that holds a room.
         foreach (var (field, value) in new[] { ("Status", BoardStatus.Registered), ("Result", ""), ("BoardChair", ""), ("BoardMembers", "") })
         {
             Assert.Equal("updated", s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { [field] = value }));
@@ -896,12 +924,13 @@ public class BoardServiceTests
     public void UndoIsRefusedOnceSomethingElseChangedWhatItWouldPutBack()
     {
         // The Java version's restore refuses the same way (event test section 20):
-        // putting the old value back would silently undo the correction too.
+        // putting the old value back would silently undo the correction too. A
+        // table no longer sets a sitting board's status (section 25), so the
+        // correction is to the chair the seat set.
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = SeatableEvening(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
-        Assert.True(s.StartReview(scout).Ok);
-        s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["Status"] = BoardStatus.Seated });
+        s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["BoardChair"] = "Someone Else" });
 
         var refusal = s.Undo();
         Assert.False(refusal.Ok);

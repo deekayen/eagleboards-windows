@@ -10,8 +10,8 @@
        below it. Event is the console: the youth queue, the rooms, and a
        details pane that builds and runs the selected youth's board (the
        list/details pattern). Every table is a page of its own on the View
-       menu, editable in place (TablePage): Results, People, Youth,
-       Pre-registered, Adult history and Rooms. Settings and Help open
+       menu, editable in place (TablePage): Results, Adults, Youth,
+       Pre-registered and Rooms, and the Adult history CSV, read-only. Settings and Help open
        windows of their own. -->
 
   <Window.Resources>
@@ -240,7 +240,7 @@
       <Setter Property="Margin" Value="0,16,0,8" />
     </Style>
 
-    <Style x:Key="PeopleRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
+    <Style x:Key="AdultsRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
       <Style.Triggers>
         <DataTrigger Binding="{Binding IsBusy}" Value="True">
           <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
@@ -282,16 +282,16 @@
                   ToolTip="The event's youth, rooms and boards" />
         <MenuItem Header="_Results" InputGestureText="Ctrl+2" Tag="Results" Click="OnViewPage"
                   ToolTip="Every board and its result, and the report; correct a result here" />
-        <MenuItem Header="_People" InputGestureText="Ctrl+3" Tag="People" Click="OnViewPage"
-                  ToolTip="The adults signed in at this event; change someone's roles here" />
+        <MenuItem Header="_Adults" InputGestureText="Ctrl+3" Tag="Adults" Click="OnViewPage"
+                  ToolTip="The adults signed in at this event; change someone's roles, or add an adult, here" />
         <Separator />
         <!-- The rest of the records, each a table to read and correct. -->
         <MenuItem Header="_Youth" InputGestureText="Ctrl+4" Tag="Youth" Click="OnViewPage"
                   ToolTip="Every youth signed in at this event" />
         <MenuItem Header="Pre-re_gistered" InputGestureText="Ctrl+5" Tag="PreRegistered" Click="OnViewPage"
                   ToolTip="The event's sign-ups, from SignUpGenius or the district's list" />
-        <MenuItem Header="_Adult history" InputGestureText="Ctrl+6" Tag="AdultHistory" Click="OnViewPage"
-                  ToolTip="Every adult who has signed in at any event" />
+        <MenuItem Header="Adult _history CSV" InputGestureText="Ctrl+6" Tag="AdultHistory" Click="OnViewPage"
+                  ToolTip="Every adult who has signed in at any event, read-only" />
         <MenuItem Header="R_ooms" InputGestureText="Ctrl+7" Tag="Rooms" Click="OnViewPage"
                   ToolTip="The rooms and what each is for" />
       </MenuItem>
@@ -589,7 +589,7 @@
             </Border>
           </Grid>
 
-          <!-- Results, People and the other tables: TablePage, added by the
+          <!-- Results, Adults and the other tables: TablePage, added by the
                window, one page per table on the View menu (SPEC.md P-6). -->
         </Grid>
       </DockPanel>

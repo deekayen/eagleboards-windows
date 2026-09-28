@@ -537,20 +537,32 @@ public sealed class CheckInServer : IAsyncDisposable
     /// <summary>
     /// Insert, update or delete a record: <c>!nativeeditor_status</c>,
     /// <c>gr_id</c> and the column values. Answers with the dhtmlx
-    /// data-processor XML the old grids expected.
+    /// data-processor XML the old grids expected; a refused edit's action
+    /// holds the reason as its text, in words for the operator, as the Java
+    /// version's does (SPEC.md P-6).
     /// </summary>
     private Handler Update(DataTable table) => (context, p, _) =>
     {
         var status = p.Get("!nativeeditor_status");
         var id = p.Get("gr_id");
-        var action = _service.SaveRow(table, status, id, p, undoable: true);
+        var action = _service.SaveRow(table, status, id, p, out var refusal, undoable: true);
         var sb = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><data><action type=\"");
         Core.Records.DataRecord.AppendEscaped(sb, action);
         sb.Append("\" sid=\"");
         Core.Records.DataRecord.AppendEscaped(sb, id ?? "null");
         sb.Append("\" tid=\"");
         Core.Records.DataRecord.AppendEscaped(sb, id ?? "null");
-        sb.Append("\" /></data>");
+        if (refusal == null)
+        {
+            sb.Append("\" /></data>");
+        }
+        else
+        {
+            sb.Append("\">");
+            Core.Records.DataRecord.AppendEscaped(sb, refusal);
+            sb.Append("</action></data>");
+        }
+
         return SendAsync(context, 200, "text/xml", sb.ToString());
     };
 
