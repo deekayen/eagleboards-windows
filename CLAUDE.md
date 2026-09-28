@@ -29,7 +29,9 @@ runs a native WPF app instead of the Java app's browser pages.
   Event page, the youth queue, the rooms, and a details pane that builds and
   runs the selected youth's board; and a page per table, editable in place
   (`TablePage`): Results, Adults, Youth, Pre-registered and Rooms, and the
-  Adult history CSV, read-only. No sidebar and no Admin window),
+  Adult history CSV, read-only; then Approved proposals, read from the
+  earlier events' folders (`EarlierEvents`, SPEC.md D-22), never written.
+  No sidebar and no Admin window),
   `AddAdultDialog`, `SettingsWindow`, `HelpWindow`.
   Also accepts the jar's options.
 

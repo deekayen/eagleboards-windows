@@ -137,6 +137,22 @@ public sealed class DataRecordFile<T> : IDataRecordFile
             return;
         }
 
+        foreach (var record in Parse(text, _factory))
+        {
+            Add(record, false);
+        }
+    }
+
+    /// <summary>
+    /// The records in a CSV file, for reading only: nothing is created or
+    /// written, as the constructor would for a missing file. For another
+    /// event's folder (SPEC.md D-22).
+    /// </summary>
+    public static List<T> ReadOnly(string path, RecordFactory<T> factory) => Parse(TextFiles.Read(path), factory);
+
+    private static List<T> Parse(string text, RecordFactory<T> factory)
+    {
+        var records = new List<T>();
         using var reader = new StringReader(text);
         string[]? header = null;
         while (reader.ReadLine() is { } line)
@@ -148,9 +164,11 @@ public sealed class DataRecordFile<T> : IDataRecordFile
                 continue;
             }
 
-            var record = _factory.Create();
+            var record = factory.Create();
             record.FromCsv(line, ',', header);
-            Add(record, false);
+            records.Add(record);
         }
+
+        return records;
     }
 }

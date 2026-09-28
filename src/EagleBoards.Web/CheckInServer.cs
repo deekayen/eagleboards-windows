@@ -83,6 +83,7 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/youth-scheduled-cells"] = new(Cells(DataTable.ScoutsScheduled), false),
             ["/adult-history-cells"] = new(Cells(DataTable.AdultHistory), false),
             ["/room-cells"] = new(Cells(DataTable.Rooms), false),
+            ["/approved-proposals-cells"] = new(ApprovedProposalsCells, false),
             ["/youth-update"] = new(Update(DataTable.Scouts), false),
             ["/youth-scheduled-update"] = new(Update(DataTable.ScoutsScheduled), false),
             ["/adult-update"] = new(Update(DataTable.Adults), false),
@@ -339,39 +340,7 @@ public sealed class CheckInServer : IAsyncDisposable
                 return !string.IsNullOrEmpty(v) && filterValues.Contains(v, StringComparison.Ordinal);
             });
 
-            switch (fmt)
-            {
-                case "data":
-                    sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><data>");
-                    foreach (var r in rows)
-                    {
-                        r.ToDataView(sb, valueColumns, valueUserData);
-                        sb.Append('\n');
-                    }
-
-                    sb.Append("</data>");
-                    break;
-                case "csv":
-                    sb.AppendJoin(',', columns).Append('\n');
-                    foreach (var r in rows)
-                    {
-                        r.ToCsv(sb, ',', valueColumns);
-                        sb.Append('\n');
-                    }
-
-                    break;
-                default:
-                    sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rows>");
-                    foreach (var r in rows)
-                    {
-                        r.ToCells(sb, valueColumns, valueUserData);
-                        sb.Append('\n');
-                    }
-
-                    sb.Append("</rows>");
-                    break;
-            }
-
+            WriteRows(sb, fmt, rows, columns, valueColumns, valueUserData);
             return 0;
         });
 
@@ -384,6 +353,64 @@ public sealed class CheckInServer : IAsyncDisposable
 
         return SendAsync(context, 200, contentType, sb.ToString());
     };
+
+    /// <summary>
+    /// Records as a <c>-cells</c> endpoint answers: the grid's rows (the
+    /// default), a data view, or CSV under <paramref name="columns"/>' names.
+    /// Values are read through <paramref name="valueColumns"/>, where a
+    /// withheld column is one that holds nothing.
+    /// </summary>
+    private static void WriteRows(StringBuilder sb, string fmt, IEnumerable<Core.Records.DataRecord> rows, string[] columns, string[] valueColumns, string[]? valueUserData)
+    {
+        switch (fmt)
+        {
+            case "data":
+                sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><data>");
+                foreach (var r in rows)
+                {
+                    r.ToDataView(sb, valueColumns, valueUserData);
+                    sb.Append('\n');
+                }
+
+                sb.Append("</data>");
+                break;
+            case "csv":
+                sb.AppendJoin(',', columns).Append('\n');
+                foreach (var r in rows)
+                {
+                    r.ToCsv(sb, ',', valueColumns);
+                    sb.Append('\n');
+                }
+
+                break;
+            default:
+                sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rows>");
+                foreach (var r in rows)
+                {
+                    r.ToCells(sb, valueColumns, valueUserData);
+                    sb.Append('\n');
+                }
+
+                sb.Append("</rows>");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// SPEC.md D-22: the proposals approved at the earlier events in this
+    /// data folder, answered as <c>/youth-cells</c> is, with only the
+    /// columns the Approved proposals page shows (<see cref="ApprovalRecord"/>),
+    /// whatever <c>cols</c> asks for: any other is served empty.
+    /// </summary>
+    private Task ApprovedProposalsCells(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
+    {
+        var fmt = p.Get("fmt") ?? "rows";
+        string[]? Shown(string[]? columns) => columns?.Select(c => ApprovalRecord.AllColumns.Contains(c) ? c : c + " (withheld)").ToArray();
+        var columns = Fields(p.Get("cols"), [.. ApprovalRecord.AllColumns])!;
+        var sb = new StringBuilder();
+        WriteRows(sb, fmt, _service.ReadApprovedProposals().Approvals, columns, Shown(columns)!, Shown(Fields(p.Get("data"), null)));
+        return SendAsync(context, 200, fmt == "csv" ? "text/csv" : "text/xml", sb.ToString());
+    }
 
     /// <summary>
     /// The adult sign-in page's "I'm here supporting" list, in the same

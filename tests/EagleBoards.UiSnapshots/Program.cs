@@ -86,6 +86,7 @@ internal static class Program
             // between runs: the window must show what the files hold (their
             // escapes included), not just what was typed.
             Seed(session.Service);
+            SeedEarlierEvents(root);
             session = Restart(session, plan);
             var main = new MainWindow(session);
             Snap(main, outDir, "1-event.png", win =>
@@ -111,6 +112,8 @@ internal static class Program
                     // Read-only, with the last event each adult came to.
                     ("7c-adult-history.png", () => Invoke(w, "ShowPage", "AdultHistory")),
                     ("7d-rooms.png", () => Invoke(w, "ShowPage", "Rooms")),
+                    // Proposals approved at the earlier events (SPEC.md D-22).
+                    ("7e-approved-proposals.png", () => Invoke(w, "ShowPage", "ApprovedProposals")),
                 ];
             });
 
@@ -177,6 +180,37 @@ internal static class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         ThemeSetup.Apply(app, dark ? ThemeMode.Dark : ThemeMode.Light);
         return app;
+    }
+
+    /// <summary>
+    /// Two earlier events beside the one shown, for the Approved proposals
+    /// page: one more than a year back. Only the Project/Approved rows show.
+    /// </summary>
+    private static void SeedEarlierEvents(string root)
+    {
+        (string Folder, string Last, string First, string Unit, string Type, string Result, string Chair, string Members, string Notes)[] earlier =
+        [
+            ("2025-06-10", "Quintero", "Rafael", "2015", BoardTypes.Project, BoardResults.Approved, "Clementine Castellano", "Clementine Castellano,Jebediah Jankowski", "Food drive for the county pantry"),
+            ("2025-06-10", "Lindqvist", "Marta", "1002", BoardTypes.Project, BoardResults.NotApproved, "Clementine Castellano", "Clementine Castellano,Horatio Hollingsworth", ""),
+            ("2026-08-25", "Okonkwo", "Chidi", "2004", BoardTypes.Project, BoardResults.Approved, "Anneliese Abernathy", "Anneliese Abernathy,Fitzgerald Fairbanks,Katarina Kaminski", "Trail steps at Hilltop Park; bring the revised budget"),
+            ("2026-08-25", "Pemberton", "Iris", "2011", BoardTypes.Project, BoardResults.Approved, "Anneliese Abernathy", "Anneliese Abernathy,Genevieve Grimaldi", "Bird boxes for the nature center"),
+            ("2026-08-25", "Varga", "Tobias", "2009", BoardTypes.Final, BoardResults.Approved, "Bartholomew Blackwood", "Bartholomew Blackwood,Desmond Duxbury,Evangeline Ellsworth", ""),
+        ];
+        foreach (var group in earlier.GroupBy(e => e.Folder))
+        {
+            var file = new Core.Storage.DataRecordFile<ScoutRecord>(Path.Combine(root, group.Key, "scouts.csv"), ScoutRecord.Factory);
+            foreach (var e in group)
+            {
+                file.Add(new ScoutRecord(new Dictionary<string, string>
+                {
+                    ["ID"] = $"SCOUT:{e.Last}:{e.First}:{e.Unit}", ["Last"] = e.Last, ["First"] = e.First, ["UnitType"] = "Troop", ["Unit"] = e.Unit,
+                    ["BoardType"] = e.Type, ["Status"] = BoardStatus.Completed, ["Result"] = e.Result,
+                    ["BoardChair"] = e.Chair, ["BoardMembers"] = e.Members, ["Notes"] = e.Notes,
+                }), false);
+            }
+
+            file.Store();
+        }
     }
 
     private static void Seed(BoardService s)

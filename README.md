@@ -84,7 +84,10 @@ anything that doesn't. The check-in stations only need a web browser.
    completing boards. The menu bar has the rest: **View** switches to a page
    for each table (Results, Adults, Youth, Pre-registered, Adult history
    CSV, Rooms; Ctrl+2 to 7), each one editable where it is but the adult
-   history, and **File** has Save report, the check-in QR code and Settings.
+   history, and to **Approved proposals** (Ctrl+8), the project proposals
+   approved at earlier events in the data folder, for a youth who comes
+   without the signed page. **File** has Save report, the check-in QR code
+   and Settings.
    An adult who would rather not use the tablet is signed in with **Add
    adult** on the Adults page.
 

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using EagleBoards.Core;
+using EagleBoards.Core.Records;
 using EagleBoards.Web;
 using Microsoft.AspNetCore.Http;
 
@@ -283,5 +284,28 @@ public class CheckInServerTests
             body, StringComparison.Ordinal);
         Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
         Assert.DoesNotContain("5551234567", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ApprovedProposalsAreServedWithoutABirthdatePhoneOrEmailWhateverIsAsked()
+    {
+        // SPEC.md D-22: the Approved proposals columns only, on this machine only.
+        using var box = new Sandbox();
+        var server = Server(box);
+        var earlier = new Core.Storage.DataRecordFile<ScoutRecord>(Path.Combine(box.Root, "2020-01-14", "scouts.csv"), ScoutRecord.Factory);
+        earlier.Add(new ScoutRecord(new Dictionary<string, string>
+        {
+            ["ID"] = "SCOUT:Ashby:Ava:3101", ["Last"] = "Ashby", ["First"] = "Ava", ["UnitType"] = "Troop", ["Unit"] = "3101",
+            ["Email"] = "ava@example.org", ["Phone"] = "5551234567", ["DOB"] = "2010-04-01",
+            ["BoardType"] = BoardTypes.Project, ["Result"] = BoardResults.Approved, ["BoardChair"] = "Chair Person", ["Notes"] = "Trail steps",
+        }), false);
+        earlier.Store();
+
+        var (status, body) = await Send(server, IPAddress.Loopback, "GET", "/approved-proposals-cells?cols=Event,Last,First,Unit,BoardChair,Notes,DOB,Phone,Email");
+        Assert.Equal(200, status);
+        Assert.Contains("<row id=\"2020-01-14:SCOUT:Ashby:Ava:3101\"><cell>2020-01-14</cell><cell>Ashby</cell><cell>Ava</cell><cell>3101</cell><cell>Chair Person</cell><cell>Trail steps</cell><cell></cell><cell></cell><cell></cell></row>",
+            body, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
+        Assert.Equal(403, (await Send(server, Station, "GET", "/approved-proposals-cells")).Status);
     }
 }

@@ -386,6 +386,14 @@ public sealed class BoardService
         }
     }
 
+    /// <summary>
+    /// Proposals approved at the earlier events in this data folder (SPEC.md
+    /// D-22), read afresh on each call: they don't change during this event,
+    /// so nothing watches them. Outside the lock, since it reads other
+    /// events' folders, never this one's.
+    /// </summary>
+    public ApprovedProposals ReadApprovedProposals() => EarlierEvents.ReadApprovedProposals(Options.DataDirectory, DataRecord.Clock());
+
     /// <summary>Copies of every record in a table, computed fields resolved.</summary>
     public List<Dictionary<string, string>> Snapshot(DataTable table)
     {

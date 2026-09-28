@@ -11,7 +11,8 @@
        details pane that builds and runs the selected youth's board (the
        list/details pattern). Every table is a page of its own on the View
        menu, editable in place (TablePage): Results, Adults, Youth,
-       Pre-registered and Rooms, and the Adult history CSV, read-only. Settings and Help open
+       Pre-registered and Rooms, and the Adult history CSV, read-only; then
+       Approved proposals, read from the earlier events. Settings and Help open
        windows of their own. -->
 
   <Window.Resources>
@@ -294,6 +295,10 @@
                   ToolTip="Every adult who has signed in at any event, read-only" />
         <MenuItem Header="R_ooms" InputGestureText="Ctrl+7" Tag="Rooms" Click="OnViewPage"
                   ToolTip="The rooms and what each is for" />
+        <Separator />
+        <!-- Earlier events, read only (SPEC.md D-22). -->
+        <MenuItem Header="Approved _proposals" InputGestureText="Ctrl+8" Tag="ApprovedProposals" Click="OnViewPage"
+                  ToolTip="Project proposals approved at earlier events" />
       </MenuItem>
       <MenuItem Header="_Help">
         <MenuItem Header="Eagle Boards _help" InputGestureText="F1" Click="OnHelp" ToolTip="How to run an event">

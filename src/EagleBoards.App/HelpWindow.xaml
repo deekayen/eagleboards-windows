@@ -85,10 +85,12 @@
           <Bold>Export</Bold> saves a table as a CSV file; <Bold>Delete</Bold> removes a record for good, after asking.</Paragraph></ListItem>
         <ListItem><Paragraph><Bold>Adult history CSV</Bold>: every adult who has signed in at any event, as the file keeps them, and the last event each came to. It can't be changed here:
           a sign-in writes it, and a change on Adults reaches it. <Bold>Sign in for today</Bold> puts the selected adult on today's list, as if they had signed in at the tablet.</Paragraph></ListItem>
+        <ListItem><Paragraph><Bold>Approved proposals</Bold>: every project proposal approved at an earlier event in the data folder, with the date, the chair and the members, for a youth who comes
+          to a board of review without the signed proposal page. Find looks through names and units. It is read from the earlier events each time you open it, and can't be changed here.</Paragraph></ListItem>
       </List>
       <Paragraph><Bold>File</Bold> has <Bold>Save report</Bold>, the check-in <Bold>QR code</Bold>, and <Bold>Settings</Bold>, the times at which a room turns to caution and to overdue.</Paragraph>
       <Paragraph><Bold>Edit › Undo</Bold> takes back the last board step, room change, gone home or link. <Bold>Help › Donate</Bold> shows the ways to support the scheduler's development.</Paragraph>
-      <Paragraph>Keyboard: Alt or F10 opens the menu bar. Ctrl+1 to Ctrl+7 open the pages in the View menu's order. Ctrl+F finds a person (on a table page, anything in it). Ctrl+Enter takes the selected youth's next step (Seat board, Start review or Complete). Ctrl+S saves the report, Ctrl+Z undoes, Ctrl+comma opens Settings.
+      <Paragraph>Keyboard: Alt or F10 opens the menu bar. Ctrl+1 to Ctrl+8 open the pages in the View menu's order. Ctrl+F finds a person (on a table page, anything in it). Ctrl+Enter takes the selected youth's next step (Seat board, Start review or Complete). Ctrl+S saves the report, Ctrl+Z undoes, Ctrl+comma opens Settings.
         F5 refreshes. F1 opens this help.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Where the data is</Paragraph>

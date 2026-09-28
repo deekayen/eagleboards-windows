@@ -71,6 +71,9 @@ public sealed class RecordRow : Row
     /// <summary>A board's members as "A, B, C" (the file joins them with "," or "~").</summary>
     public string MembersText => Display.List(Raw("BoardMembers"));
 
+    /// <summary>A board's members but its chair, who has a column of their own.</summary>
+    public string OtherMembersText => string.Join(", ", MembersText.Split(", ", StringSplitOptions.RemoveEmptyEntries).Where(m => m != this["BoardChair"]));
+
     /// <summary>A room's members, the same way.</summary>
     public string LeadersText => Display.List(Raw("Leaders"));
 
@@ -102,6 +105,10 @@ public sealed class RecordRow : Row
     public bool Contains(string text) =>
         _values.Keys.Select(k => this[k]).Append(StatusText).Append(SupportingNames)
             .Any(v => v.Contains(text, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Only these fields, as shown.</summary>
+    public bool Contains(string text, IEnumerable<string> fields) =>
+        fields.Any(f => this[f].Contains(text, StringComparison.OrdinalIgnoreCase));
 
     public void Update(IReadOnlyDictionary<string, string> values)
     {
@@ -138,11 +145,20 @@ public sealed record TableColumn(string Field, string Header, double Width, Colu
 /// One table as a page of the main window. <paramref name="ExportName"/> null
 /// means no Export button; <paramref name="Filter"/> narrows which records
 /// the page is about. <paramref name="ReadOnly"/> shows a table as it is kept,
-/// with Find and Export only.
+/// with Find and Export only. <paramref name="Source"/> reads the rows from
+/// somewhere other than <paramref name="Table"/>, each time the page is
+/// shown; <paramref name="FindIn"/> narrows what Find looks through.
 /// </summary>
 public sealed record TableSpec(string Name, string Title, string Description, string FindHint, DataTable Table, TableColumn[] Columns,
     string? ExportName, bool CanDelete = true, bool IsRooms = false, int Frozen = 2, string? SortField = null,
-    Func<RecordRow, bool>? Filter = null, string? RowStyle = null, bool ReadOnly = false);
+    Func<RecordRow, bool>? Filter = null, string? RowStyle = null, bool ReadOnly = false,
+    Func<BoardService, PageRows>? Source = null, string[]? FindIn = null);
+
+/// <summary>
+/// A page's rows from a <see cref="TableSpec.Source"/>: the rows, a line
+/// about where they came from, and anything that couldn't be read.
+/// </summary>
+public sealed record PageRows(List<Dictionary<string, string>> Rows, string? About = null, string? Problem = null);
 
 /// <summary>
 /// Every table the operator can see and correct, each a page on the View
@@ -234,8 +250,28 @@ public static class TableSpecs
             new("Scout", "Youth", 220, ColumnKind.ReadOnly), new("Leaders", "Members", 500, ColumnKind.ReadOnly, Path: nameof(RecordRow.LeadersText)),
         ], "Rooms", CanDelete: false, IsRooms: true, Frozen: 1);
 
+    // SPEC.md D-22: whose project proposal was approved at an earlier event,
+    // for a youth who comes without the signed page. Read only, from the
+    // earlier events' folders, never written; no Export or Delete. No
+    // birthdate, phone number or email is read into it.
+    public static readonly TableSpec ApprovedProposals = new("ApprovedProposals", "Approved proposals",
+        "Project proposals approved at earlier events in this data folder, for a youth who comes without the signed proposal page.", "Find a name or unit", DataTable.Scouts,
+        [
+            new("Last", "Last", 120, ColumnKind.ReadOnly), new("First", "First", 110, ColumnKind.ReadOnly),
+            new("UnitType", "Unit type", 85, ColumnKind.ReadOnly), new("Unit", "Unit", 60, ColumnKind.ReadOnly),
+            new("Event", "Approved on", 104, ColumnKind.ReadOnly),
+            new("BoardChair", "Chair", 160, ColumnKind.ReadOnly), new("BoardMembers", "Members", 260, ColumnKind.ReadOnly, Path: nameof(RecordRow.OtherMembersText)),
+            new("Notes", "Notes", 320, ColumnKind.ReadOnly),
+        ], ExportName: null, CanDelete: false, SortField: "Last", ReadOnly: true, FindIn: ["Last", "First", "UnitType", "Unit"],
+        Source: svc =>
+        {
+            var read = svc.ReadApprovedProposals();
+            return new PageRows(read.Approvals.Select(a => a.Snapshot()).ToList(), read.About,
+                read.Unreadable.Count == 0 ? null : $"The youth in {string.Join(", ", read.Unreadable)} couldn't be read, so any proposals approved there aren't listed. The other events are.");
+        });
+
     /// <summary>The View menu's table pages, in its order after Event.</summary>
-    public static readonly TableSpec[] All = [Results, Adults, Youth, PreRegistered, AdultHistory, Rooms];
+    public static readonly TableSpec[] All = [Results, Adults, Youth, PreRegistered, AdultHistory, Rooms, ApprovedProposals];
 }
 
 /// <summary>
@@ -252,6 +288,7 @@ public sealed class TablePage : DockPanel
     private readonly ListCollectionView _view;
     private readonly StackPanel _commands = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, -8, 0) };
     private readonly TextBlock _count = new() { Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Bottom };
+    private readonly TextBlock _description = new() { TextWrapping = TextWrapping.Wrap };
     private int _pageCommands = 1;
     private bool _editing;
 
@@ -284,16 +321,16 @@ public sealed class TablePage : DockPanel
         _count.SetResourceReference(StyleProperty, "Secondary");
         SetDock(_count, Dock.Right);
         about.Children.Add(_count);
-        var description = new TextBlock { Text = spec.Description, TextWrapping = TextWrapping.Wrap };
-        description.SetResourceReference(StyleProperty, "Secondary");
-        about.Children.Add(description);
+        _description.Text = spec.Description;
+        _description.SetResourceReference(StyleProperty, "Secondary");
+        about.Children.Add(_description);
         SetDock(about, Dock.Top);
         Children.Add(about);
 
         SetDock(Notice, Dock.Top);
         Children.Add(Notice);
 
-        _view = new ListCollectionView(_rows) { Filter = o => o is RecordRow r && (spec.Filter?.Invoke(r) ?? true) && (Find.Text.Trim() is var f && (f.Length == 0 || r.Contains(f))) };
+        _view = new ListCollectionView(_rows) { Filter = o => o is RecordRow r && (spec.Filter?.Invoke(r) ?? true) && (Find.Text.Trim() is var f && (f.Length == 0 || (spec.FindIn is { } fields ? r.Contains(f, fields) : r.Contains(f)))) };
         if (spec.SortField != null)
         {
             _view.SortDescriptions.Add(new SortDescription("[" + spec.SortField + "]", ListSortDirection.Ascending));
@@ -407,13 +444,35 @@ public sealed class TablePage : DockPanel
 
     public void Reload(bool quiet)
     {
-        if (quiet && _editing)
+        // A page read from elsewhere is read as it's shown, not at every change
+        // to this event, which can't change it (SPEC.md D-15, D-22).
+        if (quiet && (_editing || Spec.Source != null))
         {
             return;
         }
 
         var selected = Selected?.Id;
-        RowSync.Sync(_rows, _svc.Snapshot(Spec.Table), r => new RecordRow(r) { Edited = OnEdited }, (row, r) => row.Update(r));
+        List<Dictionary<string, string>> rows;
+        if (Spec.Source is { } source)
+        {
+            var read = source(_svc);
+            rows = read.Rows;
+            _description.Text = read.About is { } about ? $"{Spec.Description} {about}" : Spec.Description;
+            if (read.Problem is { } problem)
+            {
+                Notice.Show(Severity.Warning, "Some earlier events couldn't be read", problem);
+            }
+            else
+            {
+                Notice.Close();
+            }
+        }
+        else
+        {
+            rows = _svc.Snapshot(Spec.Table);
+        }
+
+        RowSync.Sync(_rows, rows, r => new RecordRow(r) { Edited = OnEdited }, (row, r) => row.Update(r));
         Reloaded?.Invoke();
 
         // A row updated in place isn't filtered again by itself (a youth just
