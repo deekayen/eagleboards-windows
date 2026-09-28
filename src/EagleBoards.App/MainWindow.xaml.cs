@@ -171,6 +171,7 @@ public partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new RelayCommand(() => ShowPage("People")), Key.D3, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnReport(this, new RoutedEventArgs())), Key.S, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() => OnSettings(this, new RoutedEventArgs())), Key.OemComma, ModifierKeys.Control));
+        PreviewKeyDown += OnPreviewKey;
         Closing += OnClosing;
 
         ShowPage("Event");
@@ -545,6 +546,7 @@ public partial class MainWindow : Window
         LocateSection.Visibility = DetailsHead.Visibility;
         BuilderSection.Visibility = scout != null && BoardStatus.IsWaiting(scout.Status) ? Visibility.Visible : Visibility.Collapsed;
         BoardSection.Visibility = scout != null && !BoardStatus.IsWaiting(scout.Status) ? Visibility.Visible : Visibility.Collapsed;
+        ShowActions(scout);
         if (scout == null)
         {
             return;
@@ -565,6 +567,51 @@ public partial class MainWindow : Window
         }
 
         ShowLocate(scout);
+    }
+
+    /// <summary>
+    /// The buttons for the youth's next step, in the bar pinned to the foot
+    /// of the pane: Seat board and Postpone while they wait, Start review or
+    /// Complete once seated, and Reset. The bar goes when there's no step.
+    /// </summary>
+    private void ShowActions(ScoutRow? scout)
+    {
+        var status = scout?.Status;
+        var waiting = status != null && BoardStatus.IsWaiting(status);
+        var buttons = new (Button Button, bool Shown)[]
+        {
+            (SeatButton, waiting),
+            (PostponeButton, waiting),
+            (StartButton, status == BoardStatus.Seated),
+            (CompleteButton, status == BoardStatus.InProgress),
+            (ResetButton, status != null && !waiting && SchedulerLogic.ActionsFor(status).HasFlag(ScoutActions.Reset)),
+        };
+        foreach (var (button, shown) in buttons)
+        {
+            button.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        ActionBar.Visibility = buttons.Any(b => b.Shown) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Ctrl+Enter runs the youth's next step (SPEC.md P-3): Seat board, Start
+    /// review or Complete, whichever the pane shows, from anywhere on the
+    /// Event page, the Notes box included (hence a preview: the box would
+    /// otherwise take the key for a new line).
+    /// </summary>
+    private void OnPreviewKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.Control || !EventPage.IsVisible)
+        {
+            return;
+        }
+
+        if (new[] { SeatButton, StartButton, CompleteButton }.FirstOrDefault(b => b.IsVisible && b.IsEnabled) is { } step)
+        {
+            step.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, step));
+            e.Handled = true;
+        }
     }
 
     private void ShowBuilder(ScoutRow scout)
@@ -659,9 +706,6 @@ public partial class MainWindow : Window
 
         FactList.ItemsSource = facts;
         ResultSection.Visibility = scout.Status == BoardStatus.InProgress ? Visibility.Visible : Visibility.Collapsed;
-        StartButton.Visibility = scout.Status == BoardStatus.Seated ? Visibility.Visible : Visibility.Collapsed;
-        CompleteButton.Visibility = scout.Status == BoardStatus.InProgress ? Visibility.Visible : Visibility.Collapsed;
-        ResetButton.Visibility = SchedulerLogic.ActionsFor(scout.Status).HasFlag(ScoutActions.Reset) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Where the youth's leaders and parents are: for fetching them, and after the board.</summary>

@@ -80,7 +80,7 @@
         <Bold>Admin tables</Bold>, every record, including the pre-registered youth and the adult history (double-click a cell to change it; this is where you change someone's roles);
         the check-in <Bold>QR code</Bold>; and <Bold>Settings</Bold>, the times at which a room turns to caution and to overdue.</Paragraph>
       <Paragraph><Bold>Edit › Undo</Bold> takes back the last board step, room change, gone home or link. <Bold>Help › Donate</Bold> shows the ways to support the scheduler's development.</Paragraph>
-      <Paragraph>Keyboard: Alt or F10 opens the menu bar. Ctrl+1, Ctrl+2 and Ctrl+3 open Event, Results and People. Ctrl+F finds a person (on Results and People, a board or an adult). Ctrl+S saves the report, Ctrl+Z undoes, Ctrl+comma opens Settings.
+      <Paragraph>Keyboard: Alt or F10 opens the menu bar. Ctrl+1, Ctrl+2 and Ctrl+3 open Event, Results and People. Ctrl+F finds a person (on Results and People, a board or an adult). Ctrl+Enter takes the selected youth's next step (Seat board, Start review or Complete). Ctrl+S saves the report, Ctrl+Z undoes, Ctrl+comma opens Settings.
         F5 refreshes. F1 opens this help.</Paragraph>
 
       <Paragraph Style="{StaticResource H}">Where the data is</Paragraph>

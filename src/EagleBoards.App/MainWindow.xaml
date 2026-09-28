@@ -450,126 +450,133 @@
 
             <!-- The selected youth's board -->
             <Border Grid.Column="4" Style="{StaticResource Card}" Padding="0">
-              <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
-                <StackPanel x:Name="Details">
-                  <StackPanel x:Name="DetailsEmpty" Margin="0,48,0,0">
-                    <TextBlock Style="{StaticResource Glyph}" FontSize="32" Text="&#xE716;" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                    <TextBlock Style="{StaticResource Secondary}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,12,0,0"
-                               Text="Select a youth to build their board, or a room to see who's in it." />
-                  </StackPanel>
-
-                  <StackPanel x:Name="DetailsHead" Visibility="Collapsed">
-                    <TextBlock x:Name="DetailName" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
-                    <TextBlock x:Name="DetailSub" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,4,0,8" />
-                    <ContentControl x:Name="DetailStatus" ContentTemplate="{StaticResource StatusCell}" HorizontalAlignment="Left" Focusable="False" />
-                    <app:InfoBar x:Name="DetailNotice" Margin="0,12,0,0" IsClosable="True" />
-                  </StackPanel>
-
-                  <!-- Waiting: build the board -->
-                  <StackPanel x:Name="BuilderSection" Visibility="Collapsed">
-                    <TextBlock Style="{StaticResource SectionLabel}" Text="Room" />
-                    <ComboBox x:Name="BuilderRoom" DisplayMemberPath="Value" SelectedValuePath="Key" HorizontalAlignment="Stretch"
-                              SelectionChanged="OnBuilderRoomChanged" AutomationProperties.Name="Room" />
-
-                    <DockPanel Margin="0,16,0,4">
-                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button x:Name="FillButton" Click="OnFillBoard" Padding="8,2" Margin="0,0,8,0"
-                                ToolTip="Keep the members you've chosen and add a chair and members to complete the board">
-                          <TextBlock Text="Fill the rest" />
-                        </Button>
-                        <Button Click="OnClearPicks" Padding="8,2" ToolTip="Remove everyone and propose a new board">
-                          <TextBlock Text="Start over" />
-                        </Button>
+              <DockPanel>
+                <!-- The step's buttons, pinned to the pane's foot so Seat board,
+                     Start review and Complete are never scrolled out of sight
+                     (Ctrl+Enter runs the step from anywhere; SPEC.md D-11, P-3). -->
+                <Border x:Name="ActionBar" DockPanel.Dock="Bottom" Padding="16,12,8,12" BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" Visibility="Collapsed">
+                  <WrapPanel>
+                    <Button x:Name="SeatButton" Style="{StaticResource PrimaryCommandButton}" Click="OnSeat"
+                            ToolTip="The members go to the room to read the application, references and workbook. The youth waits outside until Start review. (Ctrl+Enter)">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE716;" Margin="0,0,8,0" /><AccessText x:Name="SeatText" Text="_Seat board" /></StackPanel>
+                    </Button>
+                    <Button x:Name="PostponeButton" Style="{StaticResource CommandButton}" Click="OnPostpone"
+                            ToolTip="No board at this event, usually because the paperwork isn't in order">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE769;" Margin="0,0,8,0" /><AccessText Text="_Postpone..." /></StackPanel>
+                    </Button>
+                    <Button x:Name="StartButton" Style="{StaticResource PrimaryCommandButton}" Click="OnStart"
+                            ToolTip="Bring the youth in once the members have finished reading. Reset undoes it. (Ctrl+Enter)">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE768;" Margin="0,0,8,0" /><AccessText Text="Sta_rt review" /></StackPanel>
+                    </Button>
+                    <Button x:Name="CompleteButton" Style="{StaticResource PrimaryCommandButton}" Click="OnComplete"
+                            ToolTip="Record the result and free the room and its members (Ctrl+Enter)">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE73E;" Margin="0,0,8,0" /><AccessText Text="_Complete" /></StackPanel>
+                    </Button>
+                    <Button x:Name="ResetButton" Style="{StaticResource CommandButton}" Click="OnReset" ToolTip="Undo the seating: back to waiting, room and members freed">
+                      <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE7A7;" Margin="0,0,8,0" /><AccessText Text="Rese_t..." /></StackPanel>
+                    </Button>
+                  </WrapPanel>
+                </Border>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                  <StackPanel x:Name="Details">
+                    <StackPanel x:Name="DetailsEmpty" Margin="0,48,0,0">
+                      <TextBlock Style="{StaticResource Glyph}" FontSize="32" Text="&#xE716;" HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                      <TextBlock Style="{StaticResource Secondary}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,12,0,0"
+                                 Text="Select a youth to build their board, or a room to see who's in it." />
+                    </StackPanel>
+  
+                    <StackPanel x:Name="DetailsHead" Visibility="Collapsed">
+                      <TextBlock x:Name="DetailName" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
+                      <TextBlock x:Name="DetailSub" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,4,0,8" />
+                      <ContentControl x:Name="DetailStatus" ContentTemplate="{StaticResource StatusCell}" HorizontalAlignment="Left" Focusable="False" />
+                      <app:InfoBar x:Name="DetailNotice" Margin="0,12,0,0" IsClosable="True" />
+                    </StackPanel>
+  
+                    <!-- Waiting: build the board -->
+                    <StackPanel x:Name="BuilderSection" Visibility="Collapsed">
+                      <TextBlock Style="{StaticResource SectionLabel}" Text="Room" />
+                      <ComboBox x:Name="BuilderRoom" DisplayMemberPath="Value" SelectedValuePath="Key" HorizontalAlignment="Stretch"
+                                SelectionChanged="OnBuilderRoomChanged" AutomationProperties.Name="Room" />
+  
+                      <DockPanel Margin="0,16,0,4">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                          <Button x:Name="FillButton" Click="OnFillBoard" Padding="8,2" Margin="0,0,8,0"
+                                  ToolTip="Keep the members you've chosen and add a chair and members to complete the board">
+                            <TextBlock Text="Fill the rest" />
+                          </Button>
+                          <Button Click="OnClearPicks" Padding="8,2" ToolTip="Remove everyone and propose a new board">
+                            <TextBlock Text="Start over" />
+                          </Button>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Board members" VerticalAlignment="Center" />
+                      </DockPanel>
+                      <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                                 Text="To choose someone yourself, remove who you don't want and add them from the list below. Fill the rest completes the board around your choices." />
+                      <ItemsControl x:Name="PickList" ItemTemplate="{StaticResource PickTemplate}" Focusable="False" AutomationProperties.Name="Board members" />
+                      <TextBlock x:Name="NoPicksText" Style="{StaticResource Hint}" Text="No one yet. Add members below." Margin="0,0,0,4" />
+  
+                      <!-- What stops or qualifies Seat board, at the foot of the pane. -->
+                      <StackPanel x:Name="IssueList" Margin="0,8,0,0" />
+  
+                      <TextBlock Style="{StaticResource SectionLabel}" Text="Add members" Margin="0,16,0,8" />
+                      <TextBox x:Name="AvailableFilter" app:Placeholder.Text="Find an adult" TextChanged="OnAvailableFilter" AutomationProperties.Name="Find an adult"
+                               ToolTip="Find an adult by name or unit" Margin="0,0,0,8" />
+                      <ItemsControl x:Name="AvailableList" ItemTemplate="{StaticResource AvailableTemplate}" Focusable="False"
+                                    AutomationProperties.Name="Adults who can join" />
+                      <TextBlock x:Name="NoAvailableText" Style="{StaticResource Hint}" Text="No other adults are free for this board." />
+                    </StackPanel>
+  
+                    <!-- Seated, in review, or finished -->
+                    <StackPanel x:Name="BoardSection" Visibility="Collapsed">
+                      <ItemsControl x:Name="FactList" ItemTemplate="{StaticResource FactTemplate}" Margin="0,16,0,0" Focusable="False" />
+  
+                      <!-- In review: the result first, then the members, who
+                           rarely change by then. -->
+                      <StackPanel x:Name="ResultSection" Margin="0,0,0,24">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Result" Margin="0,4,0,8" />
+                        <StackPanel x:Name="ResultChoices" />
+                        <TextBlock Text="Notes" Margin="0,12,0,8" />
+                        <TextBox x:Name="NotesBox" AcceptsReturn="True" TextWrapping="Wrap" Height="88" VerticalContentAlignment="Top"
+                                 VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Notes" />
                       </StackPanel>
-                      <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Board members" VerticalAlignment="Center" />
-                    </DockPanel>
-                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                               Text="To choose someone yourself, remove who you don't want and add them from the list below. Fill the rest completes the board around your choices." />
-                    <ItemsControl x:Name="PickList" ItemTemplate="{StaticResource PickTemplate}" Focusable="False" AutomationProperties.Name="Board members" />
-                    <TextBlock x:Name="NoPicksText" Style="{StaticResource Hint}" Text="No one yet. Add members below." Margin="0,0,0,4" />
-
-                    <StackPanel x:Name="IssueList" Margin="0,8,0,0" />
-
-                    <WrapPanel Margin="0,8,0,0">
-                      <Button x:Name="SeatButton" Style="{StaticResource PrimaryCommandButton}" Click="OnSeat"
-                              ToolTip="The members go to the room to read the application, references and workbook. The youth waits outside until Start review.">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE716;" Margin="0,0,8,0" /><AccessText x:Name="SeatText" Text="_Seat board" /></StackPanel>
-                      </Button>
-                      <Button x:Name="PostponeButton" Style="{StaticResource CommandButton}" Click="OnPostpone"
-                              ToolTip="No board at this event, usually because the paperwork isn't in order">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE769;" Margin="0,0,8,0" /><AccessText Text="_Postpone..." /></StackPanel>
-                      </Button>
-                    </WrapPanel>
-
-                    <TextBlock Style="{StaticResource SectionLabel}" Text="Add members" Margin="0,24,0,8" />
-                    <TextBox x:Name="AvailableFilter" app:Placeholder.Text="Find an adult" TextChanged="OnAvailableFilter" AutomationProperties.Name="Find an adult"
-                             ToolTip="Find an adult by name or unit" Margin="0,0,0,8" />
-                    <ItemsControl x:Name="AvailableList" ItemTemplate="{StaticResource AvailableTemplate}" Focusable="False"
-                                  AutomationProperties.Name="Adults who can join" />
-                    <TextBlock x:Name="NoAvailableText" Style="{StaticResource Hint}" Text="No other adults are free for this board." />
-                  </StackPanel>
-
-                  <!-- Seated, in review, or finished -->
-                  <StackPanel x:Name="BoardSection" Visibility="Collapsed">
-                    <ItemsControl x:Name="FactList" ItemTemplate="{StaticResource FactTemplate}" Margin="0,16,0,0" Focusable="False" />
-
-                    <!-- Someone has to leave mid-board: change the members here. -->
-                    <StackPanel x:Name="MembersSection">
-                      <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Board members" Margin="0,0,0,8" />
-                      <ItemsControl x:Name="BoardMemberList" ItemTemplate="{StaticResource SeatedMemberTemplate}" Focusable="False"
-                                    AutomationProperties.Name="Board members" />
-                      <WrapPanel Margin="0,4,0,16">
-                        <Button Style="{StaticResource CommandButton}" Click="OnAddMember" ToolTip="Add someone to this board">
-                          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" Margin="0,0,8,0" /><TextBlock Text="Add member..." /></StackPanel>
+  
+                      <!-- Someone has to leave mid-board: change the members here. -->
+                      <StackPanel x:Name="MembersSection">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Board members" Margin="0,0,0,8" />
+                        <ItemsControl x:Name="BoardMemberList" ItemTemplate="{StaticResource SeatedMemberTemplate}" Focusable="False"
+                                      AutomationProperties.Name="Board members" />
+                        <WrapPanel Margin="0,4,0,0">
+                          <Button Style="{StaticResource CommandButton}" Click="OnAddMember" ToolTip="Add someone to this board">
+                            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" Margin="0,0,8,0" /><TextBlock Text="Add member..." /></StackPanel>
+                          </Button>
+                          <Button Style="{StaticResource CommandButton}" Click="OnChangeChair" ToolTip="Hand the chair to another qualified member">
+                            <TextBlock Text="Change chair..." />
+                          </Button>
+                        </WrapPanel>
+                      </StackPanel>
+                    </StackPanel>
+  
+                    <!-- Where their people are: for fetching them, and after the board. -->
+                    <StackPanel x:Name="LocateSection" Visibility="Collapsed">
+                      <TextBlock Style="{StaticResource SectionLabel}" Text="Leaders and parents" Margin="0,24,0,8" />
+                      <ItemsControl x:Name="LocateList" ItemTemplate="{StaticResource FactTemplate}" Focusable="False" />
+                      <TextBlock x:Name="LocateNone" Style="{StaticResource Hint}" />
+                      <!-- For the adult who came with this youth but didn't say so at sign-in. -->
+                      <WrapPanel Margin="0,8,0,0">
+                        <Button Style="{StaticResource CommandButton}" Click="OnLinkAdult"
+                                ToolTip="Someone who came to support this youth but didn't say so at sign-in">
+                          <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE71B;" Margin="0,0,8,0" /><TextBlock Text="Link an adult..." /></StackPanel>
                         </Button>
-                        <Button Style="{StaticResource CommandButton}" Click="OnChangeChair" ToolTip="Hand the chair to another qualified member">
-                          <TextBlock Text="Change chair..." />
+                        <Button x:Name="UnlinkButton" Style="{StaticResource CommandButton}" Click="OnUnlinkAdult" ToolTip="Remove a supporting adult's link to this youth">
+                          <TextBlock Text="Unlink..." />
                         </Button>
                       </WrapPanel>
                     </StackPanel>
-
-                    <StackPanel x:Name="ResultSection">
-                      <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Result" Margin="0,4,0,8" />
-                      <StackPanel x:Name="ResultChoices" />
-                      <TextBlock Text="Notes" Margin="0,12,0,8" />
-                      <TextBox x:Name="NotesBox" AcceptsReturn="True" TextWrapping="Wrap" Height="88" VerticalContentAlignment="Top"
-                               VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Notes" />
-                    </StackPanel>
-
-                    <WrapPanel Margin="0,16,0,0">
-                      <Button x:Name="StartButton" Style="{StaticResource PrimaryCommandButton}" Click="OnStart"
-                              ToolTip="Bring the youth in once the members have finished reading. Reset undoes it.">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE768;" Margin="0,0,8,0" /><AccessText Text="Sta_rt review" /></StackPanel>
-                      </Button>
-                      <Button x:Name="CompleteButton" Style="{StaticResource PrimaryCommandButton}" Click="OnComplete"
-                              ToolTip="Record the result and free the room and its members">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE73E;" Margin="0,0,8,0" /><AccessText Text="_Complete" /></StackPanel>
-                      </Button>
-                      <Button x:Name="ResetButton" Style="{StaticResource CommandButton}" Click="OnReset" ToolTip="Undo the seating: back to waiting, room and members freed">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE7A7;" Margin="0,0,8,0" /><AccessText Text="Rese_t..." /></StackPanel>
-                      </Button>
-                    </WrapPanel>
                   </StackPanel>
-
-                  <!-- Where their people are: for fetching them, and after the board. -->
-                  <StackPanel x:Name="LocateSection" Visibility="Collapsed">
-                    <TextBlock Style="{StaticResource SectionLabel}" Text="Leaders and parents" Margin="0,24,0,8" />
-                    <ItemsControl x:Name="LocateList" ItemTemplate="{StaticResource FactTemplate}" Focusable="False" />
-                    <TextBlock x:Name="LocateNone" Style="{StaticResource Hint}" />
-                    <!-- For the adult who came with this youth but didn't say so at sign-in. -->
-                    <WrapPanel Margin="0,8,0,0">
-                      <Button Style="{StaticResource CommandButton}" Click="OnLinkAdult"
-                              ToolTip="Someone who came to support this youth but didn't say so at sign-in">
-                        <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE71B;" Margin="0,0,8,0" /><TextBlock Text="Link an adult..." /></StackPanel>
-                      </Button>
-                      <Button x:Name="UnlinkButton" Style="{StaticResource CommandButton}" Click="OnUnlinkAdult" ToolTip="Remove a supporting adult's link to this youth">
-                        <TextBlock Text="Unlink..." />
-                      </Button>
-                    </WrapPanel>
-                  </StackPanel>
-                </StackPanel>
-              </ScrollViewer>
+                </ScrollViewer>
+              </DockPanel>
             </Border>
           </Grid>
 
