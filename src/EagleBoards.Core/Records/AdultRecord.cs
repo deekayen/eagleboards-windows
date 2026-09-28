@@ -7,7 +7,7 @@ public sealed class AdultRecord : PersonRecord
         "Type", "ID", "Last", "First", "Email", "Phone", "UnitType", "Unit", "UnitName",
         "ProjectReview", "FinalBoard", "RegTime", "Room", "Flags", "Sel", "BoardHistory",
 
-        // Per night, set at sign-in and never carried into the adult history.
+        // Per event, set at sign-in and never carried into the adult history.
         // Appended, as in the Java version, so older files still line up.
         "WoodBadge", "Supporting",
     ];
@@ -45,7 +45,7 @@ public sealed class AdultRecord : PersonRecord
         set => SetValue("Sel", value);
     }
 
-    /// <summary>"Y" when tonight counts toward a Wood Badge ticket item.</summary>
+    /// <summary>"Y" when this event counts toward a Wood Badge ticket item.</summary>
     public string WoodBadge
     {
         get => GetValue("WoodBadge");

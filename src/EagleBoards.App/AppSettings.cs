@@ -13,7 +13,7 @@ public sealed class AppSettings
 {
     /// <summary>
     /// The folder that holds config.properties, Master_AdultHistory.csv and
-    /// one dated sub-folder per event night (e.g. C:\eagleboards).
+    /// one dated sub-folder per event (e.g. C:\eagleboards).
     /// </summary>
     public string DataFolder { get; set; } = "";
 

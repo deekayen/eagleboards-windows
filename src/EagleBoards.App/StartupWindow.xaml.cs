@@ -9,7 +9,7 @@ using Microsoft.Win32;
 
 namespace EagleBoards.App;
 
-/// <summary>Where's the data, which network, then start the night.</summary>
+/// <summary>Where's the data, which network, then start the event.</summary>
 public partial class StartupWindow : Window
 {
     private sealed record NetworkChoice(string Label, IPAddress? Address);

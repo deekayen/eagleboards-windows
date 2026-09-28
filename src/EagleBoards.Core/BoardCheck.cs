@@ -43,7 +43,7 @@ public static class BoardCheck
         {
             if (a.Room == AdultRoom.Disabled)
             {
-                Block("Gone home", $"**{a.First} {a.Last}** has gone home for tonight. Remove them, or mark them back on the Adults page.");
+                Block("Gone home", $"**{a.First} {a.Last}** has gone home. Remove them, or mark them back on the Adults page.");
             }
             else if (!a.IsFree)
             {

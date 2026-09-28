@@ -16,7 +16,7 @@ public sealed record AdultInfo(string Id, string Last, string First, string Unit
 {
     public string RoleFor(string boardType) => boardType == BoardTypes.Project ? ProjectReview : FinalBoard;
 
-    /// <summary>Not on a board and not stood down for the night.</summary>
+    /// <summary>Not on a board and not gone home.</summary>
     public bool IsFree => Room is "" or "-";
 
     /// <summary>Said at sign-in they came to support this scout.</summary>
@@ -24,7 +24,7 @@ public sealed record AdultInfo(string Id, string Last, string First, string Unit
 
     /// <summary>
     /// Came to serve on any board: not here for a particular scout, or
-    /// counting tonight toward a Wood Badge ticket item (who is then a
+    /// counting this event toward a Wood Badge ticket item (who is then a
     /// volunteer first, whoever else they came with).
     /// </summary>
     public bool CameForAnyBoard => WoodBadge == "Y" || Supporting.Length == 0;
@@ -97,7 +97,7 @@ public static class SchedulerLogic
     /// <remarks>
     /// It used to take the first qualified chair and the first adults whose
     /// role for the board type was Member, in sign-in order. A Final board's
-    /// Member is often a project chair, so the first Final board of the night
+    /// Member is often a project chair, so the first Final board of the event
     /// could take both project chairs and leave every project review without
     /// one; and it ignored the troops of the scouts still waiting.
     ///
@@ -223,7 +223,7 @@ public static class SchedulerLogic
     /// </summary>
     /// <remarks>
     /// Times are the records' <c>yyyy-MM-dd_HH:mm±hhmm</c> stamps, which sort
-    /// ordinally within one event night. The member list is comma-joined and
+    /// ordinally within one event. The member list is comma-joined and
     /// read back from the CSV with '~'; an ID whose name had a comma also holds
     /// a '~', so each whole ID is looked for between separators rather than
     /// splitting the list. The same helper is freeSinceTimes in the Java

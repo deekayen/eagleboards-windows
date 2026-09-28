@@ -20,7 +20,7 @@ public class EarlierEventsTests
             Youth("Cole", "Cy", "3103", BoardTypes.Project, BoardResults.NotApproved),
             Youth("Dent", "Di", "3104", BoardTypes.Final, BoardResults.Approved),
             Youth("Eyre", "Ed", "3105", BoardTypes.Project, ""));
-        Plant(box, "2026-09-27", Youth("Tonight", "Tia", "3106", BoardTypes.Project, BoardResults.Approved));
+        Plant(box, "2026-09-27", Youth("Today", "Tia", "3106", BoardTypes.Project, BoardResults.Approved));
         Plant(box, "2026-10-25", Youth("Later", "Lu", "3107", BoardTypes.Project, BoardResults.Approved));
         Plant(box, "run", Youth("Undated", "Una", "3108", BoardTypes.Project, BoardResults.Approved));
         Directory.CreateDirectory(Path.Combine(box.Root, "2026-01-10"));

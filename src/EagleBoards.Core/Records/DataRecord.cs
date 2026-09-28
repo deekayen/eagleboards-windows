@@ -11,7 +11,7 @@ namespace EagleBoards.Core.Records;
 /// Ported from the Java <c>shkc.core.DataRecord</c>, which extended
 /// <c>HashMap&lt;String,String&gt;</c>. The semantics are kept on purpose,
 /// including the odd ones, because the CSV files on disk are shared with the
-/// Java version and with every event night already recorded:
+/// Java version and with every event already recorded:
 /// <list type="bullet">
 /// <item>A field that is not a column can still be held (e.g. ShortName), it
 /// just never reaches the file.</item>
@@ -136,7 +136,7 @@ public abstract partial class DataRecord
 
     /// <summary>
     /// Runs after a row is read from disk. Times older than a day (or
-    /// unreadable) are reset, so a room carried over from a previous night
+    /// unreadable) are reset, so a room carried over from a previous event
     /// doesn't show a timer in the thousands of minutes.
     /// </summary>
     public virtual void PostLoadUpdate()

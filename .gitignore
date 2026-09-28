@@ -1,6 +1,6 @@
 # ============================================================
 # PII / participant data — NEVER commit.
-# An event night writes into a data folder that may sit next to this code:
+# An event writes into a data folder that may sit next to this code:
 #   - Master_AdultHistory.csv        (names, emails, phones)
 #   - 20??-??-??/ dated run folders  (adults/scouts/rooms CSVs, incl. minors)
 #   - *Board_Results* / Report.csv   (board outcomes with names)

@@ -163,7 +163,7 @@ public sealed record PageRows(List<Dictionary<string, string>> Rows, string? Abo
 /// <summary>
 /// Every table the operator can see and correct, each a page on the View
 /// menu (SPEC.md P-6): the Java app's admin.html tabs, editable in place.
-/// Results is the Boards table, and Adults tonight's adults, with what the
+/// Results is the Boards table, and Adults the event's adults, with what the
 /// operator does there (Save report, Gone home, Add adult) beside them.
 /// </summary>
 public static class TableSpecs

@@ -43,7 +43,7 @@ public static class TextFiles
     /// <summary>
     /// Replace the file's contents via a temporary file in the same folder,
     /// so a crash or power cut mid-write leaves the old file rather than half
-    /// of a new one. The adult history accumulates across every event night;
+    /// of a new one. The adult history accumulates across every event;
     /// a truncated copy of it is not recoverable from anywhere.
     /// </summary>
     public static void WriteAtomically(string path, string contents)

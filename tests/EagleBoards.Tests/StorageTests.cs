@@ -6,7 +6,7 @@ namespace EagleBoards.Tests;
 
 /// <summary>
 /// The files on disk are shared with the Java version and with every event
-/// night already recorded, so the format is pinned here.
+/// already recorded, so the format is pinned here.
 /// </summary>
 [Collection(ClockCollection.Name)]
 public class StorageTests

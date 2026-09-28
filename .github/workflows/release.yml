@@ -152,7 +152,7 @@ jobs:
           {
             echo "Download **EagleBoards.exe** below and put it in the data folder (for example"
             echo '`C:\eagleboards`), or anywhere you like. There is nothing to install: it carries'
-            echo "its own .NET runtime. Double-click it to start an event night; see the README."
+            echo "its own .NET runtime. Double-click it to start an event; see the README."
             echo
             echo "Windows may say it *protected your PC*, because the exe isn't code-signed. Choose"
             echo "**More info**, then **Run anyway**. The first time it serves the check-in site,"

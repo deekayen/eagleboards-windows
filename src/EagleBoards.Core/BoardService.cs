@@ -29,15 +29,15 @@ public sealed class DataChangedEventArgs(IReadOnlyCollection<DataTable> tables) 
     public IReadOnlyCollection<DataTable> Tables { get; } = tables;
 }
 
-/// <summary>Where tonight's data lives and what to pre-load.</summary>
+/// <summary>Where the event's data lives and what to pre-load.</summary>
 public sealed class EventOptions
 {
-    /// <summary>Tonight's folder, conventionally named YYYY-MM-DD. Created if missing.</summary>
+    /// <summary>The event's folder, conventionally named YYYY-MM-DD. Created if missing.</summary>
     public required string DataDirectory { get; init; }
 
     /// <summary>
     /// The cumulative adult history (Master_AdultHistory.csv). When given it
-    /// must exist; when null a per-night adult_history.csv is used.
+    /// must exist; when null a per-event adult_history.csv is used.
     /// </summary>
     public string? AdultHistoryPath { get; init; }
 
@@ -52,7 +52,7 @@ public sealed class EventOptions
 }
 
 /// <summary>
-/// Everything an event night does to its data: check-in, the board
+/// Everything an event does to its data: check-in, the board
 /// lifecycle, rooms, settings and the generic record edits behind the Admin
 /// tables. The check-in website and the Windows admin app both go through
 /// here, so a rule enforced here holds however the request arrives.
@@ -303,7 +303,7 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// Open (creating where missing) tonight's files. A missing adult history
+    /// Open (creating where missing) the event's files. A missing adult history
     /// is started empty (SPEC.md D-9); throws if an explicitly named config
     /// file does not exist.
     /// </summary>
@@ -506,8 +506,8 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// An adult signs in. They are added to tonight's list and merged into
-    /// the cumulative history, whose board-history column gains tonight's
+    /// An adult signs in. They are added to the event's list and merged into
+    /// the cumulative history, whose board-history column gains the event's
     /// date. Flags record whether they were already known ("P") or new ("W").
     /// </summary>
     public void RegisterAdult(IEnumerable<KeyValuePair<string, string>> fields)
@@ -521,7 +521,7 @@ public sealed class BoardService
             if (adult != null)
             {
                 adult.UpdateFrom(incoming, AdultRegFields);
-                // Tonight-only answers: the latest sign-in says what is true now.
+                // Answers for this event only: the latest sign-in says what is true now.
                 adult.WoodBadge = incoming.WoodBadge;
                 adult.Supporting = incoming.Supporting;
                 adult.UpdateFields(false);
@@ -540,7 +540,7 @@ public sealed class BoardService
 
                 // The history pre-fills next month's form; whom someone came to
                 // support, and whether it counted toward Wood Badge, are for
-                // tonight only.
+                // this event only.
                 history.WoodBadge = "";
                 history.Supporting = "";
                 Trace("Adding new Adult History Record: " + history);
@@ -1061,7 +1061,7 @@ public sealed class BoardService
 
             if (member.Room == AdultRoom.Disabled)
             {
-                return Refuse("ERROR: Member " + member.FullName + " has been disabled for tonight");
+                return Refuse("ERROR: Member " + member.FullName + " has been disabled for today");
             }
 
             if (member.Room.Length > 0 && member.Room != boardRoom)
@@ -1477,11 +1477,11 @@ public sealed class BoardService
     /// or an edit a table may not make (<see cref="Refusal"/>).
     ///
     /// An adult's name, unit, contact and roles (<see cref="AdultRegFields"/>)
-    /// are one set of facts in tonight's adults and the adult history, as a
+    /// are one set of facts in the event's adults and the adult history, as a
     /// sign-in carries them (SPEC.md P-6): an edit to them here is made to the
-    /// same adult in the history too, so someone promoted to chair tonight is
+    /// same adult in the history too, so someone promoted to chair today is
     /// a chair the next time they sign in. Wood Badge, whom they came to
-    /// support and their room belong to tonight alone.
+    /// support and their room belong to this event alone.
     ///
     /// <paramref name="undoable"/> puts an edit to an adult or a room on the
     /// Undo stack. The Java version's Event page marks adults gone home and
@@ -1489,7 +1489,7 @@ public sealed class BoardService
     /// <c>/room-update</c>, so those endpoints keep its Undo (SPEC.md O-2);
     /// this app has its own operations for those, and the table pages'
     /// hand edits stay off the stack. So does an edit to an adult's facts
-    /// wherever it comes from: undoing it tonight alone would leave the
+    /// wherever it comes from: undoing it for this event alone would leave the
     /// history disagreeing.
     /// </summary>
     public string SaveRow(DataTable table, string? status, string? id, IReadOnlyDictionary<string, string> fields, bool undoable = false) =>
@@ -1529,7 +1529,7 @@ public sealed class BoardService
     /// <summary>
     /// Why a table may not make this edit, in words for the operator, or null
     /// to allow it (SPEC.md P-6). The adult history is read-only: a sign-in
-    /// writes it, and an edit to tonight's adults reaches it. A board is
+    /// writes it, and an edit to the event's adults reaches it. A board is
     /// seated, started, reset and completed only through the Event page's
     /// steps, which give the youth a room and members and take them back, so
     /// an edit never sets Seated or In review, nor changes the status of a
@@ -1648,7 +1648,7 @@ public sealed class BoardService
     // Pre-registration
     // ------------------------------------------------------------------
 
-    /// <summary>Load a district-website pre-registration CSV into tonight's schedule and the adult history.</summary>
+    /// <summary>Load a district-website pre-registration CSV into the event's schedule and the adult history.</summary>
     public void ImportPreRegistrations(string path)
     {
         if (!File.Exists(path))
@@ -1671,7 +1671,7 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// Pull tonight's sign-ups from SignUpGenius into the schedule (youth) and
+    /// Pull the event's sign-ups from SignUpGenius into the schedule (youth) and
     /// the adult history (adults). Throws on network or API errors.
     /// </summary>
     public async Task<SignUpGeniusSummary> ImportSignUpGeniusAsync(string key, string? signupId, HttpClient http, CancellationToken cancel = default)

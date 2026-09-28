@@ -33,7 +33,7 @@
 # So the event is capped at five concurrent boards no matter how many rooms
 # are free -- which is the constraint the scheduler actually has to survive.
 #
-# Sections 9-24 then work through what goes wrong on the night: malformed
+# Sections 9-24 then work through what goes wrong at an event: malformed
 # and replayed requests, every out-of-order step, adults and scouts signing
 # in twice, boards moved between rooms, a room renamed or deleted under a
 # board, a name with a comma in it, two operators seating the same chair at
@@ -496,7 +496,7 @@ EOF
 chk "every completed board was chaired by a qualified chair" "$bad_chairs" "0"
 
 # ===================================================================
-# The rest is what goes wrong on the night: late arrivals, a button
+# The rest is what goes wrong at an event: late arrivals, a button
 # pressed twice, a room that turns out to be locked, the laptop that
 # reboots. Every section starts and ends with nobody committed, so a
 # failure points at the section that caused it.
@@ -932,7 +932,7 @@ admin_edit "$SENT" Status Postponed
 admin_edit "$SENT" Result ""
 chk "a scout sent away is recorded as Postponed, with no result" \
     "$(status_of "$SENT")|$(result_of "$SENT")" "Postponed|"
-refused "and cannot be seated again that night" "$(seat 104 "$SENT" "$FC1" "$M1" "$M2")"
+refused "and cannot be seated again at that event" "$(seat 104 "$SENT" "$FC1" "$M1" "$M2")"
 chk "nobody committed after section 18"      "$(busy_adults)" "0"
 
 # ------------------------------------ 19. what an adult says at sign-in
@@ -1243,7 +1243,7 @@ echo
 echo "== 26. an adult's facts: edited on the Adults tab, kept in the history =="
 
 # SPEC.md P-6. An adult's name, unit, contact and roles are one set of facts
-# in tonight's adults and the adult history, as a sign-in carries them. The
+# in the event's adults and the adult history, as a sign-in carries them. The
 # history is read-only; an edit on the Adults tab reaches it. A role changed
 # in one table alone once left the Event page seating by the other.
 case "$(admin_post /adult-history-update "$M6" FinalBoard Chair)" in
@@ -1260,7 +1260,7 @@ chk "and is a chair in the history too, for their next sign-in" "$(history_col "
 admin_post /adult-update "$M6" Phone 555-0106 >/dev/null
 chk "their contact follows too" "$(history_col "$M6" 6)" "555-0106"
 admin_post /adult-update "$M6" WoodBadge Y >/dev/null
-chk "but Wood Badge stays with tonight" "$(adult_col "$M6" 17)|$(history_col "$M6" 17)" "Y|"
+chk "but Wood Badge stays with the event" "$(adult_col "$M6" 17)|$(history_col "$M6" 17)" "Y|"
 CHAIRED=$(xscout Chairwell Corin 3502 Final)
 accepted "the promoted chair is seated as one" "$(seat 102 "$CHAIRED" "$M6" "$M7" "$M8")"
 start "$CHAIRED" >/dev/null
@@ -1279,7 +1279,7 @@ post --data "Last=Handley&First=Harriet&Email=hh@example.org&UnitType=Troop&Unit
      "$B/register-adult"
 HAND="ADULT:Handley:Harriet:3601"
 post --data-urlencode "!nativeeditor_status=deleted" --data-urlencode "gr_id=$HAND" "$B/adult-update"
-chk "an adult taken off tonight's list" "$(adult_col "$HAND" 2)" ""
+chk "an adult taken off the event's list" "$(adult_col "$HAND" 2)" ""
 history_rows=$(awk 'END {print NR}' "$WORK/AdultHistory.csv")
 post --data-urlencode "ID=$HAND" --data-urlencode "Last=Handley" --data-urlencode "First=Harriet Ann" \
      --data-urlencode "Email=hh@example.org" --data-urlencode "UnitType=Troop" --data-urlencode "Unit=3601" \

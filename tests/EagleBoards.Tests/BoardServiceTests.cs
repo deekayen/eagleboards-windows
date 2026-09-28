@@ -169,8 +169,8 @@ public class BoardServiceTests
         Assert.Matches(@"^\(\d{4}-\d{2}-\d{2}\)$", history["BoardHistory"]);
         Assert.Equal("W", AdultRow(s, "ADULT:Able:Ann:2001")["Flags"]);
 
-        // Next event night: a new tonight's list, the same history.
-        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "night2"), AdultHistoryPath = box.HistoryPath, ConfigPath = box.ConfigPath });
+        // The next event: a new list of adults, the same history.
+        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "event2"), AdultHistoryPath = box.HistoryPath, ConfigPath = box.ConfigPath });
         s2.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Chair", "Chair"));
         Assert.Equal("P", AdultRow(s2, "ADULT:Able:Ann:2001")["Flags"]);
         var again = Assert.Single(s2.Snapshot(DataTable.AdultHistory));
@@ -197,11 +197,11 @@ public class BoardServiceTests
         Assert.Equal("Chair", History("FinalBoard"));
         Assert.Equal("555-0142", History("Phone"));
 
-        // Off the Undo stack even from /adult-update: undoing it tonight alone
+        // Off the Undo stack even from /adult-update: undoing it for this event alone
         // would leave the history disagreeing.
         Assert.False(s.CanUndo);
 
-        // Tonight-only answers stay tonight's.
+        // Answers for this event only stay with the event.
         s.SaveRow(DataTable.Adults, "updated", id, new Dictionary<string, string> { ["WoodBadge"] = "Y" });
         Assert.Equal("Y", AdultRow(s, id)["WoodBadge"]);
         Assert.Equal("", History("WoodBadge"));
@@ -252,7 +252,7 @@ public class BoardServiceTests
 
         // The next start keeps it, and says nothing about a new one.
         said.Clear();
-        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "night2"), AdultHistoryPath = history, ConfigPath = box.ConfigPath }, said.Add);
+        var s2 = BoardService.Open(new EventOptions { DataDirectory = Path.Combine(box.Root, "event2"), AdultHistoryPath = history, ConfigPath = box.ConfigPath }, said.Add);
         Assert.Single(s2.Snapshot(DataTable.AdultHistory));
         Assert.DoesNotContain(said, m => m.Contains("Started a new"));
     }
@@ -614,7 +614,7 @@ public class BoardServiceTests
         s.Snapshot(DataTable.AdultHistory).Single(r => r["ID"] == id);
 
     [Fact]
-    public void WoodBadgeAndWhomTheyCameToSupportAreForTonightOnly()
+    public void WoodBadgeAndWhomTheyCameToSupportAreForThisEventOnly()
     {
         using var box = new Sandbox();
         var s = box.Open();

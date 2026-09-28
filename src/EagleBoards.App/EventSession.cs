@@ -29,8 +29,8 @@ public sealed class LaunchPlan
 }
 
 /// <summary>
-/// A running event night: the data, the check-in website serving it, and a
-/// log file in the night's folder.
+/// A running event: the data, the check-in website serving it, and a log
+/// file in the event's folder.
 /// </summary>
 public sealed class EventSession : IAsyncDisposable
 {
@@ -52,7 +52,7 @@ public sealed class EventSession : IAsyncDisposable
     /// <summary>What the SignUpGenius import did, for the status bar, or null if it didn't run.</summary>
     public string? ImportSummary { get; private set; }
 
-    /// <summary>Set when the import was attempted and failed; the night still runs without it.</summary>
+    /// <summary>Set when the import was attempted and failed; the event still runs without it.</summary>
     public string? ImportError { get; private set; }
 
     /// <summary>The addresses check-in stations can use, most likely first.</summary>
