@@ -60,12 +60,16 @@ runs a native WPF app instead of the Java app's browser pages.
 - `dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- <dir> [--dark]`:
   renders every window off-screen to PNG over synthetic data, light or dark.
   This is how to look at a UI change without driving the desktop. Check both
-  themes. `-- --demo docs/images [--dark]` re-renders the README's demo GIF,
-  stills and social preview through the window's own handlers; do it after a
-  UI change. `-- --site <dir>` renders eagleboards.page's Windows walkthrough
-  (`event.png`, `seat-board.gif`, `complete-board.gif`) with the site's cast,
-  and the shared check-in pages (`checkin.png`, `youth.png`, `adult.png`)
-  through Edge headless; see WEBSITE.md in eagleboards-shared for when.
+  themes. `-- --site <dir>` renders the README's pictures and
+  eagleboards.page's Windows walkthrough with the site's cast of famous Eagle
+  Scouts: `event.png` (dark), `event-light.png`, `seat-board.gif` (dark) and
+  `complete-board.gif` (light), and the shared check-in pages (`checkin.png`,
+  `youth.png`, `adult.png`) through Edge headless. The README takes
+  `event-light.png` as `docs/images/event.png` and `event.png` as
+  `event-dark.png`; the site takes `event.png` and the GIFs as they are, so
+  the two show the same bytes. See WEBSITE.md in eagleboards-shared for when.
+  `-- --demo docs/images` renders `social-preview.png`, GitHub's social
+  preview, through the window's own handlers.
 - **CI is the acceptance gate** (`.github/workflows/build.yml`, windows-latest):
   build, unit tests, the event test, snapshots (artifact), self-contained publish,
   and a smoke test of the published exe (`scripts/smoke-test-exe.sh`). Prefer

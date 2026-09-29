@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.IO;
 using System.Net;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -13,16 +12,16 @@ using EagleBoards.Core.Records;
 namespace EagleBoards.UiSnapshots;
 
 /// <summary>
-/// Renders the README's demo: one board's trip from sign-in to result,
-/// driven through the scheduler's own handlers over a made-up event. The
-/// record clock is simulated, so room timers read like a real event. Every
-/// name is invented; nothing reads a real data folder.
+/// Renders the GitHub social preview (social-preview.png): the Event page as
+/// a walk-in youth is selected and a board proposed, over a made-up event. The
+/// README's pictures come from <see cref="Site"/>. The record clock is
+/// simulated, so room timers read like a real event. Every name is invented;
+/// nothing reads a real data folder.
 /// </summary>
 internal static class Demo
 {
     private const int Width = 1366;
     private const int Height = 800;
-    private const int CaptionHeight = 52;
 
     // The fourth Tuesday of October 2026.
     private static DateTimeOffset _now = At(18, 30);
@@ -46,7 +45,7 @@ internal static class Demo
 
     private const int Leader = 12;
 
-    public static int Run(string outDir, bool dark)
+    public static int Run(string outDir)
     {
         Directory.CreateDirectory(outDir);
         DataRecord.Clock = () => _now;
@@ -58,7 +57,7 @@ internal static class Demo
         var config = Path.Combine(root, "config.properties");
         File.WriteAllText(config, "Type=CONFIG\nID=DEFAULT\nName=DEFAULT\n");
 
-        Program.StartApplication(dark);
+        Program.StartApplication(dark: false);
         var plan = new LaunchPlan
         {
             DataDirectory = Path.Combine(root, "2026-10-27"),
@@ -78,57 +77,15 @@ internal static class Demo
 
             var win = new MainWindow(session);
             Place(win);
-            var frames = new List<(BitmapSource, int)>();
-            var stills = new List<BitmapSource>();
-            void Frame(string caption, int ms)
-            {
-                Settle(win);
-                stills.Add(Program.Render(win));
-                frames.Add((Compose(stills[^1], caption), ms));
-            }
-
-            Frame("A board of review event: youth waiting, boards in session, every room timed", 3500);
+            Settle(win);
 
             _now = At(19, 33);
             svc.RegisterScout(Scout(Walkin, "Final", unit: (2001 + Leader).ToString(CultureInfo.InvariantCulture),
                 leader: $"{AdultFirst[Leader]} {AdultLast[Leader]}"));
-            Frame("1   A youth signs in on a check-in tablet and joins the queue", 3000);
-
-            var youth = win.QueueList.Items.Cast<ScoutRow>().First(s => s.Last == ScoutLast[Walkin]);
-            win.QueueList.SelectedItem = youth;
-            Frame("2   Select them: a free room, a qualified chair and members from other units are proposed", 4000);
-
-            // Add their own leader to the board, to show a rule being flagged.
-            var leader = FindAdult(win, Leader);
-            leader.Sel = true;
-            Program.Invoke(win, "ShowDetails");
-            Frame("3   Rules are checked as you build: someone from the youth's own unit is flagged", 4000);
-
-            leader.Sel = false;
-            Program.Invoke(win, "ShowDetails");
-            _now = At(19, 34);
-            Program.Invoke(win, "OnSeat", win, new RoutedEventArgs());
-            Frame("4   Seat the board: the members convene and read the paperwork while the youth waits", 3500);
-
-            _now = At(19, 43);
-            Program.Invoke(win, "RefreshAll");
-            Program.Invoke(win, "OnStart", win, new RoutedEventArgs());
-            Frame("5   Start review brings the youth in, and the room timer starts again", 3000);
-
-            _now = At(20, 12);
-            Program.Invoke(win, "RefreshAll");
-            win.NotesBox.Text = "Well prepared. Strong project leadership.";
-            Frame("6   Record the result", 3000);
-
-            Program.Invoke(win, "OnComplete", win, new RoutedEventArgs());
-            Frame("    The room is free again, and you can see where the youth's leader is", 4500);
-
-            GifWriter.Write(Path.Combine(outDir, dark ? "scheduler-demo-dark.gif" : "scheduler-demo.gif"), frames);
-            SavePng(stills[2], Path.Combine(outDir, dark ? "scheduler-dark.png" : "scheduler.png"));
-            if (!dark)
-            {
-                SavePng(SocialPreview(stills[2]), Path.Combine(outDir, "social-preview.png"));
-            }
+            Settle(win);
+            win.QueueList.SelectedItem = win.QueueList.Items.Cast<ScoutRow>().First(s => s.Last == ScoutLast[Walkin]);
+            Settle(win);
+            SavePng(SocialPreview(Program.Render(win)), Path.Combine(outDir, "social-preview.png"));
             win.Hide();
         }
         finally
@@ -152,11 +109,6 @@ internal static class Demo
     private static string A(int i) => $"ADULT:{AdultLast[i]}:{AdultFirst[i]}:{2001 + i}";
 
     private static string S(int i) => $"SCOUT:{ScoutLast[i]}:{ScoutFirst[i]}:{1001 + i}";
-
-    /// <summary>An adult as the Event page holds them (the builder picks through them).</summary>
-    private static AdultRow FindAdult(MainWindow win, int i) =>
-        ((IEnumerable<AdultRow>)typeof(MainWindow).GetField("_adults", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(win)!)
-            .First(a => a.Last == AdultLast[i]);
 
     private static Dictionary<string, string> Scout(int i, string boardType, string? unit = null, string leader = "") => new()
     {
@@ -237,27 +189,6 @@ internal static class Demo
         win.UrlList.ItemsSource = new[] { "http://192.168.1.23:8080/" };
         win.DataText.Text = @"Data: C:\eagleboards\2026-10-27";
         Program.Pump();
-    }
-
-    /// <summary>The window with a caption strip under it.</summary>
-    private static BitmapSource Compose(BitmapSource main, string caption)
-    {
-        var width = main.PixelWidth;
-        var height = main.PixelHeight + CaptionHeight;
-        var visual = new DrawingVisual();
-        using (var dc = visual.RenderOpen())
-        {
-            dc.DrawImage(main, new Rect(0, 0, main.PixelWidth, main.PixelHeight));
-            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x1B, 0x2A, 0x41)), null, new Rect(0, main.PixelHeight, width, CaptionHeight));
-            var text = new FormattedText(caption, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface(new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal),
-                19, Brushes.White, 1.0);
-            dc.DrawText(text, new Point(20, main.PixelHeight + ((CaptionHeight - text.Height) / 2)));
-        }
-
-        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
-        return bitmap;
     }
 
     /// <summary>GitHub's social preview size, 1280 x 640: name, what it does, and the window.</summary>

@@ -25,7 +25,7 @@ internal static class Program
         var rest = args.Where(a => a != "--dark").ToList();
         if (rest.Count > 0 && rest[0] == "--demo")
         {
-            return Demo.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "demo"), dark);
+            return Demo.Run(Path.GetFullPath(rest.Count > 1 ? rest[1] : "demo"));
         }
 
         // --gif out.gif frame.png ms [frame.png ms ...]: frames taken elsewhere

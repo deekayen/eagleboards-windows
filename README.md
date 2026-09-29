@@ -6,11 +6,12 @@ seats boards in a few clicks, with every Guide to Advancement rule checked
 before anyone sits down, and sees every room's time at a glance.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/scheduler-demo-dark.gif">
-  <img src="docs/images/scheduler-demo.gif" alt="A board from sign-in to result: the youth checks in, a board is proposed, a rule is flagged, the board is seated, started and completed">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/event-dark.png">
+  <img src="docs/images/event.png" alt="The Event page mid-event, with the File, Edit, View and Help menus across the top: the Youth list with three waiting and four on a board; the rooms, with Find a person above them, showing Arthur Eldred's final board in room 101 overdue at 49 minutes (an alarm clock on a pink-red fill) and Rob Corddry's project review in 200A running long at 28 minutes (a timer clock on an orange tint); and the details pane showing Arthur Eldred's board in review, chaired by Neil Armstrong, ready to complete">
 </picture>
 
-<sub>Every name in these images is made up. The demo is rendered by `tests/EagleBoards.UiSnapshots` from synthetic data.</sub>
+The pictures use a made-up event whose cast is famous Eagle Scouts; nothing in
+them is real. They're rendered by `tests/EagleBoards.UiSnapshots`.
 
 ## What it does
 
@@ -41,10 +42,6 @@ before anyone sits down, and sees every room's time at a glance.
 - **Your data stays on your computer.** Plain CSV files in a folder you
   choose, nothing sent anywhere. (Optional: import the event's sign-ups from
   SignUpGenius.)
-
-| Light | Dark |
-|---|---|
-| ![The Event page in the light theme](docs/images/scheduler.png) | ![The Event page in the dark theme](docs/images/scheduler-dark.png) |
 
 ## Getting it
 
@@ -97,6 +94,20 @@ anything that doesn't. The check-in stations only need a web browser.
 
 Closing the scheduler stops the check-in site. Everything is saved as it
 happens; there is no "save" step.
+
+### Seat and complete a board
+
+Select a waiting youth and a board is proposed: a free room, a qualified
+chair, and members from other units. **Seat board** convenes it in that room;
+**Start review** brings the youth in.
+
+![Selecting Bill Amend, who has waited 53 minutes, proposes room 200B with Guion Bluford as chair and Steve Fossett, both names followed by the Wood Badge pentagon; after Seat board, room 200B shows the board convening and Bill Amend moves to On a board](docs/images/seat-board.gif)
+
+When the youth comes out, choose the result, add a note if you like, and
+**Complete**. The youth moves to Finished and the room is free for the next
+board.
+
+![In light mode, completing Arthur Eldred's overrunning board: Approved is chosen and a note typed, both above the board's members, then Complete moves Arthur Eldred to Finished, marked Completed, and room 101 is free again](docs/images/complete-board.gif)
 
 ### Command line
 
@@ -202,7 +213,7 @@ src/EagleBoards.Server   headless console host (tests, no-desktop use)
 src/EagleBoards.App      the WPF admin app (EagleBoards.exe)
 tests/EagleBoards.Tests       xUnit: the rule and auto-select cases all three versions share, storage, lifecycle
 tests/EagleBoards.Tests/cases those cases, copied from eagleboards-shared (test-cases.lock pins the commit)
-tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and the demo GIF
+tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and this README's pictures
 scripts/test-board-event.sh   the Java project's HTTP end-to-end event, run against this server
 scripts/test-handoff.sh       the Java and Windows versions taking turns on one event folder
 ```
@@ -213,11 +224,15 @@ dotnet test tests/EagleBoards.Tests -c Release
 bash scripts/test-board-event.sh
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots-dark --dark
+dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --site %TEMP%\eb-site
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/images
-dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/images --dark
 ```
 
-The last two regenerate the images in this README; run them after a UI change.
+`--site` renders this README's pictures and the Windows walkthrough on
+[eagleboards.page](https://eagleboards.page), from the same demo event: copy
+its `event-light.png` to `docs/images/event.png`, its `event.png` to
+`event-dark.png`, and the two GIFs as they are. `--demo` renders
+`social-preview.png`, GitHub's social preview. Run them after a UI change.
 `EB_JAR=/path/to/eagleboardscheduler-*.jar bash scripts/test-board-event.sh`
 runs the same end-to-end test against the Java server, for comparison, and
 `EB_JAR=... bash scripts/test-handoff.sh` has the two versions take turns on

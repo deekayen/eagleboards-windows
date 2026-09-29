@@ -76,7 +76,7 @@ jobs:
         run: bash scripts/test-board-event.sh
 
       # Off-screen renders of every window over synthetic data, light and
-      # dark, plus the README's demo GIF, for review.
+      # dark, plus the social preview, for review.
       - name: UI snapshots
         continue-on-error: true
         shell: bash

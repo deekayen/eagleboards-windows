@@ -17,6 +17,7 @@ namespace EagleBoards.UiSnapshots;
 /// (eagleboards-shared WEBSITE.md, "Re-shooting"):
 ///
 ///   event.png           dark, mid-event, Arthur Eldred's overrunning board open
+///   event-light.png     the same scene and window in light (the README's, with event.png as its dark one)
 ///   seat-board.gif      dark, Bill Amend seated with Guion Bluford and Steve Fossett in 200B
 ///   complete-board.gif  light, Arthur Eldred's board completed and room 101 freed
 ///   checkin.png, youth.png, adult.png
@@ -94,6 +95,11 @@ internal static class Site
             var win = Open(session);
             Select(win, "Eldred");
             SavePng(Program.Render(win), Path.Combine(outDir, "event.png"));
+
+            // The same window in light, for the README's picture pair.
+            ThemeSetup.Apply(app, ThemeMode.Light);
+            SavePng(Shot(win), Path.Combine(outDir, "event-light.png"));
+            ThemeSetup.Apply(app, ThemeMode.Dark);
 
             win.QueueList.SelectedItem = null;
             win.RoomList.SelectedItem = null;
