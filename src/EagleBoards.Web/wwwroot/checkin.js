@@ -7,7 +7,7 @@
 //                                 names and units only, in sign-in order;
 //                                 refreshSeconds is no longer read by these pages
 //   GET  /api/scout-choices    -> [{ id, first, last, unitType, unit }], the youth
-//                                 an adult may say they came to support
+//                                 an adult may say they will introduce (D-23)
 //   POST /api/youth-lookup     email=... -> the pre-registration it matches
 //                                 (ID, Last, First, UnitType, Unit, BoardType,
 //                                 Leader), or {}
@@ -22,9 +22,10 @@
 //
 // Accessibility (WCAG 2.2 AA) lives here as much as in the markup: errors
 // are named in words beside their field and in a summary (3.3.1, 3.3.3),
-// progress and results are announced (4.1.3), the page never leaves by
-// itself without a way to stop it (2.2.1), and nothing on it changes on its
-// own while someone is reading it (2.2.2).
+// progress and failures are announced (4.1.3), nothing is timed (2.2.1), and
+// nothing on a page changes on its own while someone is reading it (2.2.2).
+// A page leaves only when told to: a sign-in that went through goes straight
+// back to the welcome page, whose list then shows the new name first.
 // ------------------------------------------------------------------------
 
 function ebFormBody(fields) {
@@ -150,7 +151,6 @@ function ebSignInForm(form, options) {
    var formStatus = document.getElementById("formStatus");
    var errorSummary = document.getElementById("errorSummary");
    var submitButton = document.getElementById("submitButton");
-   var done = document.getElementById("done");
    var dirty = false;
 
    form.noValidate = true;   // our own messages, in words, beside each field
@@ -327,35 +327,13 @@ function ebSignInForm(form, options) {
       });
    });
 
-   // ---- done (2.2.1: the page returns to the start by itself, after long
-   // enough to read, and can be told to stay) ----
-   var RETURN_SECONDS = 20;
-   var returnTimer = null;
-
+   // ---- done: straight back to the start, with no page to click past.
+   // Their name heads the welcome page's list, which is the confirmation.
+   // replace(), so Back on a shared tablet never reopens the filled-in form.
    function finish() {
       dirty = false;
-      form.hidden = true;
-      say("", "");
-      var lead = document.querySelector(".lead");
-      if (lead) {
-         lead.hidden = true;
-      }
-      done.hidden = false;
-      var heading = done.querySelector("h2");
-      heading.setAttribute("tabindex", "-1");
-      heading.focus();
-      returnTimer = setTimeout(function () { window.location.href = "/"; }, RETURN_SECONDS * 1000);
-      document.getElementById("returnNote").textContent =
-         "This page goes back to the start in " + RETURN_SECONDS + " seconds.";
+      window.location.replace("/");
    }
-
-   document.getElementById("stayButton").addEventListener("click", function () {
-      clearTimeout(returnTimer);
-      this.hidden = true;
-      document.getElementById("returnNote").textContent = "This page will stay until you choose Back to the start.";
-      // The button pressed is gone; keep keyboard focus on what comes next.
-      done.querySelector("a.button").focus();
-   });
 
    // ---- leaving (asks only when something has been typed) ----
    var leaveDialog = document.getElementById("leaveDialog");
@@ -396,8 +374,9 @@ function ebUnitlessTypes(form, unitlessTypes) {
    return sync;
 }
 
-// The adult form's "I'm here supporting" list, with a box to narrow it. A
-// checked youth stays in view, so narrowing never hides a choice.
+// The adult form's list of the youth they will introduce (D-23), with a box
+// to narrow it. A checked youth stays in view, so narrowing never hides a
+// choice.
 function ebSupportList(form) {
    var list = document.getElementById("supportList");
    var find = document.getElementById("supportFind");

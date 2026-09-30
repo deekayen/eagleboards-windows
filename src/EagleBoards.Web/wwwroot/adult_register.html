@@ -95,7 +95,7 @@
                         <option value="Unavailable">No thanks</option>
                      </select>
                   </div>
-                  <!-- Today only, like the youth supported: neither answer is
+                  <!-- Today only, like the youth introduced: neither answer is
                        kept for next time, so a later event's form does not
                        fill them in. -->
                   <label class="check">
@@ -104,10 +104,16 @@
                   </label>
                </fieldset>
 
+               <!-- Only the adult who introduces a youth to their board of
+                    review (SPEC.md D-23): the operator is reminded to fetch
+                    them when the review starts. A parent who links themselves
+                    is fetched for nothing, and is kept off other boards as if
+                    waiting to be. Still posted as Supporting (D-2). -->
                <fieldset aria-describedby="support-hint">
-                  <legend>Supporting a youth <span class="optional">(optional)</span></legend>
-                  <p class="hint" id="support-hint">Their leader, coach or parent? Check who you came with, so we can
-                     find you when their review starts.</p>
+                  <legend>Introducing a youth <span class="optional">(optional)</span></legend>
+                  <p class="hint" id="support-hint">Check a youth only if you'll introduce them to their board: usually
+                     their Scoutmaster, or a leader standing in. Parents, leave this blank unless you're also their
+                     Scoutmaster.</p>
                   <div class="field">
                      <label for="supportFind">Find a youth</label>
                      <input type="search" id="supportFind" autocomplete="off" aria-describedby="supportCount">
@@ -127,16 +133,6 @@
                <p id="formStatus" class="status" role="status"></p>
             </div>
          </form>
-
-         <section id="done" class="done" hidden aria-labelledby="doneHeading">
-            <h2 id="doneHeading">You're signed in. Thank you!</h2>
-            <p>Please wait nearby. Someone will come for you when a board needs you.</p>
-            <p id="returnNote"></p>
-            <div class="actions">
-               <a class="button primary" href="/">Back to the start</a>
-               <button type="button" id="stayButton">Stay on this page</button>
-            </div>
-         </section>
 
          <dialog id="leaveDialog" aria-labelledby="leaveHeading">
             <h2 id="leaveHeading">Leave without signing in?</h2>
