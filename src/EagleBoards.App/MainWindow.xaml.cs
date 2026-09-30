@@ -71,6 +71,9 @@ public partial class MainWindow : Window
 
     private string? _builderRoomId;
 
+    /// <summary>The board last proposed, to tell it from the operator's own (SPEC.md D-12).</summary>
+    private ProposedBoard? _proposal;
+
     public MainWindow(EventSession session)
     {
         _session = session;
@@ -237,6 +240,14 @@ public partial class MainWindow : Window
         if (_current != null && !_scouts.Contains(_current))
         {
             _current = null;
+        }
+
+        // A board proposed for the open youth, and not changed since, follows
+        // the event: an adult who signs in or frees up is weighed at once,
+        // without Start over (SPEC.md D-12).
+        if (_current is { } open && BoardStatus.IsWaiting(open.Status) && _proposal?.ScoutId == open.Id && ProposalUntouched())
+        {
+            ProposeBoard(open);
         }
 
         UpdateRoomTimers();
@@ -497,9 +508,9 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Show a youth in the details pane. A waiting youth gets a proposed board
-    /// unless the operator already has picks: picks are their work in
+    /// unless the operator has changed the picks: then they are their work in
     /// progress and survive clicking around; only Start over and seating
-    /// clear them.
+    /// clear them. A proposal they left alone is made afresh for this youth.
     /// </summary>
     private void Open(ScoutRow scout)
     {
@@ -531,10 +542,16 @@ public partial class MainWindow : Window
         ShowDetails();
     }
 
+    /// <summary>
+    /// Propose a board for a waiting youth, unless the operator has one of
+    /// their own: picks they changed, or found in the file at start-up.
+    /// A proposal they haven't changed is made again (SPEC.md D-12), for
+    /// another youth opened and as the event changes (<see cref="RefreshAll"/>).
+    /// </summary>
     private void ProposeBoard(ScoutRow scout)
     {
         var free = _rooms.Where(r => r.IsFree).ToList();
-        if (_adults.Any(IsPicked))
+        if (_adults.Any(IsPicked) && !ProposalUntouched())
         {
             // Keep their picks; just make sure there's a sensible room.
             if (free.All(r => r.Id != _builderRoomId))
@@ -547,17 +564,28 @@ public partial class MainWindow : Window
 
         var (adults, waiting) = SelectionContext(scout);
         var pick = SchedulerLogic.AutoSelect(scout.Info, adults, _rooms.Select(r => r.Info), waiting);
-        foreach (var id in pick.AllAdultIds)
+        var ids = pick.AllAdultIds.ToHashSet(StringComparer.Ordinal);
+        foreach (var adult in _adults.Where(a => a.CanPick && a.Sel != ids.Contains(a.Id)))
         {
-            if (_adults.FirstOrDefault(a => a.Id == id) is { } adult)
-            {
-                adult.Sel = true;
-            }
+            adult.Sel = ids.Contains(adult.Id);
         }
 
         _chairId = pick.ChairIds.FirstOrDefault();
-        _builderRoomId = pick.RoomId ?? free.FirstOrDefault()?.Id;
+
+        // The same youth keeps the room chosen for them while it's free.
+        if (_proposal?.ScoutId != scout.Id || free.All(r => r.Id != _builderRoomId))
+        {
+            _builderRoomId = pick.RoomId ?? free.FirstOrDefault()?.Id;
+        }
+
+        _proposal = new ProposedBoard(scout.Id, ids, _chairId);
     }
+
+    /// <summary>The picks are still the board last proposed: the operator hasn't changed it.</summary>
+    private bool ProposalUntouched() =>
+        _proposal is { } proposal
+        && proposal.IsUntouched(_adults.Where(IsPicked).Select(a => a.Id).ToList(),
+            id => _adults.FirstOrDefault(a => a.Id == id)?.CanPick == true, _chairId);
 
     /// <summary>
     /// What the proposal weighs beside this youth: the other waiting youth in
@@ -759,7 +787,7 @@ public partial class MainWindow : Window
     {
         var found = SchedulerLogic.Locate(scout.Info, _adults.Select(a => a.Info), includeParents: true);
         LocateList.ItemsSource = found.Select(f => new KeyValuePair<string, string>(
-            f.IsSupporting ? "Came to support them" : f.IsLeader ? "Leader" : "Parent",
+            f.IsSupporting ? "Introduces them" : f.IsLeader ? "Leader" : "Parent",
             $"{f.Adult.First} {f.Adult.Last} · {(f.Adult.Room == AdultRoom.Disabled ? "gone home" : f.Adult.Room.Length == 0 ? "main room" : "room " + f.Adult.Room)}")).ToList();
         LocateNone.Text = found.Count > 0 ? ""
             : scout.Leader.Length > 0 ? $"{scout.Leader} hasn't signed in, and no parent has."
@@ -769,10 +797,11 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Link an adult to this youth as someone who came to support them, for
-    /// the adult who didn't say so at sign-in. They're listed under Leaders
-    /// and parents from then on, with where to find them. Works for an adult
-    /// on a board too: a Scoutmaster often is by then.
+    /// Link an adult to this youth as the one who introduces them to their
+    /// board (SPEC.md D-23), for the adult who didn't say so at sign-in.
+    /// They're listed under Leaders and parents from then on, with where to
+    /// find them, and Start review reminds the operator to fetch them. Works
+    /// for an adult on a board too: a Scoutmaster often is by then.
     /// </summary>
     private void OnLinkAdult(object sender, RoutedEventArgs e)
     {
@@ -790,8 +819,8 @@ public partial class MainWindow : Window
         }
 
         var dialog = new AppDialog(this, $"Link an adult to {scout.FullName}?", "Link");
-        dialog.AddMessage($"For someone who came to support **{scout.FullName}** but didn't say so at sign-in. "
-            + "They'll be listed here, with where to find them, when it's time to bring the youth in.");
+        dialog.AddMessage($"For the adult who will introduce **{scout.FullName}** to their board, usually their Scoutmaster "
+            + "or a leader standing in, but didn't say so at sign-in. Start review reminds you to fetch them.");
         var pick = dialog.AddChoice("Adult", choices, null);
         if (dialog.ShowDialog() && pick.SelectedValue is string adultId)
         {
@@ -939,17 +968,57 @@ public partial class MainWindow : Window
 
         _chairId = null;
         _builderRoomId = null;
+        _proposal = null;
         RefreshAll();
         Open(scout);
     }
 
-    /// <summary>Seated → In review. No confirmation: Reset undoes it.</summary>
+    /// <summary>
+    /// Seated → In review. On a board of review, first the reminder to fetch
+    /// the adult who introduces the youth, saying where they are (SPEC.md
+    /// D-23); a project review has no introduction and starts at once.
+    /// Reset undoes either.
+    /// </summary>
     private void OnStart(object sender, RoutedEventArgs e)
     {
-        if (_current is { Status: BoardStatus.Seated } scout)
+        if (_current is not { Status: BoardStatus.Seated } scout)
         {
-            Report(_svc.StartReview(scout.Id), "Couldn't start the review");
+            return;
         }
+
+        if (SchedulerLogic.IntroductionFor(scout.Info, _adults.Select(a => a.Info)) is { } introduction
+            && !StartReviewReminder(this, scout, introduction).ShowDialog())
+        {
+            return;
+        }
+
+        Report(_svc.StartReview(scout.Id), "Couldn't start the review");
+    }
+
+    /// <summary>The reminder Start review shows on a board of review (SPEC.md D-23).</summary>
+    internal static AppDialog StartReviewReminder(Window owner, ScoutRow scout, Introduction introduction)
+    {
+        var dialog = new AppDialog(owner, "Start the review?", "Start review", "Not yet");
+        dialog.AddMessage(IntroductionReminder(scout, introduction));
+        dialog.AddMessage($"Then bring {scout.First} in to room {scout.Room}.");
+        return dialog;
+    }
+
+    /// <summary>Whom to fetch for the introduction, and where they are; never a parent.</summary>
+    internal static string IntroductionReminder(ScoutRow scout, Introduction introduction)
+    {
+        static string Name(AdultInfo a) => $"**{a.First} {a.Last}**";
+        var youth = $"**{scout.FullName}**";
+        return introduction switch
+        {
+            { Introducers: [var one] } => $"Fetch {Name(one)} to introduce {youth} to the board. They're {SchedulerLogic.Whereabouts(one)}.",
+            { Introducers.Count: > 1 } => $"Fetch whoever introduces {youth} to the board:\n"
+                + string.Join("\n", introduction.Introducers.Select(a => $"{Name(a)}, {SchedulerLogic.Whereabouts(a)}")),
+            { Leaders: [var one] } => $"No one has said they'll introduce {youth}. Their leader, {Name(one)}, is {SchedulerLogic.Whereabouts(one)}.",
+            { Leaders.Count: > 1 } => $"No one has said they'll introduce {youth}. Their leaders:\n"
+                + string.Join("\n", introduction.Leaders.Select(a => $"{Name(a)}, {SchedulerLogic.Whereabouts(a)}")),
+            _ => $"No one has said they'll introduce {youth}, and their leader hasn't signed in. Ask {scout.First} who will.",
+        };
     }
 
     private void OnComplete(object sender, RoutedEventArgs e)

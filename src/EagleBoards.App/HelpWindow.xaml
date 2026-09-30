@@ -54,12 +54,13 @@
       <Paragraph>The proposal has the whole waiting line in mind: it keeps adults who can chair free for the boards still to come, uses adults whose unit rules them out for youth still waiting,
         favours adults who came to serve on any board (not for one particular youth, or counting the event toward a Wood Badge ticket item), and then those who have waited longest.
         If there aren't enough adults for all of that, it still proposes the best board it can.</Paragraph>
-      <Paragraph>Your picks are kept while you click around. <Bold>Start over</Bold> clears them and proposes a fresh board.</Paragraph>
-      <Paragraph><Bold>Start.</Bold> When the members have finished reading, fetch the youth (and their leader or coach to introduce them; <Bold>Leaders and parents</Bold> shows where they are) and press <Bold>Start review</Bold>.</Paragraph>
+      <Paragraph>Until you change it, the proposed board keeps up with the event: when an adult signs in, goes home or leaves a board, it's proposed again, and another youth opened gets a board of their own.
+        Once you remove, add, fill or change the chair, the board is yours, and it's kept while you click around. <Bold>Start over</Bold> clears it and proposes a fresh board.</Paragraph>
+      <Paragraph><Bold>Start.</Bold> When the members have finished reading, press <Bold>Start review</Bold>. For a board of review it first says whom to fetch to introduce the youth to the board, and where they are: whoever said so at sign-in, or else the youth's leader. Fetch them with the youth, then press <Bold>Start review</Bold> again in the reminder. A project review has no introduction, so it starts at once.</Paragraph>
       <Paragraph><Bold>Complete.</Bold> Choose the result, add any notes, and press <Bold>Complete</Bold>. The room and members are freed, and the pane still shows where the youth's leaders and parents are.</Paragraph>
       <Paragraph><Bold>At adult sign-in</Bold> people can say "No thanks" to one kind of board (they are never seated on it), whether the event counts toward a Wood Badge ticket item,
-        and which youth they came to support. Those they came to support are listed under <Bold>Leaders and parents</Bold>, with where to find them.
-        If someone came with a youth but didn't say so, select the youth and press <Bold>Link an adult</Bold>; <Bold>Unlink</Bold> undoes it.</Paragraph>
+        and which youth they will introduce to their board: usually the youth's Scoutmaster, or a leader standing in, and not a parent unless they're also the Scoutmaster. They're listed under <Bold>Leaders and parents</Bold> as <Bold>Introduces them</Bold>, with where to find them.
+        If the adult introducing a youth didn't say so, select the youth and press <Bold>Link an adult</Bold>; <Bold>Unlink</Bold> undoes it.</Paragraph>
       <Paragraph><Bold>Someone has to leave mid-board.</Bold> Select the board (the youth, or their room). Under <Bold>Board members</Bold>, press <Bold>Replace</Bold> next to them and choose who takes their place,
         or remove them, or <Bold>Add member</Bold>. <Bold>Change chair</Bold> hands the chair to another qualified member. The same rules as seating apply, and the board's time isn't reset.</Paragraph>
       <Paragraph><Bold>Reset</Bold> undoes a seating: the youth goes back to waiting and the room and members are freed. <Bold>Move</Bold> moves the selected room's board to another room, or swaps two boards.</Paragraph>

@@ -42,6 +42,13 @@ runs a native WPF app instead of the Java app's browser pages.
   and fill-the-rest cases all three versions share (`SharedCaseTests`, see
   below), storage format, lifecycle, the seating review, and each deliberate
   divergence from Java.
+- `dotnet test tests/EagleBoards.UiTests -c Release`: the operator window
+  driven off-screen over synthetic data (`OffScreen`, `TestEvent`): a
+  proposed board following sign-ins (SPEC.md D-12), a choice cell opening on
+  one click, the Start review reminder's words (D-23). Adults sign in over
+  HTTP, as at the door. A click is raised as `Mouse.PreviewMouseDownEvent`,
+  the tunnelling event real input sends; `PreviewMouseLeftButtonDown` is
+  direct, and raised on a cell reaches nothing else.
 - `bash scripts/test-board-event.sh`: the Java project's end-to-end HTTP
   event test, unchanged except for the launch lines and section 18's check of
   the table pages' choice lists (Java reads admin.html; this reads
@@ -116,6 +123,11 @@ runs a native WPF app instead of the Java app's browser pages.
    `App.OnStartup` on the first message pump even without `Run()`, so harnesses
    use a plain `Application` plus `Theme.xaml`, never `EagleBoards.App.App`.
    Test servers use `-bind 127.0.0.1` (off the network, no firewall prompt).
+   A window drawn off-screen is `Hide()`n when done, never `Close()`d: the
+   main window's closing asks *Close the scheduler?* on the desktop. Nor
+   does a test open a dialog (`ShowDialog`) or a list's popup, which WPF
+   keeps on screen even when its window isn't (`TablePage.OpenList` is the
+   seam for that).
 
 ## Conventions / gotchas
 
@@ -139,7 +151,12 @@ runs a native WPF app instead of the Java app's browser pages.
   member from outside the unit).
 - **Picks** (`Sel`) are the operator's work in progress, saved immediately.
   Clicking around never clears them; only Start over and seating do. Opening a
-  seated board shows its members; it doesn't pick them. To choose someone
+  seated board shows its members; it doesn't pick them. A board the app
+  proposed and the operator hasn't changed (`ProposedBoard.IsUntouched`) is
+  not theirs yet: it is proposed again on every change to the event, so an
+  adult who signs in is weighed at once, and afresh for another youth
+  opened (SPEC.md D-12, amended after the 2026-09-30 event, where a board
+  of one stayed a board of one until Start over). To choose someone
   yourself: remove, add, then Fill the rest (`SchedulerLogic.FillBoard`)
   completes the board around the operator's choices. Changing a board that's
   already seated or in review (someone has to leave) is
@@ -148,6 +165,12 @@ runs a native WPF app instead of the Java app's browser pages.
   Never ask the operator to hand-edit member lists or a youth's status on a
   table page: Status is read-only on Results and Youth, and Chair and Members
   on Results, since only the Event page's steps free a room and its members.
+- **The adult linked to a youth introduces them** to their board of review
+  (SPEC.md D-23; the `Supporting` column). Start review on a board of review
+  asks first, naming whom to fetch and where (`SchedulerLogic.IntroductionFor`,
+  `MainWindow.StartReviewReminder`); a project review starts at once. The
+  Fluent redesign once dropped this reminder as "no confirmation needed":
+  it is the owner's, not a confirmation, so keep it.
 - **Undo** (SPEC.md O-2) is a stack in `BoardService`: each step records the
   fields it set (`Snap` before, `PushUndo` after), and undoing puts back only
   those, refusing (and clearing the stack) if anything has changed one since,

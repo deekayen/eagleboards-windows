@@ -365,7 +365,7 @@ public sealed class AdultRow : Row
     /// <summary>Shows the Wood Badge mark (SPEC.md D-20).</summary>
     public bool IsWoodBadge => WoodBadge == "Y";
 
-    /// <summary>IDs of the scouts this adult came to support, "|"-separated.</summary>
+    /// <summary>IDs of the scouts this adult introduces, "|"-separated.</summary>
     public string Supporting { get => _supporting; private set => Set(ref _supporting, value); }
 
     public bool IsDisabled => Room == AdultRoom.Disabled;

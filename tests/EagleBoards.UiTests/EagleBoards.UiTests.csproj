@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The operator window's behavior, driven off-screen over synthetic
+       data. Like the snapshot tool: a plain Application with the app's
+       theme (never EagleBoards.App.App), windows at -32000 and hidden
+       afterwards, never closed (closing asks "Close the scheduler?" on the
+       desktop), and no dialog or list popup opened, since WPF keeps a popup
+       on screen even when its window isn't. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode, which loads the Fluent theme, is still marked
+         experimental in .NET 10. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EagleBoards.App\EagleBoards.App.csproj" />
+  </ItemGroup>
+
+</Project>

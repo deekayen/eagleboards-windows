@@ -7,6 +7,8 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;
 using Microsoft.Win32;
@@ -96,12 +98,12 @@ public sealed class RecordRow : Row
         }
     }
 
-    /// <summary>Who an adult came to support, by name; set by the window, which knows the youth.</summary>
+    /// <summary>Whom an adult introduces, by name; set by the window, which knows the youth.</summary>
     public string SupportingNames { get => _supportingNames; set => Set(ref _supportingNames, value); }
 
     public string Describe() => this["Last"].Length > 0 ? $"{this["First"]} {this["Last"]}" : this["Room"].Length > 0 ? "room " + this["Room"] : Id;
 
-    /// <summary>Any value as shown, the status in words, or who an adult came to support.</summary>
+    /// <summary>Any value as shown, the status in words, or whom an adult introduces.</summary>
     public bool Contains(string text) =>
         _values.Keys.Select(k => this[k]).Append(StatusText).Append(SupportingNames)
             .Any(v => v.Contains(text, StringComparison.OrdinalIgnoreCase));
@@ -209,7 +211,7 @@ public static class TableSpecs
             new("FinalBoard", "Final board role", 130, ColumnKind.Choice, RoleChoices),
             new("ProjectReview", "Project review role", 150, ColumnKind.Choice, RoleChoices),
             new("WoodBadge", "Wood Badge", 104, ColumnKind.WoodBadge, WoodBadgeChoices),
-            new("Supporting", "Came to support", 200, ColumnKind.ReadOnly, Path: nameof(RecordRow.SupportingNames)),
+            new("Supporting", "Introduces", 200, ColumnKind.ReadOnly, Path: nameof(RecordRow.SupportingNames)),
         ], "Adults", Frozen: 3, SortField: "Last", RowStyle: "AdultsRowStyle");
 
     public static readonly TableSpec Youth = new("Youth", "Youth",
@@ -292,6 +294,20 @@ public sealed class TablePage : DockPanel
     private int _pageCommands = 1;
     private bool _editing;
 
+    /// <summary>The cell being opened by a click: open its list once the editor is up.</summary>
+    private bool _openList;
+
+    /// <summary>
+    /// Opens a clicked choice cell's list. A test replaces it: a list's popup
+    /// is kept on screen by WPF, so it would open on the desktop even from a
+    /// window drawn off-screen.
+    /// </summary>
+    internal Action<ComboBox> OpenList { get; set; } = list =>
+    {
+        list.Focus();
+        list.IsDropDownOpen = true;
+    };
+
     /// <param name="resource">The main window's resources: the status pill and Adults' row style.</param>
     /// <param name="addRoom">What Add room does (the Event page's dialog); Rooms only.</param>
     public TablePage(BoardService svc, TableSpec spec, Func<string, object> resource, Action? addRoom = null)
@@ -370,6 +386,25 @@ public sealed class TablePage : DockPanel
                 Dispatcher.BeginInvoke(CommitEdit, System.Windows.Threading.DispatcherPriority.Background);
             }
         }));
+        // A choice cell opens its list on the first click. The grid alone
+        // takes three: one to select the cell, one to start editing it, and
+        // one to open the list (eagleboards-windows#17).
+        Grid.AddHandler(PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(OpenChoiceOnClick));
+        Grid.PreparingCellForEdit += (_, e) =>
+        {
+            if (_openList)
+            {
+                _openList = false;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (Descendant<ComboBox>(e.EditingElement) is { } list)
+                    {
+                        OpenList(list);
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+        };
+
         var card = new Border { Child = Grid };
         card.SetResourceReference(StyleProperty, "Card");
         Children.Add(card);
@@ -413,10 +448,64 @@ public sealed class TablePage : DockPanel
 
     public event Action? SelectionChanged;
 
-    /// <summary>After each reload: for what only the window knows (who an adult came to support).</summary>
+    /// <summary>After each reload: for what only the window knows (whom an adult introduces).</summary>
     public event Action? Reloaded;
 
     /// <summary>A command for this page, before Export and Delete.</summary>
+    /// <summary>
+    /// A click on a choice cell not yet being edited: select its row, make it
+    /// the current cell and start editing, and have the list open as the
+    /// editor appears. Text cells keep the grid's own double-click or F2.
+    /// </summary>
+    private void OpenChoiceOnClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Ancestor<DataGridCell>(e.OriginalSource as DependencyObject) is not { IsEditing: false, IsReadOnly: false } cell
+            || cell.Column is not (DataGridComboBoxColumn or DataGridTemplateColumn { CellEditingTemplate: not null }))
+        {
+            return;
+        }
+
+        Grid.CommitEdit(DataGridEditingUnit.Row, exitEditingMode: true);
+        Grid.SelectedItem = cell.DataContext;
+        Grid.CurrentCell = new DataGridCellInfo(cell);
+        cell.Focus();
+        _openList = true;
+        Grid.BeginEdit(e);
+        _openList = _openList && cell.IsEditing;
+        e.Handled = true;
+    }
+
+    private static T? Ancestor<T>(DependencyObject? from) where T : DependencyObject
+    {
+        for (var at = from; at != null; at = at is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
+        {
+            if (at is T found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static T? Descendant<T>(DependencyObject? from) where T : DependencyObject
+    {
+        if (from is null or T)
+        {
+            return from as T;
+        }
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(from); i++)
+        {
+            if (Descendant<T>(VisualTreeHelper.GetChild(from, i)) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     public Button AddCommand(string glyph, string text, string tooltip, Action click, bool pageCommand = true)
     {
         var label = new StackPanel { Orientation = Orientation.Horizontal };

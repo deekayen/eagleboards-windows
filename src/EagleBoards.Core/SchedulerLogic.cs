@@ -9,7 +9,7 @@ namespace EagleBoards.Core;
 /// FreeSince is when they last became free to volunteer (see
 /// <see cref="SchedulerLogic.FreeSinceTimes"/>); blank sorts first. WoodBadge
 /// is "Y" or blank, and Supporting the "|"-separated IDs of the scouts they
-/// came to support, as said at sign-in.
+/// will introduce to their board (SPEC.md D-23), as said at sign-in.
 /// </summary>
 public sealed record AdultInfo(string Id, string Last, string First, string UnitName, string Room, string FinalBoard, string ProjectReview,
     string FreeSince = "", string WoodBadge = "", string Supporting = "")
@@ -19,7 +19,7 @@ public sealed record AdultInfo(string Id, string Last, string First, string Unit
     /// <summary>Not on a board and not gone home.</summary>
     public bool IsFree => Room is "" or "-";
 
-    /// <summary>Said at sign-in they came to support this scout.</summary>
+    /// <summary>Introduces this scout to their board (SPEC.md D-23), as said at sign-in or linked since.</summary>
     public bool Supports(string scoutId) => Supporting.Split('|').Contains(scoutId);
 
     /// <summary>
@@ -40,6 +40,25 @@ public sealed record RoomInfo(string Id, string Room, string BoardType, string S
 /// </summary>
 public sealed record PersonPlace(string Id, string Name, bool IsYouth, string? Room, string Where);
 
+/// <summary>
+/// A board the app proposed for a waiting youth (SPEC.md D-12). While the
+/// operator hasn't changed it, it follows the event: it is proposed again
+/// as adults sign in, go home or leave boards.
+/// </summary>
+public sealed record ProposedBoard(string ScoutId, IReadOnlySet<string> AdultIds, string? ChairId)
+{
+    /// <summary>
+    /// The picks and chair are still the proposal's: nobody added, nobody
+    /// the operator could still pick removed, the chair not changed. A
+    /// proposed adult who has since gone home or onto another board has
+    /// dropped out on their own, which is no change of the operator's.
+    /// </summary>
+    public bool IsUntouched(IReadOnlyCollection<string> picks, Func<string, bool> canPick, string? chairId) =>
+        picks.All(AdultIds.Contains)
+        && AdultIds.Where(canPick).All(picks.Contains)
+        && (chairId == ChairId || ChairId is { } chair && !canPick(chair));
+}
+
 /// <summary>An auto-selected board: who, where, and what couldn't be found.</summary>
 public sealed record AutoSelection(IReadOnlyList<string> ChairIds, IReadOnlyList<string> MemberIds, string? RoomId, IReadOnlyList<string> Problems)
 {
@@ -47,11 +66,18 @@ public sealed record AutoSelection(IReadOnlyList<string> ChairIds, IReadOnlyList
 }
 
 /// <summary>
-/// An adult found for a scout: one who said at sign-in they came to support
+/// An adult found for a scout: one who said at sign-in they will introduce
 /// them (<paramref name="IsSupporting"/>), else a leader guessed from the
 /// scout's Leader field, else a parent.
 /// </summary>
 public sealed record LocatedAdult(AdultInfo Adult, bool IsLeader, bool IsSupporting = false);
+
+/// <summary>
+/// Whom to fetch to introduce a youth to their board of review (SPEC.md
+/// D-23): the adults linked to them (<see cref="Introducers"/>), or, with
+/// none, the leaders found from the youth's Leader field who have signed in.
+/// </summary>
+public sealed record Introduction(IReadOnlyList<AdultInfo> Introducers, IReadOnlyList<AdultInfo> Leaders);
 
 /// <summary>Toolbar actions on the Youth panel.</summary>
 [Flags]
@@ -410,12 +436,36 @@ public static class SchedulerLogic
     }
 
     /// <summary>
-    /// The adults who said at sign-in that they came to support this scout --
+    /// The adults who said they will introduce this scout to their board --
     /// often their Scoutmaster, who may be on another board and has to be
     /// fetched to introduce them when their review starts.
     /// </summary>
     public static List<AdultInfo> SupportingAdults(string scoutId, IEnumerable<AdultInfo> adults) =>
         adults.Where(a => a.Supports(scoutId)).ToList();
+
+    /// <summary>
+    /// Whom Start review reminds the operator to fetch (SPEC.md D-23): the
+    /// adults linked to the youth, else their leader if signed in, never a
+    /// parent. Null for a project review, which has no introduction.
+    /// </summary>
+    public static Introduction? IntroductionFor(ScoutInfo scout, IEnumerable<AdultInfo> adults)
+    {
+        if (scout.BoardType == BoardTypes.Project)
+        {
+            return null;
+        }
+
+        var found = Locate(scout, adults, includeParents: false);
+        var introducers = found.Where(f => f.IsSupporting).Select(f => f.Adult).ToList();
+        var leaders = introducers.Count > 0 ? [] : found.Where(f => f.IsLeader).Select(f => f.Adult).ToList();
+        return new Introduction(introducers, leaders);
+    }
+
+    /// <summary>Where to find an adult, to end a sentence: "in the main room", "on the board in room 102", "marked as gone home".</summary>
+    public static string Whereabouts(AdultInfo adult) =>
+        adult.Room == AdultRoom.Disabled ? "marked as gone home"
+        : adult.IsFree ? "in the main room"
+        : "on the board in room " + adult.Room;
 
     /// <summary>
     /// An adult's Supporting list ("|"-separated scout IDs) with one scout

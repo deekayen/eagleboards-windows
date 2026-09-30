@@ -8,5 +8,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/EagleBoards.Tests/EagleBoards.Tests.csproj" />
     <Project Path="tests/EagleBoards.UiSnapshots/EagleBoards.UiSnapshots.csproj" />
+    <Project Path="tests/EagleBoards.UiTests/EagleBoards.UiTests.csproj" />
   </Folder>
 </Solution>

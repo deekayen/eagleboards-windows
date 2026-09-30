@@ -64,7 +64,7 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/register-adult"] = new(RegisterAdult, true),
             ["/youth-cells"] = new(Cells(DataTable.Scouts), true),
             ["/adult-cells"] = new(Cells(DataTable.Adults), true),
-            // Who an adult may say they came to support: names and units only.
+            // Whom an adult may say they will introduce (SPEC.md D-23): names and units only.
             ["/scout-choices"] = new(ScoutChoices, true),
             // The shared check-in pages' API (eagleboards-shared/checkin,
             // SPEC.md D-18): names and units for the lists, a lookup's own
@@ -526,7 +526,7 @@ public sealed class CheckInServer : IAsyncDisposable
         });
     }
 
-    /// <summary>The youth an adult may say they came to support (<see cref="BoardService.ScoutChoiceUnits"/>).</summary>
+    /// <summary>The youth an adult may say they will introduce (<see cref="BoardService.ScoutChoiceUnits"/>).</summary>
     private Task ApiScoutChoices(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
     {
         var choices = _service.ScoutChoiceUnits();

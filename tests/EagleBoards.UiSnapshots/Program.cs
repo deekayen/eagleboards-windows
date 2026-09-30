@@ -151,6 +151,11 @@ internal static class Program
             choice.SelectedItem = choice.Items.Cast<PickRow>().First(p => p.WoodBadge);
             Snap(member, outDir, "13-choice-dialog.png");
 
+            // Start review on a board of review: whom to fetch to introduce
+            // the youth, and where they are (SPEC.md D-23).
+            var abernathy = new AdultInfo("A", "Abernathy", "Anneliese", "Troop2001", "102", BoardRoles.Chair, BoardRoles.Chair);
+            Snap(MainWindow.StartReviewReminder(owner, bram, new Introduction([abernathy], [])), outDir, "13a-start-review.png");
+
             // Adults > Add adult, searching the adult history.
             var (addAdult, search, _) = AddAdultDialog.Build(owner, session.Service);
             search.Text = "ar";

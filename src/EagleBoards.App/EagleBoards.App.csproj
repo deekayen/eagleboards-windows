@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="EagleBoards.UiSnapshots" />
+    <InternalsVisibleTo Include="EagleBoards.UiTests" />
   </ItemGroup>
 
   <ItemGroup>

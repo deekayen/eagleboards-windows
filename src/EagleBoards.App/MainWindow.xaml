@@ -480,7 +480,7 @@
                       <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE769;" Margin="0,0,8,0" /><AccessText Text="_Postpone..." /></StackPanel>
                     </Button>
                     <Button x:Name="StartButton" Style="{StaticResource PrimaryCommandButton}" Click="OnStart"
-                            ToolTip="Bring the youth in once the members have finished reading. Reset undoes it. (Ctrl+Enter)">
+                            ToolTip="Bring the youth in once the members have finished reading. A board of review first says whom to fetch for the introduction. Reset undoes it. (Ctrl+Enter)">
                       <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE768;" Margin="0,0,8,0" /><AccessText Text="Sta_rt review" /></StackPanel>
                     </Button>
                     <Button x:Name="CompleteButton" Style="{StaticResource PrimaryCommandButton}" Click="OnComplete"
@@ -580,10 +580,10 @@
                       <!-- For the adult who came with this youth but didn't say so at sign-in. -->
                       <WrapPanel Margin="0,8,0,0">
                         <Button Style="{StaticResource CommandButton}" Click="OnLinkAdult"
-                                ToolTip="Someone who came to support this youth but didn't say so at sign-in">
+                                ToolTip="The adult who will introduce this youth to their board, if they didn't say so at sign-in">
                           <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE71B;" Margin="0,0,8,0" /><TextBlock Text="Link an adult..." /></StackPanel>
                         </Button>
-                        <Button x:Name="UnlinkButton" Style="{StaticResource CommandButton}" Click="OnUnlinkAdult" ToolTip="Remove a supporting adult's link to this youth">
+                        <Button x:Name="UnlinkButton" Style="{StaticResource CommandButton}" Click="OnUnlinkAdult" ToolTip="Remove an adult's link to this youth">
                           <TextBlock Text="Unlink..." />
                         </Button>
                       </WrapPanel>

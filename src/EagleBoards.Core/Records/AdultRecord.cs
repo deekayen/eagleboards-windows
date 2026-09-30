@@ -53,7 +53,7 @@ public sealed class AdultRecord : PersonRecord
     }
 
     /// <summary>
-    /// IDs of the scouts this adult came to support (their Scoutmaster, say),
+    /// IDs of the scouts this adult introduces to their board (their Scoutmaster, say; SPEC.md D-23),
     /// separated by "|" because the data files turn commas into "~".
     /// </summary>
     public string Supporting
@@ -62,7 +62,7 @@ public sealed class AdultRecord : PersonRecord
         set => SetValue("Supporting", value);
     }
 
-    /// <summary>The scouts this adult came to support.</summary>
+    /// <summary>The scouts this adult introduces.</summary>
     public IReadOnlyList<string> SupportingIds => Supporting.Split('|', StringSplitOptions.RemoveEmptyEntries);
 
     public AdultRecord Clone() => new(Fields);

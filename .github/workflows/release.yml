@@ -88,6 +88,7 @@ jobs:
         run: |
           dotnet build EagleBoards.slnx -c Release
           dotnet test tests/EagleBoards.Tests -c Release --no-build
+          dotnet test tests/EagleBoards.UiTests -c Release --no-build
           bash scripts/test-board-event.sh
 
       - name: Publish the exe

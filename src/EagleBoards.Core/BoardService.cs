@@ -563,7 +563,7 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// Link an adult to a scout as someone who came to support them, or
+    /// Link an adult to a scout as the one who introduces them (SPEC.md D-23), or
     /// unlink them: the scheduler's Link button, for the adult who did not
     /// check the scout at sign-in. Writes the same Supporting column.
     /// </summary>
@@ -667,7 +667,7 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// The scouts an adult may say at sign-in they came to support: everyone
+    /// The scouts an adult may say at sign-in they will introduce: everyone
     /// who RSVP'd, plus the event's walk-ins, leaving out anyone already
     /// finished (Completed or Postponed). Names and units only -- this is read
     /// by the check-in stations, which see nothing more.

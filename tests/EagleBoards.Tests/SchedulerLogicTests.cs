@@ -181,4 +181,66 @@ public class SchedulerLogicTests
         Assert.Equal([("SM", true), ("L", false)], found.Select(f => (f.Adult.Id, f.IsSupporting)));
         Assert.Equal(["SM"], SchedulerLogic.SupportingAdults("S1", adults).Select(a => a.Id));
     }
+
+    [Fact]
+    public void StartReviewOnABoardOfReviewNamesWhoIntroducesTheYouthNeverAParent()
+    {
+        // SPEC.md D-23. Aldridge's leader is Sam Smith; Pat Aldridge is a parent.
+        var leader = new AdultInfo("L", "Smith", "Sam", "Troop1001", "", "Member", "Member");
+        var parent = new AdultInfo("P", "Aldridge", "Pat", "Troop1001", "", "Member", "Member");
+        var introducer = new AdultInfo("SM", "Jones", "Jo", "Troop1001", "104", "Member", "Member", Supporting: "SCOUT:X|S1");
+
+        // Linked: only whoever introduces them, not the leader or parent besides.
+        var linked = SchedulerLogic.IntroductionFor(FinalScout, [leader, parent, introducer])!;
+        Assert.Equal(["SM"], linked.Introducers.Select(a => a.Id));
+        Assert.Empty(linked.Leaders);
+
+        // No one linked: their leader, if signed in, still never the parent.
+        var unlinked = SchedulerLogic.IntroductionFor(FinalScout, [leader, parent])!;
+        Assert.Empty(unlinked.Introducers);
+        Assert.Equal(["L"], unlinked.Leaders.Select(a => a.Id));
+
+        // Only a parent here: no one to name, but still a reminder.
+        var parentOnly = SchedulerLogic.IntroductionFor(FinalScout, [parent])!;
+        Assert.Empty(parentOnly.Introducers);
+        Assert.Empty(parentOnly.Leaders);
+    }
+
+    [Fact]
+    public void AProjectReviewHasNoIntroductionToRemindAbout()
+    {
+        var project = FinalScout with { BoardType = BoardTypes.Project };
+        var introducer = new AdultInfo("SM", "Jones", "Jo", "Troop1001", "", "Member", "Member", Supporting: "S1");
+        Assert.Null(SchedulerLogic.IntroductionFor(project, [introducer]));
+    }
+
+    [Theory]
+    [InlineData("", "in the main room")]
+    [InlineData("-", "in the main room")]
+    [InlineData("102", "on the board in room 102")]
+    [InlineData(AdultRoom.Disabled, "marked as gone home")]
+    public void WhereaboutsSayWhereToFetchSomeone(string room, string said) =>
+        Assert.Equal(said, SchedulerLogic.Whereabouts(new AdultInfo("A", "Jones", "Jo", "Troop1", room, "Member", "Member")));
+
+    [Fact]
+    public void AProposedBoardIsUntouchedUntilTheOperatorChangesIt()
+    {
+        // SPEC.md D-12 (amended): an untouched proposal is made again as the
+        // event changes; one the operator changed is theirs.
+        var proposal = new ProposedBoard("S1", new HashSet<string> { "chair", "m1", "m2" }, "chair");
+        var free = new HashSet<string> { "chair", "m1", "m2", "new" };
+        bool CanPick(string id) => free.Contains(id);
+
+        Assert.True(proposal.IsUntouched(["m2", "chair", "m1"], CanPick, "chair"));
+        Assert.False(proposal.IsUntouched(["chair", "m1"], CanPick, "chair"));                 // removed m2
+        Assert.False(proposal.IsUntouched(["chair", "m1", "m2", "new"], CanPick, "chair"));    // added someone
+        Assert.False(proposal.IsUntouched(["chair", "m1", "m2"], CanPick, "m1"));              // changed the chair
+
+        // A proposed member who has gone onto another board, or home, left by
+        // themselves: still untouched, so it is proposed again without them.
+        free.Remove("m2");
+        Assert.True(proposal.IsUntouched(["chair", "m1"], CanPick, "chair"));
+        free.Remove("chair");
+        Assert.True(proposal.IsUntouched(["m1"], CanPick, null));
+    }
 }
