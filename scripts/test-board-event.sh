@@ -1183,6 +1183,16 @@ esac
 chk "a youth who is done for the event is not offered" "$(echo "$CHOICES" | grep -c "\"$C1\"")" "0"
 chk "and the choices carry no emails" "$(echo "$CHOICES" | grep -c '@example.org')" "0"
 
+# SPEC.md D-23: an adult introduces a youth to their board of review, so a
+# youth here for a project proposal is not on the adult form's list.
+post --data-urlencode "!nativeeditor_status=inserted" --data-urlencode "gr_id=SCOUT:Proposal:Pia:4405"      --data-urlencode "Last=Proposal" --data-urlencode "First=Pia" --data-urlencode "Email=pia@example.org"      --data-urlencode "UnitType=Troop" --data-urlencode "Unit=4405" --data-urlencode "BoardType=Project" "$B/youth-scheduled-update"
+CHOICES=$(curl -sf "$B/api/scout-choices")
+chk "a project proposal is not offered to adults to introduce" "$(echo "$CHOICES" | grep -c 'SCOUT:Proposal:Pia:4405')" "0"
+case "$CHOICES" in
+    *'"id":"SCOUT:Lookup:Lena:4401"'*) ok "while a board of review still is" ;;
+    *) bad "scout-choices lost the board of review once a project proposal was added" ;;
+esac
+
 post --data "Last=Oldpage&First=Olive&Email=op@example.org&Phone=555-0101&UnitType=Troop&Unit=4402&BoardType=Final&DOB=2011-02-03" \
      "$B/register-youth"
 dob_on_file()   { awk -F, 'NR>1 && $4=="Oldpage" {print $11}' "$SCOUTS"; }

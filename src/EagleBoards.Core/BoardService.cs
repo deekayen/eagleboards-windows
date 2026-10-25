@@ -676,8 +676,9 @@ public sealed class BoardService
     /// <summary>
     /// The scouts an adult may say at sign-in they will introduce: everyone
     /// who RSVP'd, plus the event's walk-ins, leaving out anyone already
-    /// finished (Completed or Postponed). Names and units only -- this is read
-    /// by the check-in stations, which see nothing more.
+    /// finished (Completed or Postponed) and anyone here for a project
+    /// proposal, which has no introduction (SPEC.md D-23). Names and units
+    /// only -- this is read by the check-in stations, which see nothing more.
     /// </summary>
     public List<(string Id, string First, string Last, string UnitName)> ScoutChoices()
     {
@@ -710,6 +711,7 @@ public sealed class BoardService
             .Where(s => s.Last.Length > 0 && !done.Contains(s.Id))
             .GroupBy(s => s.Id)
             .Select(g => g.Last())
+            .Where(s => s.BoardType != BoardTypes.Project)
             .OrderBy(s => s.Last, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(s => s.First, StringComparer.CurrentCultureIgnoreCase)
             .ToList();

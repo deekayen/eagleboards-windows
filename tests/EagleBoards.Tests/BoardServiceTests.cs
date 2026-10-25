@@ -739,6 +739,24 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void ScoutChoicesLeaveOutAProjectProposal()
+    {
+        // SPEC.md D-23: an adult introduces a youth to their board of review.
+        // A project proposal has no introduction, so its youth are not offered,
+        // whether they signed in or only RSVP'd.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Rsvp:Only:3999",
+            new Dictionary<string, string> { ["Last"] = "Rsvp", ["First"] = "Only", ["UnitType"] = "Troop", ["Unit"] = "3999", ["BoardType"] = BoardTypes.Project });
+        s.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Rsvp:Eagle:3998",
+            new Dictionary<string, string> { ["Last"] = "Rsvp", ["First"] = "Eagle", ["UnitType"] = "Troop", ["Unit"] = "3998", ["BoardType"] = BoardTypes.Final });
+        s.RegisterScout(Seed.Scout("Bram", "Beau", "1002", BoardTypes.Final));
+        s.RegisterScout(Seed.Scout("Proposal", "Pia", "1003", BoardTypes.Project));
+        Assert.Equal(["SCOUT:Bram:Beau:1002", "SCOUT:Rsvp:Eagle:3998"], s.ScoutChoices().Select(c => c.Id));
+        Assert.Equal(["SCOUT:Bram:Beau:1002", "SCOUT:Rsvp:Eagle:3998"], s.ScoutChoiceUnits().Select(c => c.Id));
+    }
+
+    [Fact]
     public void AnOperatorLinksAnAdultToAScoutAfterBothSignedIn()
     {
         using var box = new Sandbox();

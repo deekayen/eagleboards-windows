@@ -170,8 +170,10 @@ runs a native WPF app instead of the Java app's browser pages.
   table page: Status is read-only on Results and Youth, and Chair and Members
   on Results, since only the Event page's steps free a room and its members.
 - **The adult linked to a youth introduces them** to their board of review
-  (SPEC.md D-23; the `Supporting` column). Start review on a board of review
-  asks first, naming whom to fetch and where (`SchedulerLogic.IntroductionFor`,
+  (SPEC.md D-23; the `Supporting` column). The adult form's list
+  (`/api/scout-choices`) leaves out a youth here for a project proposal.
+  Start review on a board of review asks first, naming whom to fetch and
+  where (`SchedulerLogic.IntroductionFor`,
   `MainWindow.StartReviewReminder`); a project review starts at once. The
   Fluent redesign once dropped this reminder as "no confirmation needed":
   it is the owner's, not a confirmation, so keep it.

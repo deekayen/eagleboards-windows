@@ -390,7 +390,7 @@ function ebSupportList(form) {
    ebGetJson("/api/scout-choices").then(function (scouts) {
       list.textContent = "";
       if (scouts.length === 0) {
-         list.innerHTML = "<p class='empty'>No youth have signed up yet.</p>";
+         list.innerHTML = "<p class='empty'>No youth have signed up for an Eagle board of review yet.</p>";
          find.disabled = true;
          return;
       }
