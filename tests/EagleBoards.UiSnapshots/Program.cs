@@ -164,6 +164,9 @@ internal static class Program
             var abernathy = new AdultInfo("A", "Abernathy", "Anneliese", "Troop2001", "102", BoardRoles.Chair, BoardRoles.Chair);
             Snap(MainWindow.StartReviewReminder(owner, bram, new Introduction([abernathy], [])), outDir, "13a-start-review.png");
 
+            // Remove room asks first, naming the room (SPEC.md O-2, amended 2026-10-24).
+            Snap(MainWindow.RemoveRoomQuestion(owner, "200B"), outDir, "13b-remove-room.png");
+
             // Adults > Add adult, searching the adult history.
             var (addAdult, search, _) = AddAdultDialog.Build(owner, session.Service);
             search.Text = "ar";

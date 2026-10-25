@@ -36,17 +36,25 @@
     <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
   </Style>
 
-  <!-- A Segoe Fluent Icons glyph (Segoe MDL2 Assets on Windows 10). -->
+  <!-- A Segoe Fluent Icons glyph (Segoe MDL2 Assets on Windows 10). Greyed
+       in a disabled button or menu item, whose IsEnabled it inherits: it
+       takes its colour from the button, not the template's disabled state,
+       so a room's icon-only buttons looked enabled with no room selected. -->
   <Style x:Key="Glyph" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{DynamicResource SymbolThemeFontFamily}" />
     <Setter Property="FontSize" Value="16" />
     <Setter Property="VerticalAlignment" Value="Center" />
+    <Style.Triggers>
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
   <!-- Labels inside buttons. Fluent gives every TextBlock an implicit style
        with a fixed colour, which beats the button template's disabled colour,
-       so a disabled button's label would look enabled. Glyphs (explicit
-       style) inherit the template's colour and need nothing. -->
+       so a disabled button's label would look enabled. Glyphs have their own
+       style, above. -->
   <Style x:Key="ButtonText" TargetType="TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Style.Triggers>
@@ -102,6 +110,14 @@
     <Style.Resources>
       <Style TargetType="TextBlock" BasedOn="{StaticResource AccentButtonText}" />
       <Style TargetType="AccessText" BasedOn="{StaticResource AccentButtonAccessText}" />
+      <!-- Its glyph greyed as its label is, on the accent's disabled fill. -->
+      <Style x:Key="Glyph" TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
+        <Style.Triggers>
+          <Trigger Property="IsEnabled" Value="False">
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorDisabledBrush}" />
+          </Trigger>
+        </Style.Triggers>
+      </Style>
     </Style.Resources>
     <Setter Property="Margin" Value="0,0,8,0" />
     <Setter Property="Padding" Value="12,6" />

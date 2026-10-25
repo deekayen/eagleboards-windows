@@ -94,6 +94,8 @@ public partial class App : Application
         var main = new MainWindow(_session);
         MainWindow = main;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
+        KeepAwake.Start();
+        main.Closed += (_, _) => KeepAwake.Stop();
         main.Show();
     }
 
@@ -193,6 +195,28 @@ public partial class App : Application
         }
 
         base.OnExit(e);
+    }
+
+    /// <summary>
+    /// The computer kept awake while it serves an event, as the Mac version
+    /// keeps itself: a laptop that went to sleep mid-event took the check-in
+    /// website with it, and the stations at the door could sign no one in.
+    /// From a successful start until the main window closes, which stops the
+    /// website too. The system only: the screen may still turn off, which
+    /// the website doesn't need. Set on the UI thread, whose state it is, and
+    /// only here: the tests and the snapshot tool never start App.
+    /// </summary>
+    private static class KeepAwake
+    {
+        private const uint Continuous = 0x80000000;     // ES_CONTINUOUS: until changed again
+        private const uint SystemRequired = 0x00000001; // ES_SYSTEM_REQUIRED: no idle sleep
+
+        public static void Start() => SetThreadExecutionState(Continuous | SystemRequired);
+
+        public static void Stop() => SetThreadExecutionState(Continuous);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern uint SetThreadExecutionState(uint flags);
     }
 
     /// <summary>

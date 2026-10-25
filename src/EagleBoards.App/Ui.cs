@@ -436,6 +436,10 @@ internal sealed class AppDialog : Window
 
     public void AddMessage(string text) => Add(Rich.Block(text));
 
+    /// <summary>The dialog's messages as plain text, one to a line, as shown, for tests.</summary>
+    internal string MessageText =>
+        string.Join("\n", _fields.Children.OfType<TextBlock>().Select(b => new TextRange(b.ContentStart, b.ContentEnd).Text));
+
     /// <summary>A warning or note inside the dialog, above the buttons it qualifies.</summary>
     public void AddInfo(Severity severity, string title, string message)
     {

@@ -15,6 +15,22 @@
        Approved proposals, read from the earlier events. Settings and Help open
        windows of their own. -->
 
+  <!-- The Board menu's commands (BoardCommands): each enabled when its button
+       is, on the Event page only, and its shortcut (Ctrl+Enter, F2) taken
+       anywhere there. -->
+  <Window.CommandBindings>
+    <CommandBinding Command="{x:Static app:BoardCommands.NextStep}" CanExecute="CanNextStep" Executed="OnNextStep" />
+    <CommandBinding Command="{x:Static app:BoardCommands.Postpone}" CanExecute="CanPostpone" Executed="OnPostpone" />
+    <CommandBinding Command="{x:Static app:BoardCommands.Reset}" CanExecute="CanReset" Executed="OnReset" />
+    <CommandBinding Command="{x:Static app:BoardCommands.LinkAdult}" CanExecute="CanLinkAdult" Executed="OnLinkAdult" />
+    <CommandBinding Command="{x:Static app:BoardCommands.Unlink}" CanExecute="CanUnlink" Executed="OnUnlinkAdult" />
+    <CommandBinding Command="{x:Static app:BoardCommands.AddRoom}" CanExecute="CanAddRoom" Executed="OnAddRoom" />
+    <CommandBinding Command="{x:Static app:BoardCommands.MoveRoom}" CanExecute="CanUseRoom" Executed="OnChangeRoom" />
+    <CommandBinding Command="{x:Static app:BoardCommands.RenameRoom}" CanExecute="CanRenameRoom" Executed="OnRenameRoom" />
+    <CommandBinding Command="{x:Static app:BoardCommands.SwitchRoomType}" CanExecute="CanUseRoom" Executed="OnSwitchRoomType" />
+    <CommandBinding Command="{x:Static app:BoardCommands.RemoveRoom}" CanExecute="CanUseRoom" Executed="OnRemoveRoom" />
+  </Window.CommandBindings>
+
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
@@ -320,11 +336,11 @@
   </Window.Resources>
 
   <DockPanel>
-    <!-- The menu bar: the pages, the windows beside them, Settings, Help and
-         Donate (SPEC.md P-1, P-6, D-17). No sidebar: the Event page has the
-         window's whole width. Every command here also has a shortcut or a
-         button where the operator works. Icons are silent: the item's words
-         say it. -->
+    <!-- The menu bar: the pages, the windows beside them, the board's steps,
+         Settings, Help and Donate (SPEC.md P-1, P-6, D-17). No sidebar: the
+         Event page has the window's whole width. Every command here also has
+         a shortcut or a button where the operator works. Icons are silent:
+         the item's words say it. -->
     <Menu DockPanel.Dock="Top" Margin="4,4,4,4" AutomationProperties.Name="Menu bar">
       <MenuItem Header="_File">
         <MenuItem Header="_Save report..." InputGestureText="Ctrl+S" Click="OnReport" ToolTip="Save the event's results as a CSV file for Excel">
@@ -368,6 +384,49 @@
         <!-- Earlier events, read only (SPEC.md D-22). -->
         <MenuItem Header="Approved _proposals" InputGestureText="Ctrl+8" Tag="ApprovedProposals" Click="OnViewPage" IsCheckable="True"
                   ToolTip="Project proposals approved at earlier events" />
+      </MenuItem>
+      <!-- The open youth's steps, then the selected room's (SPEC.md P-1,
+           amended 2026-10-24), as the Mac's Board and Room menus have them,
+           so every step and its shortcut is in a menu. B: clear of the other
+           menus' F, E, V and H, and of every page's commands. The commands
+           enable the items as the buttons are, and show their shortcuts; the
+           first item is named for the step the details pane shows
+           (SyncBoardMenu). -->
+      <MenuItem Header="_Board">
+        <MenuItem x:Name="BoardStep" Header="_Seat board" Command="{x:Static app:BoardCommands.NextStep}">
+          <MenuItem.Icon><app:Glyph x:Name="BoardStepIcon" Text="&#xE716;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Postpone..." Command="{x:Static app:BoardCommands.Postpone}"
+                  ToolTip="No board at this event, usually because the paperwork isn't in order">
+          <MenuItem.Icon><app:Glyph Text="&#xE769;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Rese_t..." Command="{x:Static app:BoardCommands.Reset}" ToolTip="Undo the seating: back to waiting, room and members freed">
+          <MenuItem.Icon><app:Glyph Text="&#xE7A7;" /></MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="_Link an adult..." Command="{x:Static app:BoardCommands.LinkAdult}"
+                  ToolTip="The adult who will introduce this youth to their board, if they didn't say so at sign-in">
+          <MenuItem.Icon><app:Glyph Text="&#xE71B;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Unlink..." Command="{x:Static app:BoardCommands.Unlink}" ToolTip="Remove an adult's link to this youth" />
+        <Separator />
+        <MenuItem Header="_Add room..." Command="{x:Static app:BoardCommands.AddRoom}" ToolTip="Add a room">
+          <MenuItem.Icon><app:Glyph Text="&#xE710;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Move or swap board..." Command="{x:Static app:BoardCommands.MoveRoom}"
+                  ToolTip="Move the selected room's board to another room, or swap two boards">
+          <MenuItem.Icon><app:Glyph Text="&#xE8AB;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Re_name room..." Command="{x:Static app:BoardCommands.RenameRoom}" ToolTip="Rename the selected room">
+          <MenuItem.Icon><app:Glyph Text="&#xE8AC;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="S_witch room type" Command="{x:Static app:BoardCommands.SwitchRoomType}"
+                  ToolTip="Switch the selected room between final boards and project reviews">
+          <MenuItem.Icon><app:Glyph Text="&#xE72C;" /></MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Remove room..." Command="{x:Static app:BoardCommands.RemoveRoom}" ToolTip="Remove the selected room, if no board is in it">
+          <MenuItem.Icon><app:Glyph Text="&#xE74D;" /></MenuItem.Icon>
+        </MenuItem>
       </MenuItem>
       <MenuItem Header="_Help">
         <MenuItem Header="Eagle Boards _help" InputGestureText="F1" Click="OnHelp" ToolTip="How to run an event">
@@ -471,7 +530,9 @@
                 <DockPanel>
                   <!-- The title, then its commands, which wrap onto another
                        line when the card is narrow (large display scaling)
-                       rather than pushing the title out. -->
+                       rather than pushing the title out. The Board menu's
+                       commands, so a button and its menu item are enabled
+                       together: those for the selected room once one is. -->
                   <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -481,23 +542,23 @@
                       <Label Style="{StaticResource PaneTitle}" Content="R_ooms" Target="{Binding ElementName=RoomList}" AutomationProperties.Name="Rooms" />
                     </Grid>
                     <WrapPanel Grid.Column="1" HorizontalAlignment="Right" Margin="12,0,0,0">
-                      <Button Style="{StaticResource CommandButton}" Click="OnAddRoom" ToolTip="Add a room" AutomationProperties.Name="Add room">
+                      <Button Style="{StaticResource CommandButton}" Command="{x:Static app:BoardCommands.AddRoom}" ToolTip="Add a room" AutomationProperties.Name="Add room">
                         <StackPanel Orientation="Horizontal"><app:Glyph Text="&#xE710;" Margin="0,0,8,0" /><AccessText Text="_Add room" /></StackPanel>
                       </Button>
-                      <Button Style="{StaticResource CommandButton}" Click="OnChangeRoom" ToolTip="Move the selected room's board to another room, or swap two boards"
-                              AutomationProperties.Name="Move">
+                      <Button x:Name="MoveRoomButton" Style="{StaticResource CommandButton}" Command="{x:Static app:BoardCommands.MoveRoom}"
+                              ToolTip="Move the selected room's board to another room, or swap two boards" AutomationProperties.Name="Move">
                         <StackPanel Orientation="Horizontal"><app:Glyph Text="&#xE8AB;" Margin="0,0,8,0" /><AccessText Text="_Move" /></StackPanel>
                       </Button>
-                      <Button Style="{StaticResource CommandButton}" Click="OnRenameRoom" ToolTip="Rename the selected room (F2)"
+                      <Button Style="{StaticResource CommandButton}" Command="{x:Static app:BoardCommands.RenameRoom}" ToolTip="Rename the selected room (F2)"
                               AutomationProperties.Name="Rename room" AutomationProperties.AcceleratorKey="F2">
                         <app:Glyph Text="&#xE8AC;" />
                       </Button>
-                      <Button Style="{StaticResource CommandButton}" Click="OnSwitchRoomType" ToolTip="Switch the selected room between final boards and project reviews"
-                              AutomationProperties.Name="Switch room type">
+                      <Button Style="{StaticResource CommandButton}" Command="{x:Static app:BoardCommands.SwitchRoomType}"
+                              ToolTip="Switch the selected room between final boards and project reviews" AutomationProperties.Name="Switch room type">
                         <app:Glyph Text="&#xE72C;" />
                       </Button>
-                      <Button Style="{StaticResource CommandButton}" Margin="0" Click="OnRemoveRoom" ToolTip="Remove the selected room"
-                              AutomationProperties.Name="Remove room">
+                      <Button x:Name="RemoveRoomButton" Style="{StaticResource CommandButton}" Margin="0" Command="{x:Static app:BoardCommands.RemoveRoom}"
+                              ToolTip="Remove the selected room, if no board is in it" AutomationProperties.Name="Remove room">
                         <app:Glyph Text="&#xE74D;" />
                       </Button>
                     </WrapPanel>
@@ -524,17 +585,18 @@
                            ItemContainerStyle="{StaticResource RoomItem}" ItemTemplate="{StaticResource RoomCardTemplate}"
                            Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,-4,0,0"
                            ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Rooms"
-                           TextSearch.TextPath="Room" GotKeyboardFocus="OnListFocused" PreviewKeyDown="OnRoomKey"
+                           TextSearch.TextPath="Room" GotKeyboardFocus="OnListFocused"
                            ContextMenuOpening="OnRoomMenuOpening">
                     <!-- On the list, not in the item style (WPF can't wire handlers there);
                          right-clicking a room selects it first, and Shift+F10 on a card
-                         selects that one, so these act on that room. -->
+                         selects that one, so these act on that room. F2 is the Board
+                         menu's Rename room, which renames the card with the focus. -->
                     <ListBox.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="_Move or swap board..." Click="OnChangeRoom" />
                         <MenuItem Header="Re_name..." InputGestureText="F2" Click="OnRenameRoom" />
                         <MenuItem Header="S_witch type" Click="OnSwitchRoomType" />
-                        <MenuItem Header="_Remove room" Click="OnRemoveRoom" />
+                        <MenuItem Header="_Remove room..." Click="OnRemoveRoom" />
                       </ContextMenu>
                     </ListBox.ContextMenu>
                     <ListBox.ItemsPanel>

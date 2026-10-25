@@ -25,7 +25,7 @@ runs a native WPF app instead of the Java app's browser pages.
 - `EagleBoards.Server`: headless host taking the Java jar's options. Used by
   the tests.
 - `EagleBoards.App`: the WPF app (`EagleBoards.exe`). Start-up window, the
-  main window (`MainWindow`: a menu bar -- File, Edit, View, Help -- over the
+  main window (`MainWindow`: a menu bar -- File, Edit, View, Board, Help -- over the
   Event page, the youth queue, the rooms, and a details pane that builds and
   runs the selected youth's board; and a page per table, editable in place
   (`TablePage`): Results, Adults, Youth, Pre-registered and Rooms, and the
@@ -252,6 +252,13 @@ runs a native WPF app instead of the Java app's browser pages.
     without Alt when focus is in a list, and a stray key there mustn't seat
     a board. Help's *Keyboard shortcuts* tables are the main window's key
     contract: change them with the keys.
+  - The Board menu (SPEC.md P-1, amended 2026-10-24) is built on
+    `BoardCommands`: each RoutedUICommand is defined once with its key
+    gesture, and its CanExecute mirrors the button it stands for, so the
+    menu, the buttons and the shortcut never disagree. Add a step there, not
+    as a new KeyBinding. Remove room asks first (O-2, amended); tests answer
+    the question through `MainWindow.Ask` and never show it. The app keeps
+    Windows awake while it serves (`App`'s `KeepAwake`), never the harnesses.
   - Help and messages say select, open, choose and enter, not click, press
     or point, with the mouse way first where both are given; they name the
     place (the details pane, under Board members), never only left, right,

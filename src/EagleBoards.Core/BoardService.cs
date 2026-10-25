@@ -1542,8 +1542,8 @@ public sealed class BoardService
     /// are one set of facts in the event's adults and the adult history, as a
     /// sign-in carries them (SPEC.md P-6): an edit to them here is made to the
     /// same adult in the history too, so someone promoted to chair today is
-    /// a chair the next time they sign in. Wood Badge, whom they came to
-    /// support and their room belong to this event alone.
+    /// a chair the next time they sign in. Wood Badge, whom they introduce
+    /// and their room belong to this event alone.
     ///
     /// <paramref name="undoable"/> puts an edit to an adult or a room on the
     /// Undo stack. The Java version's Event page marks adults gone home and
@@ -1589,6 +1589,21 @@ public sealed class BoardService
     }
 
     /// <summary>
+    /// Why a table may not delete this record, in words for the operator, or
+    /// null if it may: asked before the table page asks "Delete this record?",
+    /// so a deletion that would be refused isn't confirmed first. Deleting
+    /// (<see cref="SaveRow(DataTable, string?, string?, IReadOnlyDictionary{string, string}, out string?, bool)"/>)
+    /// checks again.
+    /// </summary>
+    public string? DeleteRefusal(DataTable table, string id)
+    {
+        lock (_lock)
+        {
+            return Refusal(table, "deleted", Table(table).Find(id), new Dictionary<string, string>());
+        }
+    }
+
+    /// <summary>
     /// Why a table may not make this edit, in words for the operator, or null
     /// to allow it (SPEC.md P-6). The adult history is read-only: a sign-in
     /// writes it, and an edit to the event's adults reaches it. A board is
@@ -1597,6 +1612,12 @@ public sealed class BoardService
     /// an edit never sets Seated or In review, nor changes the status of a
     /// board that is sitting. The rest of a youth's record still corrects,
     /// and a finished youth's status can still be set back to waiting.
+    ///
+    /// Nor does a table delete someone a board holds (SPEC.md P-6, amended
+    /// 2026-10-24; event test section 29): a youth whose board is seated or
+    /// in review, or an adult sitting on a board. A deleted youth had left a
+    /// room held, and a deleted member a board short. Once the board is reset
+    /// or completed, either can go.
     /// </summary>
     private static string? Refusal(DataTable table, string? status, DataRecord? record, IReadOnlyDictionary<string, string> fields)
     {
@@ -1605,7 +1626,21 @@ public sealed class BoardService
             return "The adult history is read-only. Change an adult on the Adults page, and the history follows.";
         }
 
-        if (table != DataTable.Scouts || status == "deleted" || !fields.TryGetValue("Status", out var newStatus))
+        var name = record is PersonRecord person ? person.FullName : fields.GetValueOrDefault("First", "") + " " + fields.GetValueOrDefault("Last", "");
+        if (status == "deleted")
+        {
+            var room = record?.GetValue("Room") ?? "";
+            if (table == DataTable.Scouts && BoardStatus.IsActive(record?.GetValue("Status") ?? ""))
+            {
+                return $"{name}'s board is in room {room}. Reset it or complete it on the Event page first.";
+            }
+
+            return table == DataTable.Adults && room is not ("" or "-" or AdultRoom.Disabled)
+                ? $"{name} is on the board in room {room}. Reset or complete that board on the Event page first."
+                : null;
+        }
+
+        if (table != DataTable.Scouts || !fields.TryGetValue("Status", out var newStatus))
         {
             return null;
         }
@@ -1616,7 +1651,6 @@ public sealed class BoardService
             return null;
         }
 
-        var name = record is PersonRecord person ? person.FullName : fields.GetValueOrDefault("First", "") + " " + fields.GetValueOrDefault("Last", "");
         if (BoardStatus.IsActive(newStatus))
         {
             return $"{name} can be seated, or their review started, only on the Event page, where the board gets its room and members.";

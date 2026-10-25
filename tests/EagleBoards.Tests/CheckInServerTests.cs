@@ -181,6 +181,37 @@ public class CheckInServerTests
     }
 
     [Fact]
+    public async Task ATableDeletingSomeoneABoardHoldsIsRefusedWithTheReason()
+    {
+        // SPEC.md P-6, amended 2026-10-24 (event test section 29): the
+        // grid's answer is "invalid", the reason its text, as for a status.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        svc.AddRoom("101", BoardTypes.Final);
+        svc.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", BoardTypes.Final));
+        svc.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Chair"));
+        svc.RegisterAdult(Seed.Adult("Baker", "Bob", "2002", "Member", "Member"));
+        svc.RegisterAdult(Seed.Adult("Cole", "Cat", "2003", "Member", "Member"));
+        var (scout, chair) = (Seed.ScoutId("Aldridge", "Alex", "1001"), Seed.AdultId("Able", "Ann", "2001"));
+        Assert.True(svc.SeatBoard("ROOM:101", scout, chair, $"{chair},{Seed.AdultId("Baker", "Bob", "2002")},{Seed.AdultId("Cole", "Cat", "2003")}").Ok);
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+
+        var youth = (await Send(server, IPAddress.Loopback, "POST", "/youth-update", $"!nativeeditor_status=deleted&gr_id={Uri.EscapeDataString(scout)}")).Body;
+        Assert.Contains($"<action type=\"invalid\" sid=\"{scout}\" tid=\"{scout}\">Alex Aldridge&apos;s board is in room 101.", youth, StringComparison.Ordinal);
+        var adult = (await Send(server, IPAddress.Loopback, "POST", "/adult-update", $"!nativeeditor_status=deleted&gr_id={Uri.EscapeDataString(chair)}")).Body;
+        Assert.Contains($"<action type=\"invalid\" sid=\"{chair}\" tid=\"{chair}\">Ann Able is on the board in room 101.", adult, StringComparison.Ordinal);
+        Assert.Single(svc.Snapshot(DataTable.Scouts));
+        Assert.Equal(3, svc.Snapshot(DataTable.Adults).Count);
+
+        // Once the board is over, the youth can go.
+        Assert.True(svc.StartReview(scout).Ok);
+        Assert.True(svc.CompleteBoard(scout, BoardResults.Approved, "").Ok);
+        Assert.Contains("<action type=\"deleted\"",
+            (await Send(server, IPAddress.Loopback, "POST", "/youth-update", $"!nativeeditor_status=deleted&gr_id={Uri.EscapeDataString(scout)}")).Body, StringComparison.Ordinal);
+        Assert.Empty(svc.Snapshot(DataTable.Scouts));
+    }
+
+    [Fact]
     public async Task ReturningYouthArePreFilledWithoutABirthdateOrPhoneNumber()
     {
         // SPEC.md D-7, D-8 and O-5: one already on file stays there, but the

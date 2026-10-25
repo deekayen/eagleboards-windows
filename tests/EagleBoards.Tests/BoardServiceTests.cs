@@ -233,6 +233,45 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void ATableNeverDeletesSomeoneABoardHolds()
+    {
+        // SPEC.md P-6, amended 2026-10-24 (event test section 29): a deleted
+        // youth left their room held, and a deleted member a board short.
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
+        string Delete(DataTable table, string id) => s.SaveRow(table, "deleted", id, new Dictionary<string, string>(), out var why) + "|" + why;
+        Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
+
+        Assert.Equal("invalid|Alex Aldridge's board is in room 101. Reset it or complete it on the Event page first.",
+            Delete(DataTable.Scouts, scout));
+        Assert.Equal("invalid|Bob Baker is on the board in room 101. Reset or complete that board on the Event page first.",
+            Delete(DataTable.Adults, m1));
+
+        // The table page asks first, so it isn't asked "Delete this record?" only to be refused.
+        Assert.StartsWith("Alex Aldridge's board is in room 101.", s.DeleteRefusal(DataTable.Scouts, scout));
+        Assert.StartsWith("Bob Baker is on the board in room 101.", s.DeleteRefusal(DataTable.Adults, m1));
+
+        Assert.True(s.StartReview(scout).Ok);
+        Assert.StartsWith("invalid|", Delete(DataTable.Scouts, scout));
+        Assert.StartsWith("invalid|", Delete(DataTable.Adults, chair));
+        Assert.Equal(BoardStatus.InProgress, Status(s, scout));
+        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+
+        // An adult on no board, or gone home, can go; and everyone, once the board is over.
+        s.RegisterAdult(Seed.Adult("Dunn", "Dee", "2004", "Member", "Member"));
+        s.RegisterAdult(Seed.Adult("Eads", "Eve", "2005", "Member", "Member"));
+        Assert.True(s.DisableAdult(Seed.AdultId("Eads", "Eve", "2005")).Ok);
+        Assert.Null(s.DeleteRefusal(DataTable.Adults, Seed.AdultId("Dunn", "Dee", "2004")));
+        Assert.Equal("deleted|", Delete(DataTable.Adults, Seed.AdultId("Dunn", "Dee", "2004")));
+        Assert.Equal("deleted|", Delete(DataTable.Adults, Seed.AdultId("Eads", "Eve", "2005")));
+
+        Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
+        Assert.Null(s.DeleteRefusal(DataTable.Scouts, scout));
+        Assert.Equal("deleted|", Delete(DataTable.Scouts, scout));
+        Assert.Equal("deleted|", Delete(DataTable.Adults, chair));
+    }
+
+    [Fact]
     public void ANewInstallStartsAnEmptyAdultHistory()
     {
         // SPEC.md D-9: no release ships Master_AdultHistory.csv, so the first

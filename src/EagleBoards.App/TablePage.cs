@@ -353,6 +353,7 @@ public sealed class TablePage : DockPanel
     private const string MenuHelp = "Shift+F10 opens a shortcut menu to sort a column or fit it to its contents.";
 
     private readonly BoardService _svc;
+    private readonly Action<string, InfoBar>? _removeRoom;
     private readonly ObservableCollection<RecordRow> _rows = [];
     private readonly ListCollectionView _view;
     private readonly StackPanel _commands = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, -8, 0) };
@@ -391,9 +392,11 @@ public sealed class TablePage : DockPanel
 
     /// <param name="resource">The main window's resources: the status pill and Adults' row style.</param>
     /// <param name="addRoom">What Add room does (the Event page's dialog); Rooms only.</param>
-    public TablePage(BoardService svc, TableSpec spec, Func<string, object> resource, Action? addRoom = null)
+    /// <param name="removeRoom">What Remove room does with the selected room's ID, saying so in this page's message bar (the Event page's question); Rooms only.</param>
+    public TablePage(BoardService svc, TableSpec spec, Func<string, object> resource, Action? addRoom = null, Action<string, InfoBar>? removeRoom = null)
     {
         _svc = svc;
+        _removeRoom = removeRoom;
         Spec = spec;
         Margin = new Thickness(16);
         Visibility = Visibility.Collapsed;
@@ -565,7 +568,7 @@ public sealed class TablePage : DockPanel
         if (spec.IsRooms)
         {
             AddCommand("", "_Add room...", "Add a room", () => addRoom?.Invoke(), pageCommand: false);
-            AddCommand("", "_Remove room", "Remove the selected room, if no board is in it", RemoveRoom, pageCommand: false);
+            AddCommand("", "_Remove room...", "Remove the selected room, if no board is in it", RemoveRoom, pageCommand: false);
         }
 
         if (spec.ExportName != null)
@@ -793,7 +796,7 @@ public sealed class TablePage : DockPanel
     /// A command for this page, before Export and Delete, and in the grid's
     /// shortcut menu too, enabled when its button is.
     /// </summary>
-    /// <param name="text">The label; an "_" before a letter is its access key ("E_xport..."). Pages are shown one at a time, so letters may repeat between pages but not clash with the menu bar's F, E, V and H, nor the shortcut menu's T, E and F.</param>
+    /// <param name="text">The label; an "_" before a letter is its access key ("E_xport..."). Pages are shown one at a time, so letters may repeat between pages but not clash with the menu bar's F, E, V, B and H, nor the shortcut menu's T, E and F.</param>
     public Button AddCommand(string glyph, string text, string tooltip, Action click, bool pageCommand = true)
     {
         var label = new StackPanel { Orientation = Orientation.Horizontal };
@@ -995,6 +998,12 @@ public sealed class TablePage : DockPanel
         }
     }
 
+    /// <summary>
+    /// Delete the selected record, after asking. Never someone a board holds
+    /// (SPEC.md P-6, amended 2026-10-24): why is said here instead, before
+    /// the question rather than after it, and again if the board was seated
+    /// while the question was open.
+    /// </summary>
     private void Delete()
     {
         if (Selected is not { } row)
@@ -1003,10 +1012,25 @@ public sealed class TablePage : DockPanel
             return;
         }
 
+        if (_svc.DeleteRefusal(Spec.Table, row.Id) is { } refusal)
+        {
+            Notice.Show(Severity.Warning, "That can't be deleted yet", Display.Text(refusal));
+            return;
+        }
+
         if (AppDialog.Confirm(Window.GetWindow(this), "Delete this record?",
                 $"**{row.Describe()}** will be removed from {Spec.Title}. This can't be undone.", "Delete"))
         {
-            _svc.SaveRow(Spec.Table, "deleted", row.Id, new Dictionary<string, string>());
+            var action = _svc.SaveRow(Spec.Table, "deleted", row.Id, new Dictionary<string, string>(), out var why);
+            if (why != null)
+            {
+                Notice.Show(Severity.Warning, "That can't be deleted yet", Display.Text(why));
+            }
+            else if (action == "invalid")
+            {
+                Notice.Show(Severity.Warning, "That record is gone", "It may have been deleted already. The table has been reloaded.");
+            }
+
             Reload(quiet: false);
         }
     }
@@ -1019,13 +1043,7 @@ public sealed class TablePage : DockPanel
             return;
         }
 
-        var result = _svc.RemoveRoom(row.Id);
-        if (!result.Ok)
-        {
-            Notice.Show(Severity.Error, "Couldn't remove the room", result.Message.StartsWith("ERROR: ", StringComparison.Ordinal) ? result.Message[7..] : result.Message);
-        }
-
-        Reload(quiet: false);
+        _removeRoom?.Invoke(row.Id, Notice);
     }
 
     private void Export()

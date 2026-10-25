@@ -1349,6 +1349,41 @@ chk "and they are read afresh each time" \
 chk "the app shows them on a page of their own" \
     "$(grep -c 'Tag="ApprovedProposals"' "$ROOT/src/EagleBoards.App/MainWindow.xaml")" "1"
 
+# ---------------------- 29. a table never deletes someone a board holds
+echo
+echo "== 29. a table never deletes someone a board holds =="
+
+# SPEC.md P-6, amended 2026-10-24. Deleting a youth whose board was seated or
+# in review, or an adult sitting on a board, from a table left a room held by
+# someone who was gone, or a board a member short. The tables refuse it, with
+# the reason (a bare "invalid" is what a missing record gets); once the board
+# is reset or completed the record can go.
+admin_delete() { # <path> <id> -> the grid's answer
+    curl -s -X POST --data-urlencode "!nativeeditor_status=deleted" \
+        --data-urlencode "gr_id=$2" "$B$1"
+}
+delete_refused() { # <what> <answer>
+    case "$2" in
+        *'type="invalid"'*'>'?*'</action>'*) ok "$1" ;;
+        *) bad "$1 -- the table answered: $2" ;;
+    esac
+}
+HELD=$(xscout Heldfast Hollis 3901 Final)
+seat 101 "$HELD" "$FC1" "$M1" "$M2" >/dev/null
+delete_refused "a seated youth is not deleted from a table" "$(admin_delete /youth-update "$HELD")"
+delete_refused "nor a member of their board"                "$(admin_delete /adult-update "$M1")"
+start "$HELD" >/dev/null
+delete_refused "nor a youth in review"                      "$(admin_delete /youth-update "$HELD")"
+delete_refused "nor its chair"                              "$(admin_delete /adult-update "$FC1")"
+chk "the board keeps its youth and members" \
+    "$(status_of "$HELD")|$(room_of "$HELD")|$(busy_adults)" "InProgress|101|3"
+complete "$HELD" Approved >/dev/null
+case "$(admin_delete /youth-update "$HELD")" in
+    *'type="deleted"'*) ok "a youth whose board is over can be deleted" ;;
+    *) bad "a youth whose board is over could not be deleted" ;;
+esac
+chk "nobody committed after section 29" "$(busy_adults)" "0"
+
 echo
 echo "== the event ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"

@@ -95,6 +95,13 @@ public partial class MainWindow : Window
     /// <summary>The board last proposed, to tell it from the operator's own (SPEC.md D-12).</summary>
     private ProposedBoard? _proposal;
 
+    /// <summary>
+    /// Shows a question (Remove room's) and says whether its primary button
+    /// was pressed. A test replaces it, to read the question without showing
+    /// it: a dialog would open on the desktop of whoever runs the tests.
+    /// </summary>
+    internal Func<AppDialog, bool> Ask { get; set; } = dialog => dialog.ShowDialog();
+
     public MainWindow(EventSession session)
     {
         _session = session;
@@ -126,15 +133,17 @@ public partial class MainWindow : Window
         QueueList.ItemsSource = _queueView;
 
         // Every table a page of its own, editable in place (SPEC.md P-6).
+        // Rooms adds and removes a room as the Event page does.
         foreach (var spec in TableSpecs.All)
         {
-            var table = new TablePage(_svc, spec, key => FindResource(key), spec.IsRooms ? () => OnAddRoom(this, new RoutedEventArgs()) : null);
+            var table = new TablePage(_svc, spec, key => FindResource(key),
+                spec.IsRooms ? () => OnAddRoom(this, new RoutedEventArgs()) : null, spec.IsRooms ? RemoveRoom : null);
             _tables[spec.Name] = table;
             PageHost.Children.Add(table);
         }
 
         // The page's commands, with access keys that clash neither with the
-        // menu bar's F, E, V and H nor with the footer's Q. The grid's
+        // menu bar's F, E, V, B and H nor with the footer's Q. The grid's
         // shortcut menu repeats them (TablePage).
         var results = _tables[TableSpecs.Results.Name];
         _openButton = results.AddCommand("", "_Open on Event page", "Show the selected board on the Event page", OpenBoard);
@@ -142,11 +151,12 @@ public partial class MainWindow : Window
         results.SelectionChanged += UpdatePageButtons;
 
         // Verbs, as the page's other commands are: a button called just
-        // "Back" is heard as going back a page.
+        // "Back" is heard as going back a page. Mark back's C, since B is
+        // the Board menu's.
         var adults = _tables[TableSpecs.Adults.Name];
         adults.AddCommand("", "_Add adult...", "Sign in an adult who would rather not use the tablet", OnAddAdult);
         _goneHomeButton = adults.AddCommand("", "Mark _gone home", "Mark the selected adult as gone home", OnGoneHome);
-        _backButton = adults.AddCommand("", "Mark _back", "Mark the selected adult as back and available", OnBack);
+        _backButton = adults.AddCommand("", "Mark ba_ck", "Mark the selected adult as back and available", OnBack);
         adults.SelectionChanged += UpdatePageButtons;
         adults.Reloaded += () =>
         {
@@ -432,6 +442,9 @@ public partial class MainWindow : Window
         var name = _tables.TryGetValue(page, out var shownTable) ? shownTable.Spec.Title : "Event";
         Title = $"{name} - Eagle Board Scheduler {AppVersion.Text}";
         UpdatePageButtons();
+
+        // The Board menu acts on the Event page alone.
+        CommandManager.InvalidateRequerySuggested();
         if (IsLoaded)
         {
             Dispatcher.BeginInvoke(FocusPage, DispatcherPriority.Loaded);
@@ -586,11 +599,11 @@ public partial class MainWindow : Window
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// Ctrl+Enter runs the youth's next step (SPEC.md P-3): Seat board, Start
-    /// review or Complete, whichever the pane shows, from anywhere on the
-    /// Event page, the Notes box included (hence a preview: the box would
-    /// otherwise take the key for a new line). Ctrl+Tab and F6 here too, so a
-    /// grid or a list that uses Tab itself can't keep them.
+    /// Ctrl+Enter runs the youth's next step (SPEC.md P-3), the Board menu's
+    /// first item: Seat board, Start review or Complete, whichever the pane
+    /// shows, from anywhere on the Event page, the Notes box included (hence a
+    /// preview: the box would otherwise take the key for a new line). Ctrl+Tab
+    /// and F6 here too, so a grid or a list that uses Tab itself can't keep them.
     /// </summary>
     private void OnPreviewKey(object sender, KeyEventArgs e)
     {
@@ -611,10 +624,9 @@ public partial class MainWindow : Window
             CyclePane(back: modifiers == ModifierKeys.Shift);
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && modifiers == ModifierKeys.Control && EventPage.IsVisible
-                 && new[] { SeatButton, StartButton, CompleteButton }.FirstOrDefault(b => b.IsVisible && b.IsEnabled) is { } step)
+        else if (e.Key == Key.Enter && modifiers == ModifierKeys.Control && BoardCommands.NextStep.CanExecute(null, this))
         {
-            step.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, step));
+            BoardCommands.NextStep.Execute(null, this);
             e.Handled = true;
         }
     }
@@ -811,8 +823,73 @@ public partial class MainWindow : Window
         QueueSeat.Header = SeatText.Text;
     }
 
+    // ------------------------------------------------------------------
+    // The Board menu
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// The Board menu as the details pane stands (SPEC.md P-1, amended
+    /// 2026-10-24): its first item named for the step shown, "Seat anyway"
+    /// included, or plain Seat board when the pane shows none, and every
+    /// item enabled again as the buttons are. The buttons change on a
+    /// sign-in at the door as well as on a click, which WPF wouldn't notice
+    /// by itself.
+    /// </summary>
+    private void SyncBoardMenu()
+    {
+        var (header, glyph) = StartButton.Visibility == Visibility.Visible ? ("_Start review", "")
+            : CompleteButton.Visibility == Visibility.Visible ? ("_Complete", "")
+            : SeatButton.Visibility == Visibility.Visible ? (SeatText.Text, "")
+            : ("_Seat board", "");
+        BoardStep.Header = header;
+        BoardStepIcon.Text = glyph;
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>
+    /// The Board menu acts on the Event page, where its buttons are; on a
+    /// table page it's unavailable. Nor while the window is still being
+    /// built: a button bound to a command asks it as its XAML is read.
+    /// </summary>
+    private bool OnEventPage => IsInitialized && _page == "Event";
+
+    /// <summary>A button of the details pane shown and enabled on the Event page, as its Board menu item is.</summary>
+    private bool Usable(UIElement button) => OnEventPage && button.Visibility == Visibility.Visible && button.IsEnabled;
+
+    /// <summary>The open youth's next step, Seat board, Start review or Complete, if the pane has one to take.</summary>
+    private Button? NextStepButton() => new[] { SeatButton, StartButton, CompleteButton }.FirstOrDefault(Usable);
+
+    private void CanNextStep(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = NextStepButton() != null;
+
+    /// <summary>Board > the step, or Ctrl+Enter: the step's button, as if it were selected.</summary>
+    private void OnNextStep(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (NextStepButton() is { } step)
+        {
+            step.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, step));
+        }
+    }
+
+    private void CanPostpone(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Usable(PostponeButton);
+
+    private void CanReset(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Usable(ResetButton);
+
+    private void CanLinkAdult(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Usable(LocateSection) && LinkButton.IsEnabled;
+
+    private void CanUnlink(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = Usable(LocateSection) && Usable(UnlinkButton);
+
+    private void CanAddRoom(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = OnEventPage;
+
+    /// <summary>Move or swap, Switch room type and Remove room: once a room is selected.</summary>
+    private void CanUseRoom(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = OnEventPage && SelectedRoom != null;
+
+    /// <summary>Rename room, and F2: the card with the focus, else the one selected.</summary>
+    private void CanRenameRoom(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = OnEventPage && FocusedRoom() != null;
+
     private void OnRoomSelected(object sender, SelectionChangedEventArgs e)
     {
+        // The room commands follow the selection, however it changed.
+        CommandManager.InvalidateRequerySuggested();
         if (_quiet || RoomList.SelectedItem is not RoomCard card)
         {
             return;
@@ -830,18 +907,8 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>The room card with the keyboard focus, else the one selected.</summary>
+    /// <summary>The room card with the keyboard focus, else the one selected: what F2 renames.</summary>
     private RoomCard? FocusedRoom() => Keyboard.FocusedElement is ListBoxItem { Content: RoomCard card } ? card : SelectedRoom;
-
-    /// <summary>F2 on a room card renames it, as F2 renames in File Explorer.</summary>
-    private void OnRoomKey(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.F2 && Keyboard.Modifiers == ModifierKeys.None && FocusedRoom() is { } room)
-        {
-            RenameRoom(room);
-            e.Handled = true;
-        }
-    }
 
     /// <summary>Shift+F10 on a card reached with Ctrl+arrow, not yet selected: the menu acts on that card, as a right-click would.</summary>
     private void OnRoomMenuOpening(object sender, ContextMenuEventArgs e)
@@ -995,6 +1062,7 @@ public partial class MainWindow : Window
         }
 
         SyncQueueMenu();
+        SyncBoardMenu();
     }
 
     /// <summary>
@@ -1894,12 +1962,12 @@ public partial class MainWindow : Window
 
     private RoomCard? SelectedRoom => RoomList.SelectedItem as RoomCard;
 
-    /// <summary>A room command that worked, said; a refusal in the window's message bar. True if it worked.</summary>
-    private bool ReportRoom(ActionResult result, string failure, string success)
+    /// <summary>A room command that worked, said; a refusal in the window's message bar, or the page's. True if it worked.</summary>
+    private bool ReportRoom(ActionResult result, string failure, string success, InfoBar? bar = null)
     {
         if (!result.Ok)
         {
-            Notice.Show(Severity.Error, failure, Plain(result.Message));
+            (bar ?? Notice).Show(Severity.Error, failure, Plain(result.Message));
         }
 
         RefreshAll();
@@ -1934,7 +2002,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>No confirmation: a free room is added back just as easily.</summary>
     private void OnRemoveRoom(object sender, RoutedEventArgs e)
     {
         if (SelectedRoom is not { } room)
@@ -1943,19 +2010,51 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!room.IsFree)
+        RemoveRoom(room.Id, Notice);
+    }
+
+    /// <summary>
+    /// Remove room, from the Event page or the Rooms page, with what's said
+    /// in <paramref name="bar"/>. A room with a board in it is refused first.
+    /// A free one is removed only once the operator says so, the room named
+    /// (SPEC.md O-2, amended 2026-10-24), though adding it back is as easy.
+    /// </summary>
+    private void RemoveRoom(string roomId, InfoBar bar)
+    {
+        if (_rooms.FirstOrDefault(r => r.Id == roomId) is not { } room)
         {
-            Notice.Show(Severity.Warning, $"Room {room.Room} is in use", "Complete, reset or move its board first.");
+            RefreshAll();
             return;
         }
 
-        ReportRoom(_svc.RemoveRoom(room.Id), "Couldn't remove the room", $"Room {room.Room} removed.");
+        if (!room.IsFree)
+        {
+            bar.Show(Severity.Warning, $"Room {room.Room} is in use", "Complete, reset or move its board first.");
+            return;
+        }
+
+        if (Ask(RemoveRoomQuestion(this, room.Room)))
+        {
+            ReportRoom(_svc.RemoveRoom(room.Id), "Couldn't remove the room", $"Room {room.Room} removed.", bar);
+        }
     }
 
-    /// <summary>Rename the selected room (F2 on its card, or Rename on its shortcut menu).</summary>
+    /// <summary>
+    /// Remove room's question, in the Java version's words, which all three
+    /// versions now ask (SPEC.md O-2, amended 2026-10-24). Not yet shown, so
+    /// a test and the snapshot tool can read it.
+    /// </summary>
+    internal static AppDialog RemoveRoomQuestion(Window? owner, string room)
+    {
+        var dialog = new AppDialog(owner, $"Remove room {room}?", "Remove room");
+        dialog.AddMessage("It comes off the list for the rest of this event. You can add it again.");
+        return dialog;
+    }
+
+    /// <summary>Rename a room: the card with the focus, else the one selected (F2, or Rename on the Board menu or a room's shortcut menu).</summary>
     private void OnRenameRoom(object sender, RoutedEventArgs e)
     {
-        if (SelectedRoom is not { } room)
+        if (FocusedRoom() is not { } room)
         {
             Notice.Show(Severity.Informational, "Select a room first", "Select the room to rename, then select Rename.");
             return;
@@ -2281,6 +2380,40 @@ public partial class MainWindow : Window
         EventPage.Width = Math.Max(EventPage.MinWidth, EventView.ViewportWidth - margin.Left - margin.Right);
         EventPage.Height = Math.Max(EventPage.MinHeight, EventView.ViewportHeight - margin.Top - margin.Bottom);
     }
+}
+
+/// <summary>
+/// The Board menu's commands (SPEC.md P-1, amended 2026-10-24), each with its
+/// shortcut, defined once: a menu item shows the shortcut and is enabled from
+/// the command, and the main window's CommandBindings say when each applies
+/// and what it does. Ctrl+Enter is SPEC.md P-3's; F2 renames, as it does in
+/// File Explorer.
+/// </summary>
+public static class BoardCommands
+{
+    /// <summary>The open youth's next step: Seat board, Start review or Complete. "Enter", as the keyboard says, where WPF writes "Return".</summary>
+    public static readonly RoutedUICommand NextStep = Command("Next step", nameof(NextStep), new KeyGesture(Key.Enter, ModifierKeys.Control, "Ctrl+Enter"));
+
+    public static readonly RoutedUICommand Postpone = Command("Postpone", nameof(Postpone));
+
+    public static readonly RoutedUICommand Reset = Command("Reset", nameof(Reset));
+
+    public static readonly RoutedUICommand LinkAdult = Command("Link an adult", nameof(LinkAdult));
+
+    public static readonly RoutedUICommand Unlink = Command("Unlink", nameof(Unlink));
+
+    public static readonly RoutedUICommand AddRoom = Command("Add room", nameof(AddRoom));
+
+    public static readonly RoutedUICommand MoveRoom = Command("Move or swap board", nameof(MoveRoom));
+
+    public static readonly RoutedUICommand RenameRoom = Command("Rename room", nameof(RenameRoom), new KeyGesture(Key.F2));
+
+    public static readonly RoutedUICommand SwitchRoomType = Command("Switch room type", nameof(SwitchRoomType));
+
+    public static readonly RoutedUICommand RemoveRoom = Command("Remove room", nameof(RemoveRoom));
+
+    private static RoutedUICommand Command(string text, string name, params InputGesture[] gestures) =>
+        new(text, name, typeof(BoardCommands), new InputGestureCollection(gestures));
 }
 
 internal sealed class RelayCommand(Action execute) : ICommand

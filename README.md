@@ -105,7 +105,12 @@ Ctrl+2 through Ctrl+7), each one editable where it is but the adult history:
 double-click a cell, or select it and use F2, and a cell with a list of
 choices opens it on one click. **View** also has **Approved proposals**
 (Ctrl+8), the project proposals approved at earlier events in the data
-folder, for a youth who comes without the signed page. **File** has
+folder, for a youth who comes without the signed page. **Board** has the
+Event page's steps for the open youth: the next one, named for it (**Seat
+board**, **Start review** or **Complete**; Ctrl+Enter), **Postpone**,
+**Reset**, **Link an adult** and **Unlink**; then the selected room's **Add
+room**, **Move or swap board**, **Rename room** (F2), **Switch room type** and
+**Remove room**, each available when its button is. **File** has
 **Save report**, the check-in **QR code** and **Settings**. An adult who
 would rather not use the tablet is signed in with **Add adult** on the Adults
 page.
