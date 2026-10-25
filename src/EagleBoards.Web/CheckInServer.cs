@@ -76,13 +76,14 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/api/adult-lookup"] = new(ApiLookup(DataTable.AdultHistory, AdultPrefill), true),
 
             // This machine only.
-            // The Java version's email autofill: with no address it lists every
-            // email on file, and with one it gives back the whole record. The
-            // shared pages look people up with a POST to /api/*-lookup instead,
-            // so these answer only here, as the record reads do.
-            ["/adult-autofill"] = new(AutoFill(DataTable.AdultHistory, "Email"), false),
-            ["/youth-autofill"] = new(AutoFill(DataTable.ScoutsScheduled, "Email"), false),
-            ["/config-autofill"] = new(AutoFill(DataTable.Config, "Name"), false),
+            // The Java version's email autofill, which gives back the whole
+            // record for an address. The shared pages look people up with a
+            // POST to /api/*-lookup instead, so these answer only here, as the
+            // record reads do; and, as in the Java version, the list mode lists
+            // no one's email, only the settings' names.
+            ["/adult-autofill"] = new(AutoFill(DataTable.AdultHistory, "Email", listsValues: false), false),
+            ["/youth-autofill"] = new(AutoFill(DataTable.ScoutsScheduled, "Email", listsValues: false), false),
+            ["/config-autofill"] = new(AutoFill(DataTable.Config, "Name", listsValues: true), false),
             ["/update-config"] = new(UpdateConfig, false),
             ["/youth-scheduled-cells"] = new(Cells(DataTable.ScoutsScheduled), false),
             ["/adult-history-cells"] = new(Cells(DataTable.AdultHistory), false),
@@ -614,10 +615,11 @@ public sealed class CheckInServer : IAsyncDisposable
 
     /// <summary>
     /// Autofill for the sign-in forms. With no lookup value (or <c>op=list</c>)
-    /// the list of known values; with one, the first matching record as XML
-    /// (or pseudo-JSON with <c>fmt=json</c>).
+    /// the list of known values, empty unless <paramref name="listsValues"/>;
+    /// with one, the first matching record as XML (or pseudo-JSON with
+    /// <c>fmt=json</c>).
     /// </summary>
-    private Handler AutoFill(DataTable table, string lookupField) => (context, p, _) =>
+    private Handler AutoFill(DataTable table, string lookupField, bool listsValues) => (context, p, _) =>
     {
         var value = p.Get(lookupField);
         var sb = new StringBuilder();
@@ -628,7 +630,7 @@ public sealed class CheckInServer : IAsyncDisposable
             {
                 sb.Append("{ options: [\n");
                 var first = true;
-                foreach (var r in file.AllRecords)
+                foreach (var r in listsValues ? file.AllRecords : [])
                 {
                     var v = r.GetValue(lookupField);
                     if (v.Length > 4)

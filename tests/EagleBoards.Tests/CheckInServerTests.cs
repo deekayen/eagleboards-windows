@@ -146,6 +146,22 @@ public class CheckInServerTests
     }
 
     [Fact]
+    public async Task TheOldAutofillListsNoOnesEmail()
+    {
+        // Its list mode gave every address in the adult history; the sign-in
+        // pages look one up at a time (/api/*-lookup), as the Java version's.
+        using var box = new Sandbox();
+        var svc = box.Open();
+        svc.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Chair"));
+        var server = new CheckInServer(svc, new CheckInServerOptions());
+
+        Assert.DoesNotContain("@", (await Send(server, IPAddress.Loopback, "GET", "/adult-autofill")).Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("@", (await Send(server, IPAddress.Loopback, "GET", "/adult-autofill?op=list")).Body, StringComparison.Ordinal);
+        Assert.Contains("Able", (await Send(server, IPAddress.Loopback, "GET", "/adult-autofill?Email=ann@example.org")).Body, StringComparison.Ordinal);
+        Assert.Contains("DEFAULT", (await Send(server, IPAddress.Loopback, "GET", "/config-autofill")).Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TheAdminComputerKeepsTheWholeContract()
     {
         using var box = new Sandbox();

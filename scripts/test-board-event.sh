@@ -1165,6 +1165,16 @@ chk "nor its CSV export" \
 AUTOFILL=$(curl -s "$B/youth-autofill?Email=Lena.Lookup@Example.org&fmt=json")
 chk "nor the old email autofill" "$(echo "$AUTOFILL" | grep -c '2010-05-06\|555-0100')" "0"
 
+# Its list mode gave any device on the venue network every address in the
+# adult history and the pre-registrations. The sign-in pages look one up at
+# a time (/api/*-lookup), so it lists none now, but still finds one it's given.
+chk "the old autofill lists no adult's email" "$(curl -s "$B/adult-autofill" | grep -c '@')" "0"
+chk "nor a pre-registered youth's" "$(curl -s "$B/youth-autofill?op=list" | grep -ci 'example.org')" "0"
+case "$AUTOFILL" in
+    *Lena*) ok "it still answers for an address it's given" ;;
+    *) bad "the old autofill no longer finds an address -- got '$AUTOFILL'" ;;
+esac
+
 CHOICES=$(curl -sf "$B/api/scout-choices")
 case "$CHOICES" in
     *'"id":"SCOUT:Lookup:Lena:4401"'*) ok "an RSVP is offered to adults as someone to support" ;;
