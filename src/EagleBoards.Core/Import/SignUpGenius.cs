@@ -170,7 +170,10 @@ public sealed class SignUpGenius(HttpClient http, string key, Action<string> log
         using var response = await http.GetAsync(url + "?user_key=" + Uri.EscapeDataString(key), cancel).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException($"SignUpGenius answered HTTP {(int)response.StatusCode} for {url}");
+            // The status rides on the exception so the window can say in plain
+            // words what to do (a 401 or 403 is the key); the message, which
+            // the log keeps, stays as it was.
+            throw new HttpRequestException($"SignUpGenius answered HTTP {(int)response.StatusCode} for {url}", null, response.StatusCode);
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancel).ConfigureAwait(false);

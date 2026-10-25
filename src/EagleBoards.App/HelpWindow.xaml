@@ -2,104 +2,260 @@
         Icon="pack://application:,,,/EagleBoards;component/Assets/EagleBoards.ico"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Help - Eagle Board Scheduler" Width="820" Height="760" WindowStartupLocation="CenterOwner">
-  <FlowDocumentScrollViewer VerticalScrollBarVisibility="Auto" Background="Transparent">
-    <FlowDocument FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14" PagePadding="32,24" ColumnWidth="10000"
+        xmlns:app="clr-namespace:EagleBoards.App"
+        Title="Help - Eagle Board Scheduler" Width="820" Height="760" WindowStartupLocation="CenterOwner"
+        FocusManager.FocusedElement="{Binding ElementName=Guide}">
+  <!-- Headings are app:Heading, the one paragraph a screen reader can list
+       and jump between: Level1 the title, Level2 a section, Level3 a part of
+       one. Procedures say select, open and choose, mouse way first where both
+       are given; directions come with a name (the Youth list, Rooms, the
+       details pane). Keyboard shortcuts is the main window's keyboard
+       contract: change it with the keys. -->
+  <FlowDocumentScrollViewer x:Name="Guide" VerticalScrollBarVisibility="Auto" Background="Transparent"
+                            AutomationProperties.Name="Eagle Board Scheduler help">
+    <FlowDocument FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14" PagePadding="32,24" ColumnWidth="10000" TextAlignment="Left"
                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="Transparent">
       <FlowDocument.Resources>
         <Style TargetType="Paragraph">
           <Setter Property="Margin" Value="0,0,0,8" />
           <Setter Property="LineHeight" Value="20" />
         </Style>
-        <Style x:Key="H" TargetType="Paragraph">
+        <Style x:Key="H" TargetType="app:Heading">
+          <Setter Property="AutomationProperties.HeadingLevel" Value="Level2" />
           <Setter Property="FontSize" Value="20" />
           <Setter Property="FontWeight" Value="SemiBold" />
           <Setter Property="Margin" Value="0,20,0,8" />
         </Style>
+        <Style x:Key="H3" TargetType="app:Heading">
+          <Setter Property="AutomationProperties.HeadingLevel" Value="Level3" />
+          <Setter Property="FontSize" Value="16" />
+          <Setter Property="FontWeight" Value="SemiBold" />
+          <Setter Property="Margin" Value="0,16,0,8" />
+        </Style>
         <Style TargetType="Bold">
           <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <!-- The shortcut tables: a rule under each row, the keys in bold. A
+             cell's paragraph keeps its 8 below, so the padding has none. -->
+        <Style TargetType="Table">
+          <Setter Property="CellSpacing" Value="0" />
+          <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style TargetType="TableCell">
+          <Setter Property="Padding" Value="8,8,8,0" />
+          <Setter Property="BorderThickness" Value="0,0,0,1" />
+          <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+        </Style>
+        <Style x:Key="HeaderRow" TargetType="TableRow">
+          <Setter Property="FontWeight" Value="SemiBold" />
+          <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
       </FlowDocument.Resources>
 
-      <Paragraph FontSize="28" FontWeight="SemiBold" Margin="0,0,0,4">Eagle Board Scheduler</Paragraph>
-      <Paragraph Foreground="{DynamicResource TextFillColorSecondaryBrush}">Youth and adults sign in on the check-in website. You run the event from the Event page.</Paragraph>
+      <app:Heading AutomationProperties.HeadingLevel="Level1" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,4">Eagle Board Scheduler</app:Heading>
+      <Paragraph Foreground="{DynamicResource TextFillColorSecondaryBrush}">Youth and adults sign in on the check-in website. You run the event from the Event page.
+        Every key is listed under Keyboard shortcuts.</Paragraph>
 
-      <Paragraph Style="{StaticResource H}">Setting up</Paragraph>
+      <app:Heading Style="{StaticResource H}">Setting up</app:Heading>
       <List MarkerStyle="Decimal">
-        <ListItem><Paragraph>Start the scheduler. Choose the data folder, the event date, the adult history and the venue network, then press <Bold>Start</Bold>.
-          The first time, Windows may ask whether to allow the scheduler on the network: allow it on private networks, or the check-in stations can't connect.</Paragraph></ListItem>
-        <ListItem><Paragraph>Point each check-in station's browser at the check-in address at the bottom of the window (for example http://192.168.1.23:8080).
-          Right-click the address to copy it.</Paragraph></ListItem>
-        <ListItem><Paragraph>Add rooms with <Bold>Add room</Bold>. Each room is for final boards or project reviews. For several project reviews in one room, add one entry per table, like 200A and 200B.
-          Select a room to rename it or switch it between final boards and project reviews; a board already there isn't disturbed.</Paragraph></ListItem>
+        <ListItem><Paragraph>Start the scheduler. In the start-up window, choose the data folder, the event date, the adult history and the venue network, and then select <Bold>Start</Bold>.
+          The first time, Windows may ask whether to allow the scheduler on the network. Allow it on private networks, or the check-in stations can't connect.</Paragraph></ListItem>
+        <ListItem><Paragraph>On each check-in station, open a browser and go to the check-in address. The main window shows it after <Bold>Check-in address</Bold>, at the foot of the window; for example, http://192.168.1.23:8080.
+          To copy it, open its shortcut menu (right-click it, or move to it with F6 and use Shift+F10), and then select <Bold>Copy address</Bold>.
+          <Bold>QR code</Bold> shows the address for a tablet's camera.</Paragraph></ListItem>
+        <ListItem><Paragraph>In Rooms, select <Bold>Add room</Bold> for each room. A room is for final boards or for project reviews. For several project reviews in one room, add one room per table, like 200A and 200B.</Paragraph></ListItem>
+      </List>
+      <Paragraph>To rename a room or switch it between final boards and project reviews, select the room, and then select <Bold>Rename room</Bold> or <Bold>Switch room type</Bold>, the icons after <Bold>Move</Bold> in Rooms.
+        Or open the room's shortcut menu. F2 renames the selected room too. A board already in the room isn't disturbed.</Paragraph>
+
+      <app:Heading Style="{StaticResource H}">The Event page</app:Heading>
+      <Paragraph>The Event page has three panes: the Youth list, Rooms and the details pane. F6 moves from one to the next.</Paragraph>
+      <Paragraph><Bold>Youth</Bold> lists everyone who has signed in, in three groups, each with its count: <Bold>Waiting</Bold> in sign-in order,
+        <Bold>On a board</Bold> by room, and <Bold>Finished</Bold> with the most recent first.
+        Sign-in numbers start with P for pre-registered (matched a SignUpGenius sign-up) or W for walk-in. Pre-registered youth are listed first.</Paragraph>
+      <Paragraph><Bold>Rooms</Bold> shows who's in each room and for how long. A room's time turns to caution, then overdue, at the times in Settings. They're prompts, not limits.</Paragraph>
+      <Paragraph><Bold>Find a person</Bold>, at the top of Rooms, answers "which room are they in?". Enter part of a youth's or an adult's name, or a room, and only their room is left showing.
+        For someone in no room, it says where they are instead: waiting, not on a board, gone home or finished. Select Enter to open their board, or Esc to show every room again.</Paragraph>
+      <Paragraph>The <Bold>details pane</Bold> shows the youth you've selected in the Youth list, or the board in the room you've selected in Rooms.</Paragraph>
+
+      <app:Heading Style="{StaticResource H}">Running a board</app:Heading>
+      <Paragraph>Each youth goes through these steps, in the details pane. Ctrl+Enter takes the open youth's next step.</Paragraph>
+      <List MarkerStyle="Decimal">
+        <ListItem><Paragraph>Check each youth's paperwork as they arrive. If it isn't in order, select the youth, and then select <Bold>Postpone</Bold>.</Paragraph></ListItem>
+        <ListItem><Paragraph>Seat the board. Select a waiting youth, and the scheduler proposes a board: a room, a qualified chair, and members from other units.
+          Change any of it you need to, and then select <Bold>Seat board</Bold>. The members go to the room to read the paperwork. The youth waits outside.</Paragraph></ListItem>
+        <ListItem><Paragraph>Start the review when the members have finished reading: select <Bold>Start review</Bold>.
+          For a board of review, it first says whom to fetch to introduce the youth to the board, and where they are: whoever said so at sign-in, or else the youth's leader.
+          Fetch them with the youth, and then select <Bold>Start review</Bold> again in the reminder. A project review has no introduction, so it starts at once.</Paragraph></ListItem>
+        <ListItem><Paragraph>Complete the board when the youth comes out. Choose the result, add any notes, and then select <Bold>Complete</Bold>.
+          The room and members are freed. The details pane still shows where the youth's leaders and parents are.</Paragraph></ListItem>
       </List>
 
-      <Paragraph Style="{StaticResource H}">The Event page</Paragraph>
-      <Paragraph><Bold>Youth</Bold> on the left lists everyone who has signed in, in three groups, each with its count: <Bold>Waiting</Bold> in sign-in order,
-        <Bold>On a board</Bold> by room, and <Bold>Finished</Bold> with the most recent first.
-        Sign-in numbers start with P for pre-registered (matched a SignUpGenius sign-up) or W for walk-in; pre-registered youth are listed first.</Paragraph>
-      <Paragraph><Bold>Rooms</Bold> in the middle show who's in each room and for how long. A room's time turns to caution, then overdue, at the times in Settings. They're prompts, not limits.</Paragraph>
-      <Paragraph><Bold>Find a person</Bold>, over the rooms, answers "which room are they in?". Type part of a youth's or an adult's name (or a room) and only their room is left showing;
-        for someone in no room, it says where they are instead: waiting, not on a board, gone home or finished. Enter opens the board, and Esc shows every room again.</Paragraph>
-      <Paragraph>The pane on the right shows the youth you've selected, or the board in the room you've clicked.</Paragraph>
+      <app:Heading Style="{StaticResource H3}">Changing the proposed board</app:Heading>
+      <Paragraph>Anything wrong with the board is listed in the details pane, under <Bold>Board members</Bold>, as you build it.
+        When something is allowed but unusual, the button says <Bold>Seat anyway</Bold>: a member from the youth's own unit, a larger board, or a room set up for the other board type.</Paragraph>
+      <Paragraph>A mark after an adult's name says more about them: the Wood Badge pentagon for someone counting the event toward a Wood Badge ticket item,
+        and a warning triangle for someone from the youth's own unit. A screen reader reads the mark's name after the adult's.</Paragraph>
+      <Paragraph>To choose someone yourself, remove who you don't want, and then add who you do from <Bold>Add members</Bold>. <Bold>Fill the rest</Bold> completes the board around your choices.
+        <Bold>Start over</Bold> clears the board and proposes a fresh one.</Paragraph>
+      <Paragraph>Until you change it, the proposed board keeps up with the event. When an adult signs in, goes home or leaves a board, the board is proposed again.
+        Another youth you open gets a board of their own. Once you remove, add, fill or change the chair, the board is yours, and it's kept while you move between youth and rooms.</Paragraph>
 
-      <Paragraph Style="{StaticResource H}">Running a board</Paragraph>
-      <Paragraph><Bold>Paperwork.</Bold> Check each youth's paperwork as they arrive. If it isn't in order, select them and press <Bold>Postpone</Bold>.</Paragraph>
-      <Paragraph><Bold>Seat.</Bold> Select a waiting youth. The scheduler proposes a board: a room, a qualified chair, and members from other units. Change any of it:
-        choose another room, add or remove members, or pick a different chair. Anything wrong is listed above the <Bold>Seat board</Bold> button as you go.
-        When something is allowed but unusual (a member from the youth's own unit, a larger board, a room set up for the other board type), the button says <Bold>Seat anyway</Bold>.
-        Seating sends the members to the room to read the paperwork; the youth waits outside.</Paragraph>
-      <Paragraph>Marks after an adult's name: the Wood Badge pentagon for someone counting the event toward a Wood Badge ticket item,
-        and a warning triangle for someone from the youth's own unit. Point at a mark to see what it means.</Paragraph>
-      <Paragraph>The proposal has the whole waiting line in mind: it keeps adults who can chair free for the boards still to come, uses adults whose unit rules them out for youth still waiting,
-        favours adults who came to serve on any board (not for one particular youth, or counting the event toward a Wood Badge ticket item), and then those who have waited longest.
-        If there aren't enough adults for all of that, it still proposes the best board it can.</Paragraph>
-      <Paragraph>Until you change it, the proposed board keeps up with the event: when an adult signs in, goes home or leaves a board, it's proposed again, and another youth opened gets a board of their own.
-        Once you remove, add, fill or change the chair, the board is yours, and it's kept while you click around. <Bold>Start over</Bold> clears it and proposes a fresh board.</Paragraph>
-      <Paragraph><Bold>Start.</Bold> When the members have finished reading, press <Bold>Start review</Bold>. For a board of review it first says whom to fetch to introduce the youth to the board, and where they are: whoever said so at sign-in, or else the youth's leader. Fetch them with the youth, then press <Bold>Start review</Bold> again in the reminder. A project review has no introduction, so it starts at once.</Paragraph>
-      <Paragraph><Bold>Complete.</Bold> Choose the result, add any notes, and press <Bold>Complete</Bold>. The room and members are freed, and the pane still shows where the youth's leaders and parents are.</Paragraph>
-      <Paragraph><Bold>At adult sign-in</Bold> people can say "No thanks" to one kind of board (they are never seated on it), whether the event counts toward a Wood Badge ticket item,
-        and which youth they will introduce to their board: usually the youth's Scoutmaster, or a leader standing in, and not a parent unless they're also the Scoutmaster. They're listed under <Bold>Leaders and parents</Bold> as <Bold>Introduces them</Bold>, with where to find them.
-        If the adult introducing a youth didn't say so, select the youth and press <Bold>Link an adult</Bold>; <Bold>Unlink</Bold> undoes it.</Paragraph>
-      <Paragraph><Bold>Someone has to leave mid-board.</Bold> Select the board (the youth, or their room). Under <Bold>Board members</Bold>, press <Bold>Replace</Bold> next to them and choose who takes their place,
-        or remove them, or <Bold>Add member</Bold>. <Bold>Change chair</Bold> hands the chair to another qualified member. The same rules as seating apply, and the board's time isn't reset.</Paragraph>
-      <Paragraph><Bold>Reset</Bold> undoes a seating: the youth goes back to waiting and the room and members are freed. <Bold>Move</Bold> moves the selected room's board to another room, or swaps two boards.</Paragraph>
-
-      <Paragraph Style="{StaticResource H}">Who can sit on a board</Paragraph>
+      <app:Heading Style="{StaticResource H3}">How a board is proposed</app:Heading>
+      <Paragraph>The proposal has the whole waiting line in mind. In this order, it:</Paragraph>
       <List>
-        <ListItem><Paragraph>A board of review has three to six members (Guide to Advancement 8.0.0.3). A project proposal review isn't a board of review; this district runs it with two, up to six.</Paragraph></ListItem>
+        <ListItem><Paragraph>Keeps adults who can chair free for the boards still to come.</Paragraph></ListItem>
+        <ListItem><Paragraph>Uses adults whose unit rules them out for youth still waiting.</Paragraph></ListItem>
+        <ListItem><Paragraph>Favours adults who came to serve on any board, rather than for one particular youth or toward a Wood Badge ticket item.</Paragraph></ListItem>
+        <ListItem><Paragraph>Then takes those who have waited longest.</Paragraph></ListItem>
+      </List>
+      <Paragraph>If there aren't enough adults for all of that, it still proposes the best board it can.</Paragraph>
+
+      <app:Heading Style="{StaticResource H3}">The adult who introduces a youth</app:Heading>
+      <Paragraph>At adult sign-in, people can say "No thanks" to one kind of board, and they're never seated on it. They can also say whether the event counts toward a Wood Badge ticket item,
+        and which youth they will introduce to their board. That's usually the youth's Scoutmaster, or a leader standing in, and not a parent unless they're also the Scoutmaster.</Paragraph>
+      <Paragraph>In the details pane, that adult is listed under <Bold>Leaders and parents</Bold> as <Bold>Introduces them</Bold>, with where to find them.
+        If the adult introducing a youth didn't say so, select the youth, and then select <Bold>Link an adult</Bold>. <Bold>Unlink</Bold> undoes it.</Paragraph>
+
+      <app:Heading Style="{StaticResource H3}">When someone has to leave mid-board</app:Heading>
+      <Paragraph>Select the board: the youth, or their room. Under <Bold>Board members</Bold>, select <Bold>Replace</Bold> next to the member, and then choose who takes their place.
+        Or remove them, or select <Bold>Add member</Bold>. <Bold>Change chair</Bold> hands the chair to another qualified member.
+        The same rules as seating apply, and the board's time isn't reset.</Paragraph>
+
+      <app:Heading Style="{StaticResource H3}">Moving and undoing</app:Heading>
+      <Paragraph><Bold>Reset</Bold> undoes a seating: the youth goes back to waiting, and the room and members are freed.
+        <Bold>Move</Bold> moves the selected room's board to another room, or swaps two boards.
+        <Bold>Edit</Bold> &gt; <Bold>Undo</Bold> takes back the last board step, room change, gone home or link.</Paragraph>
+
+      <app:Heading Style="{StaticResource H}">Who can sit on a board</app:Heading>
+      <List>
+        <ListItem><Paragraph>A board of review has three to six members (Guide to Advancement 8.0.0.3). A project proposal review isn't a board of review. This district runs it with two, up to six.</Paragraph></ListItem>
         <ListItem><Paragraph>The chair must be someone whose role for that board type is Chair, and must sit on the board. If the qualified chairs are all busy, make someone a chair on the Adults page rather than seating a member as chair.</Paragraph></ListItem>
         <ListItem><Paragraph>This council doesn't permit adults from the youth's own unit. You can seat them anyway down to the national rule (Guide to Advancement 8.0.3.0), which still needs one member from outside the unit. A board made entirely of the youth's unit can't be seated.</Paragraph></ListItem>
         <ListItem><Paragraph>Someone already on a board, gone home, or unavailable for that board type can't be seated.</Paragraph></ListItem>
       </List>
 
-      <Paragraph Style="{StaticResource H}">The menu bar</Paragraph>
-      <Paragraph><Bold>View</Bold> switches between the Event page and a page for each table the scheduler keeps. Every table can be corrected where it is:
-        select a row and double-click a cell to change it. The change is saved as soon as you leave the cell.</Paragraph>
+      <app:Heading Style="{StaticResource H}">The menu bar</app:Heading>
+      <Paragraph><Bold>View</Bold> switches between the Event page and a page for each table the scheduler keeps. Every table can be corrected where it is.
+        To change a cell, double-click it, or select it and use F2. A cell with a list of choices opens it on one click, or with F4.
+        A choice is saved as soon as you make it, and text when you select Enter or leave the cell. Esc cancels.</Paragraph>
       <List>
-        <ListItem><Paragraph><Bold>Results</Bold>: every board at the event and its result, to correct a result or its notes. <Bold>Open on Event page</Bold> shows the selected board there;
+        <ListItem><Paragraph><Bold>Results</Bold>: every board at the event and its result, to correct a result or its notes. <Bold>Open on Event page</Bold> shows the selected board there.
           <Bold>Save report</Bold> saves the results as a CSV file for Excel. A youth's status, and who sat on their board, change only on the Event page, through its steps.</Paragraph></ListItem>
-        <ListItem><Paragraph><Bold>Adults</Bold>: the adults signed in. Change someone's roles, unit or Wood Badge here; their name, unit, contact and roles change in the adult history too,
-          so someone made a chair today is a chair the next time they sign in. Mark someone <Bold>Gone home</Bold> when they leave, and <Bold>Back</Bold> if they return.
-          <Bold>Add adult</Bold> signs in someone who would rather not use the tablet: search the adult history to fill the form in.</Paragraph></ListItem>
+        <ListItem><Paragraph><Bold>Adults</Bold>: the adults signed in. Change someone's roles, unit or Wood Badge here. Their name, unit, contact and roles change in the adult history too,
+          so someone made a chair today is a chair the next time they sign in. Select <Bold>Mark gone home</Bold> when someone leaves, and <Bold>Mark back</Bold> if they return.
+          <Bold>Add adult</Bold> signs in someone who would rather not use the tablet: search the adult history, and then choose a match to fill the form in.</Paragraph></ListItem>
         <ListItem><Paragraph><Bold>Youth</Bold>, <Bold>Pre-registered</Bold> and <Bold>Rooms</Bold>: every other record the event keeps, including its sign-ups.
-          <Bold>Export</Bold> saves a table as a CSV file; <Bold>Delete</Bold> removes a record for good, after asking.</Paragraph></ListItem>
+          <Bold>Export</Bold> saves a table as a CSV file. <Bold>Delete</Bold> removes a record for good, after asking. Rooms also has <Bold>Add room</Bold> and <Bold>Remove room</Bold>.</Paragraph></ListItem>
         <ListItem><Paragraph><Bold>Adult history CSV</Bold>: every adult who has signed in at any event, as the file keeps them, and the last event each came to. It can't be changed here:
           a sign-in writes it, and a change on Adults reaches it. <Bold>Sign in for today</Bold> puts the selected adult on today's list, as if they had signed in at the tablet.</Paragraph></ListItem>
         <ListItem><Paragraph><Bold>Approved proposals</Bold>: every project proposal approved at an earlier event in the data folder, with the date, the chair and the members, for a youth who comes
-          to a board of review without the signed proposal page. Find looks through names and units. It is read from the earlier events each time you open it, and can't be changed here.</Paragraph></ListItem>
+          to a board of review without the signed proposal page. Find looks through names and units. It's read from the earlier events each time you open it, and can't be changed here.</Paragraph></ListItem>
       </List>
-      <Paragraph><Bold>File</Bold> has <Bold>Save report</Bold>, the check-in <Bold>QR code</Bold>, and <Bold>Settings</Bold>, the times at which a room turns to caution and to overdue.</Paragraph>
-      <Paragraph><Bold>Edit › Undo</Bold> takes back the last board step, room change, gone home or link. <Bold>Help › Donate</Bold> shows the ways to support the scheduler's development.</Paragraph>
-      <Paragraph>Keyboard: Alt or F10 opens the menu bar. Ctrl+1 to Ctrl+8 open the pages in the View menu's order. Ctrl+F finds a person (on a table page, anything in it). Ctrl+Enter takes the selected youth's next step (Seat board, Start review or Complete). Ctrl+S saves the report, Ctrl+Z undoes, Ctrl+comma opens Settings.
-        F5 refreshes. F1 opens this help.</Paragraph>
+      <Paragraph><Bold>File</Bold> has <Bold>Save report</Bold>, the check-in <Bold>QR code</Bold>, and <Bold>Settings</Bold>: the times at which a room turns to caution and to overdue.</Paragraph>
+      <Paragraph><Bold>Edit</Bold> &gt; <Bold>Undo</Bold> takes back the last board step, room change, gone home or link. <Bold>Help</Bold> &gt; <Bold>Donate</Bold> shows the ways to support the scheduler's development.</Paragraph>
 
-      <Paragraph Style="{StaticResource H}">Where the data is</Paragraph>
+      <app:Heading Style="{StaticResource H}">Keyboard shortcuts</app:Heading>
+      <Paragraph>Everything in the main window can be done from the keyboard. Hold down Alt to see each command's underlined letter.
+        A letter on its own never runs a button in the main window: it takes Alt and the letter.</Paragraph>
+
+      <app:Heading Style="{StaticResource H3}">Anywhere in the main window</app:Heading>
+      <Paragraph>These keys work on every page.</Paragraph>
+      <Table AutomationProperties.Name="Keys anywhere in the main window">
+        <Table.Columns><TableColumn Width="1*" /><TableColumn Width="2*" /></Table.Columns>
+        <TableRowGroup>
+          <TableRow Style="{StaticResource HeaderRow}"><TableCell><Paragraph>Keys</Paragraph></TableCell><TableCell><Paragraph>What it does</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt</Bold> or <Bold>F10</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the menu bar.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+1</Bold> through <Bold>Ctrl+8</Bold></Paragraph></TableCell><TableCell><Paragraph>Open a page, in the View menu's order: Event, Results, Adults, Youth, Pre-registered, Adult history CSV, Rooms and Approved proposals.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+Tab</Bold>, <Bold>Ctrl+Shift+Tab</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the next or the previous page.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>F6</Bold>, <Bold>Shift+F6</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the next or the previous pane. On the Event page: the Youth list, Rooms (Find a person, then the room cards), the details pane and the check-in address.
+            On a table page: Find and the page's commands, then the table.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Tab</Bold>, <Bold>Shift+Tab</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the next or the previous control.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+F</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the page's find box: Find a person on the Event page, Find on a table page.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+S</Bold></Paragraph></TableCell><TableCell><Paragraph>Save the report.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+Comma</Bold></Paragraph></TableCell><TableCell><Paragraph>Open Settings.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+Z</Bold></Paragraph></TableCell><TableCell><Paragraph>Undo the last board step, room change, gone home or link. On a table page, the page's message bar says what was undone.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>F5</Bold></Paragraph></TableCell><TableCell><Paragraph>Refresh.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>F1</Bold></Paragraph></TableCell><TableCell><Paragraph>Open this help. If it's already open, it comes to the front.</Paragraph></TableCell></TableRow>
+        </TableRowGroup>
+      </Table>
+
+      <app:Heading Style="{StaticResource H3}">On the Event page</app:Heading>
+      <Paragraph>The details pane's buttons each have an Alt key. The Add members, Board members and seated members lists are one Tab stop each.</Paragraph>
+      <Table AutomationProperties.Name="Keys on the Event page">
+        <Table.Columns><TableColumn Width="1*" /><TableColumn Width="2*" /></Table.Columns>
+        <TableRowGroup>
+          <TableRow Style="{StaticResource HeaderRow}"><TableCell><Paragraph>Keys</Paragraph></TableCell><TableCell><Paragraph>What it does</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+Y</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the Youth list.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+O</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to the list of rooms.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Up arrow</Bold>, <Bold>Down arrow</Bold></Paragraph></TableCell><TableCell><Paragraph>Move between youth, between rooms, or between the people in Add members, Board members and a seated board's members.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Enter</Bold>, <Bold>Esc</Bold> in Find a person</Paragraph></TableCell><TableCell><Paragraph>Open the board of the person found, or show every room again.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+Enter</Bold></Paragraph></TableCell><TableCell><Paragraph>Take the open youth's next step: Seat board, Start review or Complete.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Shift+F10</Bold> or the <Bold>Application key</Bold></Paragraph></TableCell><TableCell><Paragraph>Open the shortcut menu. On a room: Move or swap board, Rename, Switch type and Remove room.
+            In the Youth list: the open youth's steps. On the check-in address: Copy address.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>F2</Bold> on a room</Paragraph></TableCell><TableCell><Paragraph>Rename the room.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+A</Bold></Paragraph></TableCell><TableCell><Paragraph>Add room.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+M</Bold></Paragraph></TableCell><TableCell><Paragraph>Move the selected room's board to another room, or swap two boards.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+S</Bold></Paragraph></TableCell><TableCell><Paragraph>Seat board, or Seat anyway.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+P</Bold></Paragraph></TableCell><TableCell><Paragraph>Postpone.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+I</Bold></Paragraph></TableCell><TableCell><Paragraph>Fill the rest.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+T</Bold></Paragraph></TableCell><TableCell><Paragraph>Start over while the youth is waiting, or Reset once their board is seated or in review.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+R</Bold></Paragraph></TableCell><TableCell><Paragraph>Start review.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+C</Bold></Paragraph></TableCell><TableCell><Paragraph>Complete.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+D</Bold></Paragraph></TableCell><TableCell><Paragraph>Add member.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+G</Bold></Paragraph></TableCell><TableCell><Paragraph>Change chair.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+L</Bold></Paragraph></TableCell><TableCell><Paragraph>Link an adult.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+U</Bold></Paragraph></TableCell><TableCell><Paragraph>Unlink.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+Q</Bold></Paragraph></TableCell><TableCell><Paragraph>Show the check-in QR code.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+N</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to Notes.</Paragraph></TableCell></TableRow>
+        </TableRowGroup>
+      </Table>
+
+      <app:Heading Style="{StaticResource H3}">On a table page</app:Heading>
+      <Paragraph>These keys work on Results, Adults, Youth, Pre-registered, Adult history CSV, Rooms and Approved proposals.
+        Adult history CSV and Approved proposals can't be changed, so they have no cells to edit.</Paragraph>
+      <Table AutomationProperties.Name="Keys on a table page">
+        <Table.Columns><TableColumn Width="1*" /><TableColumn Width="2*" /></Table.Columns>
+        <TableRowGroup>
+          <TableRow Style="{StaticResource HeaderRow}"><TableCell><Paragraph>Keys</Paragraph></TableCell><TableCell><Paragraph>What it does</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Ctrl+F</Bold></Paragraph></TableCell><TableCell><Paragraph>Go to Find.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Down arrow</Bold> or <Bold>Enter</Bold> in Find</Paragraph></TableCell><TableCell><Paragraph>Go to the first row that matches.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Esc</Bold> in Find</Paragraph></TableCell><TableCell><Paragraph>Clear Find.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>F2</Bold></Paragraph></TableCell><TableCell><Paragraph>Edit the current cell, as a double-click does.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>F4</Bold> or <Bold>Alt+Down arrow</Bold></Paragraph></TableCell><TableCell><Paragraph>Open a choice cell's list, as one click does.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Up arrow</Bold>, <Bold>Down arrow</Bold> in an open list</Paragraph></TableCell><TableCell><Paragraph>Move through the choices.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Enter</Bold></Paragraph></TableCell><TableCell><Paragraph>In an open list, choose the item: it's saved at once. In a text cell, save the change.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Esc</Bold></Paragraph></TableCell><TableCell><Paragraph>Cancel the change to the cell.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Shift+F10</Bold> or the <Bold>Application key</Bold></Paragraph></TableCell><TableCell><Paragraph>Open the table's shortcut menu: sort by a column, in either order, fit a column to its contents, and the page's own commands.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+O</Bold>, <Bold>Alt+R</Bold></Paragraph></TableCell><TableCell><Paragraph>On Results: Open on Event page, Save report.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+A</Bold>, <Bold>Alt+G</Bold>, <Bold>Alt+B</Bold></Paragraph></TableCell><TableCell><Paragraph>On Adults: Add adult, Mark gone home, Mark back.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+S</Bold></Paragraph></TableCell><TableCell><Paragraph>On Adult history CSV: Sign in for today.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+A</Bold>, <Bold>Alt+R</Bold></Paragraph></TableCell><TableCell><Paragraph>On Rooms: Add room, Remove room.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+X</Bold></Paragraph></TableCell><TableCell><Paragraph>Export, on Adults, Youth, Pre-registered, Adult history CSV and Rooms.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt+D</Bold></Paragraph></TableCell><TableCell><Paragraph>Delete, on Adults, Youth and Pre-registered.</Paragraph></TableCell></TableRow>
+        </TableRowGroup>
+      </Table>
+
+      <app:Heading Style="{StaticResource H3}">In a dialog</app:Heading>
+      <Paragraph>These keys work in Add room, Add adult, Postpone and the scheduler's other dialogs, and in the start-up window,
+        whose buttons have Alt keys too: <Bold>Alt+S</Bold> starts the event. In Settings, <Bold>Alt+S</Bold> saves and <Bold>Alt+D</Bold> restores the defaults.</Paragraph>
+      <Table AutomationProperties.Name="Keys in a dialog">
+        <Table.Columns><TableColumn Width="1*" /><TableColumn Width="2*" /></Table.Columns>
+        <TableRowGroup>
+          <TableRow Style="{StaticResource HeaderRow}"><TableCell><Paragraph>Keys</Paragraph></TableCell><TableCell><Paragraph>What it does</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Alt</Bold> and the underlined letter</Paragraph></TableCell><TableCell><Paragraph>Go to that field.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Enter</Bold></Paragraph></TableCell><TableCell><Paragraph>Select the default button, the first one.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Esc</Bold></Paragraph></TableCell><TableCell><Paragraph>Cancel.</Paragraph></TableCell></TableRow>
+          <TableRow><TableCell><Paragraph><Bold>Down arrow</Bold>, then <Bold>Enter</Bold>, in Add adult's search</Paragraph></TableCell><TableCell><Paragraph>Go to the matches, and then fill the form in from the one selected.</Paragraph></TableCell></TableRow>
+        </TableRowGroup>
+      </Table>
+
+      <app:Heading Style="{StaticResource H}">Where the data is</app:Heading>
       <Paragraph>Each event has its own folder named by date inside the data folder, holding scouts.csv, adults.csv, rooms.csv and scouts_scheduled.csv. The adult history builds up across every event.
         These files hold personal information about minors: keep the data folder on this computer and out of shared or cloud folders.
         The files use the same format as the Java version, so either one can read the other's.</Paragraph>
 
-      <Paragraph Style="{StaticResource H}">Pre-registration</Paragraph>
+      <app:Heading Style="{StaticResource H}">Pre-registration</app:Heading>
       <Paragraph>With a SignUpGenius API key (entered in the start-up window, and kept, encrypted, for your Windows account), the scheduler imports the event's sign-ups at start:
         youth become pre-registrations, which is what makes them P, and adults are added to the adult history by email.</Paragraph>
     </FlowDocument>

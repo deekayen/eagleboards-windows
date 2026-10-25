@@ -2,7 +2,10 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Windows;
-using System.Windows.Media;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using EagleBoards.Core.Records;
 using EagleBoards.Web;
 using Microsoft.Win32;
@@ -12,13 +15,20 @@ namespace EagleBoards.App;
 /// <summary>Where's the data, which network, then start the event.</summary>
 public partial class StartupWindow : Window
 {
-    private sealed record NetworkChoice(string Label, IPAddress? Address);
+    private sealed record NetworkChoice(string Label, IPAddress? Address)
+    {
+        /// <summary>What a screen reader says for the choice: its label, not the record.</summary>
+        public override string ToString() => Label;
+    }
 
     private readonly AppSettings _settings;
     private readonly SignUpGeniusKeyStore _keys;
 
     /// <summary>The key as saved when the window opened, or null.</summary>
     private readonly string? _savedKey;
+
+    /// <summary>Puts back the help text of the field a failed start pointed at (K4), once it changes.</summary>
+    private Action? _unflag;
 
     public StartupWindow()
         : this(AppSettings.Load(), SignUpGeniusKeyStore.CurrentUser)
@@ -44,6 +54,8 @@ public partial class StartupWindow : Window
         SugKeyBox.Password = _savedKey ?? "";
         Refresh();
         RefreshSignUpGenius();
+        ScreenFit.Keep(this);
+        EventDate.Loaded += (_, _) => NameDateBox();
     }
 
     /// <summary>Set when Start succeeds.</summary>
@@ -69,11 +81,27 @@ public partial class StartupWindow : Window
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Review Boards");
     }
 
+
+    /// <summary>
+    /// The date picker hands the focus to the text box inside it, which has
+    /// no name of its own: give it the picker's, and the event folder note as
+    /// its help text, so tabbing to it says both (E9).
+    /// </summary>
+    private void NameDateBox()
+    {
+        if (EventDate.Template?.FindName("PART_TextBox", EventDate) is DatePickerTextBox box)
+        {
+            AutomationProperties.SetName(box, AutomationProperties.GetName(EventDate));
+            box.SetBinding(AutomationProperties.HelpTextProperty, new Binding(nameof(TextBlock.Text)) { Source = EventFolderText });
+        }
+    }
+
     private void LoadNetworks(string preferred)
     {
+        // A comma, not a spaced dash: read aloud as a pause, not "minus".
         var choices = LanAddresses.Find()
             .Select((a, i) => new NetworkChoice(
-                $"{a.Address}  -  {a.InterfaceName}{(i == 0 && !a.LooksVirtual ? "  (recommended)" : "")}{(a.LooksVirtual ? "  (virtual)" : "")}",
+                $"{a.Address}, {a.InterfaceName}{(i == 0 && !a.LooksVirtual ? " (recommended)" : "")}{(a.LooksVirtual ? " (virtual)" : "")}",
                 a.Address))
             .ToList();
         choices.Add(new NetworkChoice("All networks on this computer", null));
@@ -102,10 +130,20 @@ public partial class StartupWindow : Window
             return;
         }
 
+        // In words: a trailing backslash was read out as "backslash" (E9).
+        // Read out when a change of date or folder changes it.
         var folder = EventFolder;
-        EventFolderText.Text = Directory.Exists(folder)
-            ? $"continues {Path.GetFileName(folder)}\\ (already has data)"
-            : $"creates {Path.GetFileName(folder)}\\";
+        var note = Directory.Exists(folder)
+            ? $"Continues the folder {Path.GetFileName(folder)}, which already has data."
+            : $"Creates the folder {Path.GetFileName(folder)}.";
+        if (EventFolderText.Text != note)
+        {
+            EventFolderText.Text = note;
+            if (IsLoaded)
+            {
+                Announcer.LiveRegionChanged(EventFolderText);
+            }
+        }
 
         try
         {
@@ -121,12 +159,22 @@ public partial class StartupWindow : Window
                 HistoryStatus.SetResourceReference(ForegroundProperty, "SystemFillColorCautionBrush");
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            HistoryStatus.Text = "Can't read it: " + ex.Message;
+            HistoryStatus.Text = ReadProblem(ex);
             HistoryStatus.SetResourceReference(ForegroundProperty, "SystemFillColorCriticalBrush");
         }
     }
+
+    /// <summary>Why the adult history can't be read, in plain words with what to do (K3).</summary>
+    private static string ReadProblem(Exception ex) => ex switch
+    {
+        IOException io when (io.HResult & 0xFFFF) is 32 or 33 =>
+            "Can't read it: it's open in another program, probably Excel. Close it there.",
+        UnauthorizedAccessException => "Windows didn't allow reading it. Choose another file.",
+        ArgumentException or NotSupportedException => "That isn't a file name Windows can use. Choose the file with Browse.",
+        _ => "Can't read it. " + ErrorText.For(ex),
+    };
 
     private string EnteredKey => SugKeyBox.Password.Trim();
 
@@ -153,9 +201,9 @@ public partial class StartupWindow : Window
 
     private void OnSugKeyChanged(object sender, RoutedEventArgs e) => RefreshSignUpGenius();
 
-    private void OnPathsChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => Refresh();
+    private void OnPathsChanged(object sender, TextChangedEventArgs e) => Refresh();
 
-    private void OnDateChanged(object? sender, System.Windows.Controls.SelectionChangedEventArgs e) => Refresh();
+    private void OnDateChanged(object? sender, SelectionChangedEventArgs e) => Refresh();
 
     private void OnRescan(object sender, RoutedEventArgs e) =>
         LoadNetworks((NetworkBox.SelectedItem as NetworkChoice)?.Address?.ToString() ?? "");
@@ -188,22 +236,28 @@ public partial class StartupWindow : Window
 
     private async void OnStart(object sender, RoutedEventArgs e)
     {
+        _unflag?.Invoke();
         if (DataFolder.Length == 0)
         {
-            ShowError("Choose a data folder.");
+            Flag(DataFolderBox, "Choose a data folder.");
             return;
         }
 
         if (!int.TryParse(PortBox.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var port) || port is < 1 or > 65535)
         {
-            ShowError("The port must be a number from 1 to 65535.");
+            Flag(PortBox, "The port must be a number from 1 to 65535.");
             return;
         }
 
         LaunchPlan plan;
+
+        // The field and file behind the step under way, for a failure to
+        // point at and name.
+        (Control Field, string Path) step = (DataFolderBox, DataFolder);
         try
         {
             Directory.CreateDirectory(DataFolder);
+            step = (HistoryBox, HistoryPath);
             if (!File.Exists(HistoryPath))
             {
                 if (!AppDialog.Confirm(this, "Start a new adult history?",
@@ -217,6 +271,7 @@ public partial class StartupWindow : Window
             }
 
             var config = Path.Combine(DataFolder, "config.properties");
+            step = (DataFolderBox, config);
             if (!File.Exists(config))
             {
                 File.WriteAllText(config, DefaultConfig.Text);
@@ -232,9 +287,9 @@ public partial class StartupWindow : Window
                 BindAddress = (NetworkBox.SelectedItem as NetworkChoice)?.Address,
             };
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            ShowError(ex.Message);
+            Flag(step.Field, ErrorText.For(ex, step.Path));
             return;
         }
 
@@ -243,19 +298,16 @@ public partial class StartupWindow : Window
         StartNotice.Close();
         try
         {
-            Session = await EventSession.StartAsync(plan, new Progress<string>(m => ProgressText.Text = m));
+            Session = await EventSession.StartAsync(plan, new Progress<string>(ShowProgress));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
         {
-            var message = ex.Message;
-            if (ex is IOException && message.Contains("bind", StringComparison.OrdinalIgnoreCase))
-            {
-                message = $"Port {port} is already in use -- is the scheduler (or the Java version) already running? Close it or pick another port.";
-            }
-
-            ShowError(message);
             Form.IsEnabled = true;
             StartButton.IsEnabled = true;
+            var portInUse = ex is IOException && ex.Message.Contains("bind", StringComparison.OrdinalIgnoreCase);
+            var historyLocked = EventSession.LockedFile(ex) is { } locked
+                && string.Equals(Path.GetFullPath(locked), Path.GetFullPath(HistoryPath), StringComparison.OrdinalIgnoreCase);
+            Flag(portInUse ? PortBox : historyLocked ? HistoryBox : DataFolderBox, EventSession.StartProblem(ex, port));
             return;
         }
 
@@ -277,9 +329,54 @@ public partial class StartupWindow : Window
         DialogResult = true;
     }
 
-    private void ShowError(string message)
+    /// <summary>A step of the start, read out as it happens (A11).</summary>
+    private void ShowProgress(string step)
+    {
+        ProgressText.Text = step;
+        Announcer.LiveRegionChanged(ProgressText);
+    }
+
+    /// <summary>
+    /// Say why the event can't start, and put the focus on the field to fix,
+    /// with the message as its help text so a screen reader reads it there
+    /// too (K4). The field's own help comes back once it changes.
+    /// </summary>
+    private void Flag(Control field, string message)
     {
         ProgressText.Text = "";
+
+        // Closed first, so the same words after another try are read out again.
+        StartNotice.Close();
         StartNotice.Show(Severity.Error, "Can't start", message);
+
+        var binding = BindingOperations.GetBindingBase(field, AutomationProperties.HelpTextProperty);
+        var help = AutomationProperties.GetHelpText(field);
+        AutomationProperties.SetHelpText(field, message);
+        var box = field as TextBox;
+        void Changed(object sender, TextChangedEventArgs e) => _unflag?.Invoke();
+        _unflag = () =>
+        {
+            _unflag = null;
+            if (box != null)
+            {
+                box.TextChanged -= Changed;
+            }
+
+            if (binding != null)
+            {
+                field.SetBinding(AutomationProperties.HelpTextProperty, binding);
+            }
+            else
+            {
+                AutomationProperties.SetHelpText(field, help);
+            }
+        };
+        if (box != null)
+        {
+            box.TextChanged += Changed;
+        }
+
+        field.Focus();
+        box?.SelectAll();
     }
 }

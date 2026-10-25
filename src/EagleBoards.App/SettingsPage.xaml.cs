@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;
@@ -29,15 +30,19 @@ public partial class SettingsPage : UserControl
         ("ProjectRedMins", "Project review is overdue after", "", "minutes", 0),
     ];
 
-    /// <summary>The project's funding links (.github/FUNDING.yml).</summary>
-    private static readonly KeyValuePair<string, string>[] Support =
+    /// <summary>
+    /// The project's funding links (.github/FUNDING.yml): the address kept,
+    /// the service shown, and read out as the list item's name rather than
+    /// "[Ko-fi, https://ko-fi.com/deekayen]" (A4).
+    /// </summary>
+    private static readonly Option[] Support =
     [
-        new("GitHub Sponsors", "https://github.com/sponsors/deekayen"),
-        new("Ko-fi", "https://ko-fi.com/deekayen"),
-        new("Liberapay", "https://liberapay.com/deekayen"),
-        new("PayPal", "https://paypal.me/deekayen"),
-        new("Venmo", "https://venmo.com/drdnorman"),
-        new("Buy Me a Coffee", "https://buymeacoff.ee/deekayen"),
+        new("https://github.com/sponsors/deekayen", "GitHub Sponsors"),
+        new("https://ko-fi.com/deekayen", "Ko-fi"),
+        new("https://liberapay.com/deekayen", "Liberapay"),
+        new("https://paypal.me/deekayen", "PayPal"),
+        new("https://venmo.com/drdnorman", "Venmo"),
+        new("https://buymeacoff.ee/deekayen", "Buy Me a Coffee"),
     ];
 
     /// <summary>Venmo's Pay screen with the note filled in, for the Support card's QR code (SPEC.md D-17).</summary>
@@ -57,7 +62,7 @@ public partial class SettingsPage : UserControl
             TimerCards.Children.Add(Card(t.Key, t.Title, t.Description, t.Unit));
         }
 
-        AppIcon.Source = LargestIconFrame();
+        AppIcon.ImageSource = LargestIconFrame();
         VersionText.Text = "Version " + AppVersion.Text;
         SupportLinks.ItemsSource = Support;
         VenmoQr.Source = QrWindow.Render(VenmoPay);
@@ -71,14 +76,50 @@ public partial class SettingsPage : UserControl
         SaveNotice.Close();
     }
 
-    /// <summary>Scroll the Support card into view, once the page has been laid out.</summary>
+    /// <summary>
+    /// Scroll the Support card into view, once the page has been laid out,
+    /// and focus its first button (C3): otherwise the next Tab went back to
+    /// the first timer at the top. Focus first: the scroll asked for last is
+    /// the one kept, and the button's own would stop short of the card's foot.
+    /// </summary>
     public void ShowSupport() =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => SupportCard.BringIntoView());
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            if (SupportLinks.ItemContainerGenerator.ContainerFromIndex(0) is DependencyObject first && FirstButton(first) is { } button)
+            {
+                button.Focus();
+            }
+
+            SupportCard.BringIntoView();
+        });
+
+    /// <summary>Focus the first timer, as the window opens: otherwise nothing has the focus (C3).</summary>
+    public void FocusFirst() => _fields[Timers[0].Key].Focus();
+
+    private static Button? FirstButton(DependencyObject parent)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if ((child as Button ?? FirstButton(child)) is { } button)
+            {
+                return button;
+            }
+        }
+
+        return null;
+    }
 
     private UIElement Card(string key, string title, string description, string unit)
     {
+        // The guidance printed under the title is read with the box (A12).
         var box = new TextBox { Width = 80, HorizontalContentAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(box, $"{title} ({unit})");
+        if (description.Length > 0)
+        {
+            AutomationProperties.SetHelpText(box, description);
+        }
+
         _fields[key] = box;
 
         var value = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -86,7 +127,7 @@ public partial class SettingsPage : UserControl
         var unitText = new TextBlock { Text = unit, Width = 64, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         unitText.SetResourceReference(StyleProperty, "Secondary");
         value.Children.Add(unitText);
-        DockPanel.SetDock(value, Dock.Right);
+        Grid.SetColumn(value, 1);
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock { Text = title, TextWrapping = TextWrapping.Wrap });
@@ -97,9 +138,13 @@ public partial class SettingsPage : UserControl
             text.Children.Add(hint);
         }
 
-        var row = new DockPanel();
-        row.Children.Add(value);
+        // Columns in reading order: the setting's name, then its value (a
+        // screen reader's scan read the box before what it is for).
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.Children.Add(text);
+        row.Children.Add(value);
         var card = new Border { Child = row, Margin = new Thickness(0, 0, 0, 4), Padding = new Thickness(16, 12, 16, 12) };
         card.SetResourceReference(StyleProperty, "Card");
         return card;
@@ -121,12 +166,26 @@ public partial class SettingsPage : UserControl
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
-        foreach (var (key, title, _, unit, min) in Timers)
+        foreach (var (key, title, description, unit, min) in Timers)
         {
             if (!int.TryParse(_fields[key].Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var n) || n < min)
             {
-                SaveNotice.Show(Severity.Error, "Not saved", $"\"{title}\" needs a whole number of {unit}{(min > 0 ? $", at least {min}" : "")}.");
-                _fields[key].Focus();
+                // Focus the box with the message as its help text, so it's
+                // heard there too; its guidance comes back once it changes.
+                var message = $"\"{title}\" needs a whole number of {unit}{(min > 0 ? $", at least {min}" : "")}.";
+                SaveNotice.Close();
+                SaveNotice.Show(Severity.Error, "Not saved", message);
+                var box = _fields[key];
+                AutomationProperties.SetHelpText(box, message);
+                void Changed(object sender, TextChangedEventArgs e)
+                {
+                    box.TextChanged -= Changed;
+                    AutomationProperties.SetHelpText(box, description);
+                }
+
+                box.TextChanged += Changed;
+                box.Focus();
+                box.SelectAll();
                 return;
             }
         }
@@ -159,9 +218,9 @@ public partial class SettingsPage : UserControl
 
     private void OnSupportLink(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { Tag: string url })
+        if (sender is FrameworkElement { Tag: string url } && !MainWindow.OpenUrl(url))
         {
-            MainWindow.OpenUrl(url);
+            SupportNotice.Show(Severity.Warning, "Couldn't open the link", $"Windows has no browser to open {url} with. Type the address into a browser instead.");
         }
     }
 }

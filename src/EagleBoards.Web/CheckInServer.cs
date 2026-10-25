@@ -74,11 +74,15 @@ public sealed class CheckInServer : IAsyncDisposable
             ["/api/scout-choices"] = new(ApiScoutChoices, true),
             ["/api/youth-lookup"] = new(ApiLookup(DataTable.ScoutsScheduled, YouthPrefill), true),
             ["/api/adult-lookup"] = new(ApiLookup(DataTable.AdultHistory, AdultPrefill), true),
-            ["/adult-autofill"] = new(AutoFill(DataTable.AdultHistory, "Email"), true),
-            ["/youth-autofill"] = new(AutoFill(DataTable.ScoutsScheduled, "Email"), true),
-            ["/config-autofill"] = new(AutoFill(DataTable.Config, "Name"), true),
 
             // This machine only.
+            // The Java version's email autofill: with no address it lists every
+            // email on file, and with one it gives back the whole record. The
+            // shared pages look people up with a POST to /api/*-lookup instead,
+            // so these answer only here, as the record reads do.
+            ["/adult-autofill"] = new(AutoFill(DataTable.AdultHistory, "Email"), false),
+            ["/youth-autofill"] = new(AutoFill(DataTable.ScoutsScheduled, "Email"), false),
+            ["/config-autofill"] = new(AutoFill(DataTable.Config, "Name"), false),
             ["/update-config"] = new(UpdateConfig, false),
             ["/youth-scheduled-cells"] = new(Cells(DataTable.ScoutsScheduled), false),
             ["/adult-history-cells"] = new(Cells(DataTable.AdultHistory), false),

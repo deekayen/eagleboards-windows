@@ -108,17 +108,42 @@ public sealed class ScoutRow : Row
     /// </summary>
     public int? Mins { get => _mins; private set { if (Set(ref _mins, value)) Raise(nameof(MinsTip)); } }
 
+    /// <summary>What the minutes count, in words: the queue shows "12 min" for width, a tooltip has room.</summary>
     public string MinsTip => Mins is not { } m ? "" : Status switch
     {
-        BoardStatus.Seated => $"Board convening for {m} min",
-        BoardStatus.InProgress => $"On a board for {m} min",
-        BoardStatus.Completed or BoardStatus.Postponed => $"{m} min since finishing",
-        _ => $"Waiting {m} min",
+        BoardStatus.Seated => $"Board convening for {Display.Minutes(m)}",
+        BoardStatus.InProgress => $"In review for {Display.Minutes(m)}",
+        BoardStatus.Completed or BoardStatus.Postponed => $"{Display.Minutes(m)} since finishing",
+        _ => $"Waiting {Display.Minutes(m)}",
     };
 
-    public string RegNumTip => RegNum.StartsWith('P')
-        ? $"Pre-registered: matched a sign-up. #{RegNum[1..]} of the pre-registered to sign in."
-        : RegNum.StartsWith('W') ? $"Walk-in: no pre-registration matched. #{RegNum[1..]} of the walk-ins to sign in." : "";
+    /// <summary>What the sign-in number means, in words: "#3" is read aloud as "number sign 3".</summary>
+    public string RegNumTip => RegNum.Length < 2 || !int.TryParse(RegNum[1..], NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? ""
+        : RegNum[0] == 'P' ? $"Pre-registered: matched a sign-up. The {Display.Ordinal(n)} pre-registered youth to sign in."
+        : RegNum[0] == 'W' ? $"Walk-in: no pre-registration matched. The {Display.Ordinal(n)} walk-in to sign in." : "";
+
+    /// <summary>
+    /// The queue item's tooltip, on the item so it shows on keyboard focus as
+    /// well as on a hover over its text: what the minutes and the sign-in
+    /// number mean. Null when there's nothing to say, for no empty tooltip.
+    /// </summary>
+    public string? QueueTip => string.Join(" ", new[] { MinsTip.Length > 0 ? MinsTip + "." : "", RegNumTip }.Where(s => s.Length > 0)) is { Length: > 0 } tip ? tip : null;
+
+    /// <summary>
+    /// The queue item's status for a screen reader (its ItemStatus, after the
+    /// name): where the youth is and for how long, in words, since the
+    /// waiting group shows no status pill.
+    /// </summary>
+    public string QueueStatus => Status switch
+    {
+        BoardStatus.Seated => Mins is { } m ? $"Seated, convening for {Display.Minutes(m)}" : StatusText,
+        BoardStatus.InProgress => Mins is { } m ? $"In review for {Display.Minutes(m)}" : StatusText,
+        _ when BoardStatus.IsWaiting(Status) => Mins is { } m ? $"Waiting {Display.Minutes(m)}" : StatusText,
+        _ => StatusText,
+    };
+
+    /// <summary>The queue item's help text: the second line in commas, then what the sign-in number means.</summary>
+    public string QueueHelp => string.Join(". ", new[] { SubLineSpoken, RegNumTip }.Where(s => s.Length > 0));
 
     public string Last { get => _last; private set => Set(ref _last, value); }
 
@@ -147,6 +172,7 @@ public sealed class ScoutRow : Row
                 Raise(nameof(StatusRank));
                 Raise(nameof(MinsTip));
                 Raise(nameof(StatusText));
+                Raise(nameof(QueueStatus));
             }
         }
     }
@@ -196,6 +222,10 @@ public sealed class ScoutRow : Row
         Raise(nameof(QueueRank));
         Raise(nameof(QueueSort));
         Raise(nameof(SubLine));
+        Raise(nameof(SubLineSpoken));
+        Raise(nameof(QueueHelp));
+        Raise(nameof(QueueTip));
+        Raise(nameof(QueueStatus));
         Raise(nameof(TimeText));
     }
 
@@ -206,9 +236,12 @@ public sealed class ScoutRow : Row
 
     public int QueueRank => BoardStatus.IsWaiting(Status) ? 0 : BoardStatus.IsActive(Status) ? 1 : 2;
 
-    /// <summary>"W9 · Troop 1409 · Final board", or the room once seated.</summary>
-    public string SubLine => string.Join(" · ", new[] { RegNum, UnitLabel, BoardStatus.IsActive(Status) ? "Room " + Room : Display.BoardType(BoardType) }
+    /// <summary>"W9 · Troop 1409 · Final board", or the room once seated. The unit in full: "T1409" is read as a code.</summary>
+    public string SubLine => string.Join(" · ", new[] { RegNum, Display.Unit(UnitName), BoardStatus.IsActive(Status) ? "Room " + Room : Display.BoardType(BoardType) }
         .Where(s => s.Length > 0));
+
+    /// <summary>The same in commas, as it's read aloud: a screen reader says the dot, or nothing.</summary>
+    public string SubLineSpoken => Display.Spoken(SubLine);
 
     public string TimeText => Mins is { } m && !BoardStatus.IsFinished(Status) ? $"{m} min" : "";
 
@@ -222,6 +255,8 @@ public sealed class ScoutRow : Row
         var m = DataRecord.MinutesSince(_lastUpdate);
         Mins = m >= 0 ? m : null;
         Raise(nameof(TimeText));
+        Raise(nameof(QueueTip));
+        Raise(nameof(QueueStatus));
     }
 }
 
@@ -238,19 +273,36 @@ public sealed class PickRow : Row
     {
         Adult = adult;
         Id = adult.Id;
+
+        // Taken now, as the rest are: an edit on the Adults page then changes
+        // the row's Signature, so the list is rebuilt rather than kept stale.
+        Name = adult.FullName;
+        WoodBadge = adult.IsWoodBadge;
         var role = adult.Info.RoleFor(scout.BoardType);
         CanChair = role == BoardRoles.Chair;
         SameUnit = scout.UnitName.Length > 0 && adult.UnitName == scout.UnitName;
         SameUnitAs = SameUnit ? scout.FullName : null;
-        Detail = string.Join(" · ", new[] { adult.UnitLabel, role }.Where(s => s.Length > 0));
+        Unit = Display.Unit(adult.UnitName);
+        Role = Display.Role(role);
+        Detail = string.Join(" · ", new[] { Unit, Role }.Where(s => s.Length > 0));
         ChairChosen = chairChosen;
     }
 
     public AdultRow Adult { get; }
 
-    public string Name => Adult.FullName;
+    public string Name { get; }
 
+    /// <summary>"Troop 2001 · Chair": the unit in full and the role in words.</summary>
     public string Detail { get; }
+
+    /// <summary>The same in commas, as it's read aloud.</summary>
+    public string DetailSpoken => Display.Spoken(Detail);
+
+    /// <summary>The unit in full ("Troop 2001").</summary>
+    public string Unit { get; }
+
+    /// <summary>The role for this board in words: "No thanks" for the file's "Unavailable".</summary>
+    public string Role { get; }
 
     public bool CanChair { get; }
 
@@ -260,11 +312,24 @@ public sealed class PickRow : Row
     /// <summary>The youth's name when <see cref="SameUnit"/>, for the mark's tooltip; otherwise null.</summary>
     public string? SameUnitAs { get; }
 
-    public bool WoodBadge => Adult.IsWoodBadge;
+    public bool WoodBadge { get; }
 
-    /// <summary>What a screen reader says for the adult as a choice in a list, marks included.</summary>
+    /// <summary>What a screen reader says for the adult as a choice in a list, marks included, in commas.</summary>
     public override string ToString() =>
-        string.Join(", ", new[] { Name, WoodBadge ? "Wood Badge" : "", SameUnit ? "Same unit" : "", Detail }.Where(s => s.Length > 0));
+        string.Join(", ", new[] { Name, WoodBadge ? "Wood Badge" : "", SameUnit ? "Same unit" : "", Unit, Role }.Where(s => s.Length > 0));
+
+    /// <summary>The same, for a binding: the help text of the row's buttons, since the marks' own tooltips can't take focus.</summary>
+    public string Spoken => ToString();
+
+    /// <summary>What the marks mean, for the Add button's tooltip on keyboard focus; null with no mark.</summary>
+    public string? MarksTip => string.Join(" ", new[]
+    {
+        WoodBadge ? "Counting today toward a Wood Badge ticket item." : "",
+        SameUnitAs is { } youth ? $"Same unit as {youth}." : "",
+    }.Where(s => s.Length > 0)) is { Length: > 0 } tip ? tip : null;
+
+    /// <summary>Everything the row shows: the same for two rows, and a list of them needn't be rebuilt.</summary>
+    internal string Signature => $"{Id}|{Name}|{Detail}|{CanChair}|{IsChair}|{WoodBadge}|{SameUnitAs}";
 
     private Action<PickRow>? ChairChosen { get; }
 
@@ -379,7 +444,7 @@ public sealed class AdultRow : Row
     /// <summary>Someone on a board or gone home can't be ticked for another.</summary>
     public bool CanPick => Room.Length == 0;
 
-    public string? PickTip => IsDisabled ? "Gone home. Mark them back first."
+    public string? PickTip => IsDisabled ? "Gone home. Mark them back on the Adults page first."
         : Room.Length > 0 ? "On the board in room " + Room : null;
 
     public AdultInfo Info => new(Id, Last, First, UnitName, Room, FinalBoard, ProjectReview, WoodBadge: WoodBadge, Supporting: Supporting);
@@ -402,6 +467,7 @@ public sealed class AdultRow : Row
 public sealed class RoomCard : Row
 {
     private string _room = "", _boardType = "", _scout = "", _leaders = "", _timer = "";
+    private int? _mins;
     private TimerState _timerState;
     private bool _isSelected;
 
@@ -411,9 +477,22 @@ public sealed class RoomCard : Row
         Update(r);
     }
 
-    public string Room { get => _room; private set => Set(ref _room, value); }
+    // A rename or a type switch keeps the room's ID, so the card is updated
+    // in place: its name must follow, or it still says the old room.
+    public string Room { get => _room; private set { if (Set(ref _room, value)) Raise(nameof(AccessibleName)); } }
 
-    public string BoardType { get => _boardType; private set { if (Set(ref _boardType, value)) Raise(nameof(BoardTypeText)); } }
+    public string BoardType
+    {
+        get => _boardType;
+        private set
+        {
+            if (Set(ref _boardType, value))
+            {
+                Raise(nameof(BoardTypeText));
+                Raise(nameof(AccessibleName));
+            }
+        }
+    }
 
     public string BoardTypeText => Display.BoardType(BoardType);
 
@@ -442,6 +521,7 @@ public sealed class RoomCard : Row
             {
                 Raise(nameof(LeadersText));
                 Raise(nameof(LeadersLines));
+                Raise(nameof(AccessibleName));
             }
         }
     }
@@ -453,12 +533,24 @@ public sealed class RoomCard : Row
 
     public bool IsFree => Scout is "" or "-";
 
-    /// <summary>"12 min" while a board holds the room.</summary>
-    public string TimerText { get => _timer; set { if (Set(ref _timer, value)) Raise(nameof(AccessibleName)); } }
+    /// <summary>"12 min" while a board holds the room, on the timer badge, where space is tight.</summary>
+    public string TimerText { get => _timer; set => Set(ref _timer, value); }
 
-    /// <summary>What a screen reader says for the card.</summary>
-    public string AccessibleName => $"Room {Room}, {BoardTypeText}, "
-        + (IsFree ? "free" : $"{Scout}, {TimerText}{(TimerState == TimerState.Overdue ? ", overdue" : TimerState == TimerState.Warning ? ", running long" : "")}");
+    /// <summary>The minutes the timer counts, set beside <see cref="TimerText"/>; null while the room is free.</summary>
+    public int? Mins { get => _mins; set { if (Set(ref _mins, value)) Raise(nameof(AccessibleName)); } }
+
+    /// <summary>
+    /// What a screen reader says for the card: what it shows, the minutes in
+    /// words ("min" can be read as "minimum") and the members, which is how
+    /// people find which room someone is in.
+    /// </summary>
+    public string AccessibleName => IsFree ? $"Room {Room}, {BoardTypeText}, free"
+        : string.Join(", ", new[]
+        {
+            $"Room {Room}", BoardTypeText, Scout, Mins is { } m ? Display.Minutes(m) : "",
+            TimerState == TimerState.Overdue ? "overdue" : TimerState == TimerState.Warning ? "running long" : "",
+            LeadersText.Length > 0 ? "members " + LeadersText : "",
+        }.Where(s => s.Length > 0));
 
     public TimerState TimerState
     {
@@ -534,4 +626,46 @@ public static class Display
         BoardTypes.Project => "Project review",
         _ => type,
     };
+
+    /// <summary>A role in words: "No thanks", as the tablet's form and Add adult say it, where the file keeps "Unavailable".</summary>
+    public static string Role(string role) => role == BoardRoles.Unavailable ? "No thanks" : role;
+
+    /// <summary>
+    /// A unit in full, "Troop 1001" for the file's "Troop1001": the short
+    /// form (<see cref="SchedulerLogic.UnitLabel"/>, "T1001") is read aloud
+    /// as a code, and a Post or Pack's "P" looks like a pre-registered
+    /// sign-in number.
+    /// </summary>
+    public static string Unit(string unitName)
+    {
+        var i = 0;
+        while (i < unitName.Length && char.IsAsciiLetter(unitName[i]))
+        {
+            i++;
+        }
+
+        var number = unitName[i..];
+        return i > 0 && number.Length > 0 && number.All(char.IsAsciiDigit) ? unitName[..i] + " " + number : Text(unitName);
+    }
+
+    /// <summary>
+    /// Text joined with middle dots for the eye ("W1 · Troop 1001 · Final
+    /// board"), with commas for the ear: a screen reader says "dot", or runs
+    /// the parts together.
+    /// </summary>
+    public static string Spoken(string text) => text.Replace(" · ", ", ", StringComparison.Ordinal);
+
+    /// <summary>"1st", "2nd", "3rd", "11th", "22nd": a place in words, where "#3" would be read "number sign 3".</summary>
+    public static string Ordinal(int n)
+    {
+        var suffix = (n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" };
+        return n.ToString(CultureInfo.CurrentCulture) + suffix;
+    }
+
+    /// <summary>"1 minute", "12 minutes": in words where there's room, and in what a screen reader says.</summary>
+    public static string Minutes(int minutes) => Count(minutes, "minute", "minutes");
+
+    /// <summary>A count with its noun, singular or plural: never "1 adults" or "member(s)".</summary>
+    public static string Count(int n, string one, string many) =>
+        n.ToString(CultureInfo.CurrentCulture) + " " + (n == 1 ? one : many);
 }

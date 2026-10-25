@@ -3,26 +3,33 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:EagleBoards.App">
   <!-- After the Windows settings pattern: grouped cards, a setting's name
-       and what it does on the left, its value on the right. -->
+       and what it does on the left, its value on the right. The page's title
+       and each group's are headings a screen reader can jump between. -->
   <StackPanel>
-    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Settings" Margin="0,0,0,8" />
+    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Settings" Margin="0,0,0,8" AutomationProperties.HeadingLevel="Level1" />
 
-    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Room timers" Margin="0,16,0,4" />
+    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Room timers" Margin="0,16,0,4" AutomationProperties.HeadingLevel="Level2" />
     <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,8"
                Text="A room's time turns to caution, then overdue, to prompt the room. Nothing stops a board that needs longer." />
     <StackPanel x:Name="TimerCards" />
 
     <app:InfoBar x:Name="SaveNotice" Margin="0,8,0,0" IsClosable="True" />
     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Style="{StaticResource PrimaryCommandButton}" Click="OnSave" MinWidth="120"><AccessText Text="_Save" /></Button>
-      <Button Style="{StaticResource CommandButton}" Content="Restore defaults" Click="OnDefaults" />
+      <Button Style="{StaticResource PrimaryCommandButton}" Click="OnSave" MinWidth="120" AutomationProperties.Name="Save"><AccessText Text="_Save" /></Button>
+      <Button Style="{StaticResource CommandButton}" Click="OnDefaults" AutomationProperties.Name="Restore defaults"><AccessText Text="Restore _defaults" /></Button>
     </StackPanel>
 
-    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="About" Margin="0,32,0,8" />
+    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="About" Margin="0,32,0,8" AutomationProperties.HeadingLevel="Level2" />
     <Border Style="{StaticResource Card}" Padding="16">
       <DockPanel>
-        <Image x:Name="AppIcon" DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,16,0" VerticalAlignment="Top"
-               RenderOptions.BitmapScalingMode="HighQuality" />
+        <!-- The app's icon beside its name: decoration, so a filled shape,
+             which screen readers pass over, rather than an unnamed image. -->
+        <Rectangle DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,16,0" VerticalAlignment="Top"
+                   RenderOptions.BitmapScalingMode="HighQuality">
+          <Rectangle.Fill>
+            <ImageBrush x:Name="AppIcon" Stretch="Uniform" />
+          </Rectangle.Fill>
+        </Rectangle>
         <StackPanel>
           <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Eagle Board Scheduler" />
           <TextBlock x:Name="VersionText" Style="{StaticResource Secondary}" />
@@ -36,12 +43,14 @@
     <Border x:Name="SupportCard" Style="{StaticResource Card}" Padding="16" Margin="0,4,0,16">
       <StackPanel>
         <StackPanel Orientation="Horizontal">
-          <TextBlock Style="{StaticResource Glyph}" Text="&#xEB51;" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
-          <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Support this project" />
+          <app:Glyph Text="&#xEB51;" Margin="0,0,8,0" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+          <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Support this project" AutomationProperties.HeadingLevel="Level2" />
         </StackPanel>
         <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,8,0,12"
                    Text="The scheduler is free, and built and kept up by a volunteer. If it helps your district's board events, you can chip in through any of these." />
-        <ItemsControl x:Name="SupportLinks" Focusable="False">
+        <!-- Each an Option: the address kept, the service's name shown and
+             read out (an item is read by its ToString). -->
+        <ItemsControl x:Name="SupportLinks" Focusable="False" AutomationProperties.Name="Ways to support this project">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel />
@@ -49,16 +58,17 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Button Style="{StaticResource CommandButton}" Margin="0,0,8,8" Click="OnSupportLink" Tag="{Binding Value}"
-                      ToolTip="{Binding Value}" AutomationProperties.Name="{Binding Key, StringFormat=Support on {0}}">
+              <Button Style="{StaticResource CommandButton}" Margin="0,0,8,8" Click="OnSupportLink" Tag="{Binding Key}"
+                      ToolTip="{Binding Key}" AutomationProperties.Name="{Binding Value, StringFormat=Support on {0}}">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="{Binding Key}" />
-                  <TextBlock Style="{StaticResource Glyph}" FontSize="12" Text="&#xE8A7;" Margin="8,0,0,0" />
+                  <TextBlock Text="{Binding Value}" />
+                  <app:Glyph FontSize="12" Text="&#xE8A7;" Margin="8,0,0,0" />
                 </StackPanel>
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <app:InfoBar x:Name="SupportNotice" Margin="0,0,0,8" IsClosable="True" />
         <!-- Dark on white whatever the theme, so a phone camera can read it. -->
         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
           <Image x:Name="VenmoQr" Width="132" Height="132" RenderOptions.BitmapScalingMode="HighQuality"

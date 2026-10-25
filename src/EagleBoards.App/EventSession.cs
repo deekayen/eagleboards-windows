@@ -86,8 +86,11 @@ public sealed class EventSession : IAsyncDisposable
             await session.StartCoreAsync(progress).ConfigureAwait(true);
             return session;
         }
-        catch
+        catch (Exception ex)
         {
+            // The window says it in plain words (StartProblem); the log keeps
+            // the framework's own, with the file it was about.
+            session.Log("couldn't start: " + ex.Message);
             await session.DisposeAsync().ConfigureAwait(true);
             throw;
         }
@@ -113,13 +116,16 @@ public sealed class EventSession : IAsyncDisposable
             {
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
                 var s = await Service.ImportSignUpGeniusAsync(Plan.SignUpGeniusKey, Plan.SignUpGeniusId, http).ConfigureAwait(true);
-                ImportSummary = $"SignUpGenius: {s.ScoutsAdded} youth, {s.AdultsAdded} new adults, {s.AdultsUpdated} adults updated";
+                ImportSummary = "SignUpGenius: " + string.Join(", ", Display.Count(s.ScoutsAdded, "youth", "youth"),
+                    Display.Count(s.AdultsAdded, "new adult", "new adults"), Display.Count(s.AdultsUpdated, "adult updated", "adults updated"));
                 Log(ImportSummary);
             }
             catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException
                 or System.Text.Json.JsonException or KeyNotFoundException)
             {
-                ImportError = ex.Message;
+                // The log keeps what SignUpGenius said; the window, what it
+                // means and what to do (K3).
+                ImportError = ImportProblem(ex);
                 Log("SignUpGenius error: " + ex.Message);
             }
         }
@@ -138,6 +144,65 @@ public sealed class EventSession : IAsyncDisposable
             ? [$"http://{Plan.BindAddress}:{Plan.Port}/"]
             : LanAddresses.Find().Select(a => $"http://{a.Address}:{Plan.Port}/").ToList();
         Log("check-in: " + string.Join("  ", CheckInUrls));
+    }
+
+    /// <summary>
+    /// Why the import failed, in plain words: the exception's own text is a
+    /// status code and the API's address ("SignUpGenius answered HTTP 401
+    /// for https://..."), read out URL and all.
+    /// </summary>
+    internal static string ImportProblem(Exception ex) => ex switch
+    {
+        HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden } =>
+            "SignUpGenius didn't accept the API key. Check the key, and then start the scheduler again.",
+
+        // No answer at all: no internet, the name not found, or nothing
+        // back within the 30 seconds.
+        HttpRequestException { StatusCode: null, HttpRequestError: not HttpRequestError.Unknown }
+            or HttpRequestException { StatusCode: null, InnerException: not null } or TaskCanceledException =>
+            "Couldn't reach SignUpGenius. Check the internet connection, and then start the scheduler again.",
+        HttpRequestException =>
+            "SignUpGenius couldn't send the sign-ups just now. Start the scheduler again later to try again.",
+        System.Text.Json.JsonException or KeyNotFoundException =>
+            "SignUpGenius sent the sign-ups in a form the scheduler doesn't recognize.",
+
+        // Core's own words already: no sign-up for the event covers today.
+        _ => ex.Message,
+    };
+
+    /// <summary>
+    /// Why the event couldn't start, in plain words with what to do, for the
+    /// start-up window and a command-line start (K3). The exception's own text
+    /// goes to the log.
+    /// </summary>
+    internal static string StartProblem(Exception ex, int port)
+    {
+        if (ex is IOException && ex.Message.Contains("bind", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"Port {port} is already in use. The scheduler or the Java version may already be running. Close it, or choose another port.";
+        }
+
+        // A file open in Excel: the event's own, the adult history or the
+        // settings, which needn't be in the event's folder. Named by its file
+        // name; the framework's message has it in a path read out in full.
+        return LockedFile(ex) is { } locked
+            ? $"{Path.GetFileName(locked)} is open in another program, probably Excel. Close it there, and then start again."
+            : ex is IOException io && (io.HResult & 0xFFFF) is 32 or 33
+                ? "A file the event uses is open in another program, probably Excel. Close it there, and then start again."
+                : ErrorText.For(ex);
+    }
+
+    /// <summary>The file another program has open, from a sharing violation's message (it quotes the path), or null.</summary>
+    internal static string? LockedFile(Exception ex)
+    {
+        if (ex is not IOException io || (io.HResult & 0xFFFF) is not (32 or 33))
+        {
+            return null;
+        }
+
+        // Greedy, so a path with an apostrophe in it stays whole.
+        var quoted = System.Text.RegularExpressions.Regex.Match(io.Message, "'(.+)'");
+        return quoted.Success ? quoted.Groups[1].Value : null;
     }
 
     public void Log(string message)

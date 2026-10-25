@@ -88,7 +88,7 @@ public class CheckInServerTests
         var (status, body) = await Send(server, Station, "POST", "/api/adult-lookup", "email=ann%40example.org");
         Assert.Equal(200, status);
         Assert.Contains("\"Phone\":\"555-765-4321\"", body, StringComparison.Ordinal);
-        Assert.Contains("555-765-4321", (await Send(server, Station, "GET", "/adult-autofill?Email=ann@example.org&fmt=json")).Body, StringComparison.Ordinal);
+        Assert.Contains("555-765-4321", (await Send(server, IPAddress.Loopback, "GET", "/adult-autofill?Email=ann@example.org&fmt=json")).Body, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -123,6 +123,10 @@ public class CheckInServerTests
     [InlineData("POST", "/update-config", "RefreshTimeSecs=1")]
     [InlineData("GET", "/adult-history-cells", null)]
     [InlineData("GET", "/room-cells", null)]
+    [InlineData("GET", "/adult-autofill", null)]
+    [InlineData("GET", "/adult-autofill?Email=ann@example.org&fmt=json", null)]
+    [InlineData("GET", "/youth-autofill?op=list", null)]
+    [InlineData("GET", "/config-autofill", null)]
     public async Task AStationCannotRunTheEvent(string method, string path, string? form)
     {
         using var box = new Sandbox();
@@ -176,7 +180,10 @@ public class CheckInServerTests
 
         foreach (var query in new[] { "/youth-autofill?Email=alex@example.org", "/youth-autofill?Email=alex@example.org&fmt=json" })
         {
-            var (status, body) = await Send(server, Station, "GET", query);
+            // A station gets nothing from the old autofill; even this
+            // computer gets no birthdate or phone number from it.
+            Assert.Equal(403, (await Send(server, Station, "GET", query)).Status);
+            var (status, body) = await Send(server, IPAddress.Loopback, "GET", query);
             Assert.Equal(200, status);
             Assert.Contains("Aldridge", body, StringComparison.Ordinal);
             Assert.DoesNotContain("DOB", body, StringComparison.Ordinal);

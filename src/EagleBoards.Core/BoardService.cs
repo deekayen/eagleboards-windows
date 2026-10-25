@@ -196,19 +196,21 @@ public sealed class BoardService
             return ActionResult.Error("Nothing to undo.");
         }
 
+        // A refusal names the step it can't take back and says what to do
+        // instead, not just that it "can't be undone automatically".
         var entry = _undo[^1];
         foreach (var touched in entry.Records)
         {
             if (!ReferenceEquals(Table(touched.Table).Find(touched.Record.Id), touched.Record))
             {
                 _undo.Clear();
-                return ActionResult.Error($"{touched.Name} is no longer on the list, so this can't be undone automatically.");
+                return ActionResult.Error($"{touched.Name} is no longer on the list, so Undo can't take back {entry.Description}. Reverse it by hand instead.");
             }
 
             if (touched.Set.Any(f => f.Key != SelField && touched.Record.Fields.GetValueOrDefault(f.Key, "") != f.Value))
             {
                 _undo.Clear();
-                return ActionResult.Error($"{touched.Name} has been changed since, so this can't be undone automatically.");
+                return ActionResult.Error($"{touched.Name} has changed since, so Undo can't take back {entry.Description}. Reverse it by hand instead.");
             }
         }
 
@@ -610,9 +612,14 @@ public sealed class BoardService
             {
                 result = ActionResult.Error("ERROR: Invalid Adult ID" + adultId);
             }
+            else if (adult.Room == AdultRoom.Disabled)
+            {
+                result = ActionResult.Error("ERROR: " + adult.FullName + " is already marked gone home.");
+            }
             else if (adult.Room.Length > 0)
             {
-                result = ActionResult.Error("ERROR: " + adult.FullName + " is on a board or already gone home");
+                result = ActionResult.Error("ERROR: " + adult.FullName + " is on the board in room " + adult.Room
+                    + ". Replace or remove them on the Event page first.");
             }
             else
             {
@@ -745,7 +752,7 @@ public sealed class BoardService
 
         if (room.Scout.Length > 0)
         {
-            return ActionResult.Error("ERROR: Room " + room.Room + " is already assigned to " + room.Scout);
+            return ActionResult.Error("ERROR: Room " + room.Room + " already has " + room.Scout + "'s board. Choose a free room.");
         }
 
         var scout = Scouts.Get(scoutId);
@@ -767,11 +774,6 @@ public sealed class BoardService
             return ActionResult.Error("ERROR: Scout Already Assigned Room: " + scout.Room);
         }
 
-        if (string.IsNullOrWhiteSpace(memberIds))
-        {
-            return ActionResult.Error("ERROR: No board members selected");
-        }
-
         if (CheckComposition(scout, memberIds, chairId, boardRoom: null) is not { } board)
         {
             return _lastRefusal!;
@@ -788,7 +790,7 @@ public sealed class BoardService
         scout.Room = room.Room;
         scout.Status = BoardStatus.Seated;
         scout.BoardMembers = leaders;
-        scout.BoardMemberIds = memberIds;
+        scout.BoardMemberIds = memberIds!; // CheckComposition refused an empty list.
         scout.BoardChair = chair.FullName;
         scout.BoardChairId = chair.Id;
         foreach (var member in members)
@@ -1027,6 +1029,15 @@ public sealed class BoardService
     /// board type; three to six of them (two for a project review); and a
     /// chair who is one of them and qualified to chair. Null, with the refusal
     /// in <see cref="_lastRefusal"/>, when any of that fails.
+    ///
+    /// The window shows these refusals under "Couldn't seat the board" or
+    /// "Couldn't change the board", without the "ERROR: " the check-in pages
+    /// look for, so they're in its words and say what to do, as the Microsoft
+    /// style guide asks of an error message: the board type as the window
+    /// names it, never the file's "Final"; "gone home", never "disabled", for
+    /// a person; a count with its own singular or plural, never "(s)". Only an
+    /// ID that matches no one stays in the file's terms: no step in the window
+    /// sends one.
     /// </summary>
     private (List<AdultRecord> Members, AdultRecord Chair, string Names)? CheckComposition(
         ScoutRecord scout, string? memberIds, string? chairId, string? boardRoom)
@@ -1037,14 +1048,13 @@ public sealed class BoardService
             return null;
         }
 
-        if (string.IsNullOrWhiteSpace(memberIds))
-        {
-            return Refuse("ERROR: No board members selected");
-        }
-
+        // Changing a board that is sitting, rather than seating one: someone
+        // is leaving or joining, and the way out is Replace or Change chair.
+        var changing = boardRoom != null;
+        var type = scout.BoardType;
         var members = new List<AdultRecord>();
         var names = new StringBuilder();
-        foreach (var raw in memberIds.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var raw in (memberIds ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
             var id = raw.Trim();
             var member = Adults.Get(id);
@@ -1056,25 +1066,25 @@ public sealed class BoardService
             // Counting one person twice would let "A,A,A" pass as a board of three.
             if (members.Contains(member))
             {
-                return Refuse("ERROR: Member " + member.FullName + " is listed more than once");
+                return Refuse("ERROR: " + member.FullName + " is listed more than once. List each member only once.");
             }
 
             if (member.Room == AdultRoom.Disabled)
             {
-                return Refuse("ERROR: Member " + member.FullName + " has been disabled for today");
+                return Refuse("ERROR: " + member.FullName + " has gone home. Mark them back on the Adults page, or choose someone else.");
             }
 
             if (member.Room.Length > 0 && member.Room != boardRoom)
             {
-                return Refuse("ERROR: Member " + member.FullName + " already assigned to a board in room " + member.Room);
+                return Refuse("ERROR: " + member.FullName + " is on the board in room " + member.Room + ". Choose someone else.");
             }
 
             // The browser checked this only for members listed before the
             // chair, and the Java server not at all, so an Unavailable adult
             // could be seated by ticking them after someone qualified.
-            if (member.RoleFor(scout.BoardType) == BoardRoles.Unavailable)
+            if (member.RoleFor(type) == BoardRoles.Unavailable)
             {
-                return Refuse("ERROR: Member " + member.FullName + " is Unavailable for " + scout.BoardType + " boards");
+                return Refuse("ERROR: " + member.FullName + " said no thanks to " + Kinds(type) + ". Choose someone else.");
             }
 
             if (names.Length > 0)
@@ -1089,21 +1099,34 @@ public sealed class BoardService
             members.Add(member);
         }
 
-        var isProject = scout.BoardType == BoardTypes.Project;
-        var min = isProject ? BoardRules.ProjectMinMembers : BoardRules.BoardMinMembers;
-        if (members.Count < min)
+        var count = members.Count;
+        var min = BoardRules.MinMembers(type);
+        if (count < min)
         {
-            return Refuse($"ERROR: Only {members.Count} board member(s) selected; {min} required for {scout.BoardType} boards");
+            var few = count switch { 0 => "No members", 1 => "Only 1 member", _ => $"Only {count} members" };
+            return Refuse(changing
+                ? $"ERROR: {few} would be left, and a {Kind(type)} needs at least {min}. Add a member first, or use Replace."
+                : count == 0
+                    ? $"ERROR: The board has no members yet. Add at least {min} for a {Kind(type)}."
+                    : $"ERROR: {few} {(count == 1 ? "is" : "are")} on the board, and a {Kind(type)} needs at least {min}. Add {min - count} more.");
         }
 
-        if (members.Count > BoardRules.BoardMaxMembers)
+        if (count > BoardRules.BoardMaxMembers)
         {
-            return Refuse($"ERROR: {members.Count} board members selected; no more than {BoardRules.BoardMaxMembers} permitted (Guide to Advancement 8.0.0.3)");
+            var most = $"a {Kind(type)} can have at most {BoardRules.BoardMaxMembers} (Guide to Advancement 8.0.0.3)";
+            return Refuse(changing
+                ? $"ERROR: That would make {count} members, and {most}. Use Replace instead."
+                : $"ERROR: {count} members are on the board, and {most}. Remove {count - BoardRules.BoardMaxMembers}.");
         }
 
         // The Chair designation is binding. Promoting a Member is a deliberate
         // edit on the table pages, never a side effect of seating a board
         // because the qualified chairs were all busy.
+        if (string.IsNullOrWhiteSpace(chairId))
+        {
+            return Refuse("ERROR: No one is chosen to chair the board. Choose which qualified member chairs it.");
+        }
+
         var chair = Adults.Get(chairId);
         if (chair == null)
         {
@@ -1112,18 +1135,35 @@ public sealed class BoardService
 
         if (!members.Contains(chair))
         {
-            return Refuse("ERROR: Chair " + chair.FullName + " is not one of the board members");
+            // The chair leaving a sitting board: say how to let them go.
+            if (changing && chair.Room == boardRoom)
+            {
+                return Refuse(members.Any(m => m.RoleFor(type) == BoardRoles.Chair)
+                    ? $"ERROR: {chair.FullName} chairs this board. Change chair before they leave."
+                    : $"ERROR: {chair.FullName} is the only member who can chair this board. Use Replace to swap in a qualified chair, or add one first.");
+            }
+
+            return Refuse($"ERROR: {chair.FullName} would chair the board but isn't one of its members. Add them to the board, or choose another chair.");
         }
 
-        var role = chair.RoleFor(scout.BoardType);
-        if (role != BoardRoles.Chair)
+        if (chair.RoleFor(type) != BoardRoles.Chair)
         {
-            return Refuse("ERROR: " + chair.FullName + " is not qualified to chair a " + scout.BoardType
-                + " board (role: " + (role.Length == 0 ? "none" : role) + ")");
+            return Refuse($"ERROR: {chair.FullName} isn't a chair for {Kinds(type)}. Choose a qualified chair, or make them a chair on the Adults page.");
         }
 
         return (members, chair, names.ToString());
     }
+
+    /// <summary>
+    /// A board type as the window names it, for refusals: Display.BoardType
+    /// is the App's, and the file's "Final" reads out as nothing a person
+    /// would say. Anything but a project review counts as a final board, as
+    /// <see cref="BoardRules.MinMembers"/> and <see cref="AdultRecord.RoleFor"/> count it.
+    /// </summary>
+    private static string Kind(string boardType) => boardType == BoardTypes.Project ? "project review" : "final board";
+
+    /// <inheritdoc cref="Kind"/>
+    private static string Kinds(string boardType) => Kind(boardType) + "s";
 
     /// <summary>
     /// Change who sits on a board already seated or in review: swap a member
@@ -1298,12 +1338,16 @@ public sealed class BoardService
         return ActionResult.Success;
     }
 
+    /// <summary>
+    /// A new room. The refusals a person can cause are in the Add a room
+    /// dialog's words, with the "ERROR: " the window takes off.
+    /// </summary>
     public ActionResult AddRoom(string room, string boardType)
     {
         room = room.Trim();
         if (room.Length == 0)
         {
-            return ActionResult.Error("Room # is required.");
+            return ActionResult.Error("ERROR: Enter a room number.");
         }
 
         if (boardType is not (BoardTypes.Final or BoardTypes.Project))
@@ -1311,7 +1355,24 @@ public sealed class BoardService
             return ActionResult.Error("Board type must be Final or Project.");
         }
 
-        var id = RoomRecord.IdFor(room);
+        // A renamed room keeps its old ID, so "ROOM:101" may belong to a room
+        // now called something else: take the next free ID then, as the Java
+        // version does ("ROOM:101-2"). The name is what has to be unique.
+        string id;
+        lock (_lock)
+        {
+            if (Rooms.Records.Any(r => r.Room == room))
+            {
+                return ActionResult.Error("ERROR: There's already a room " + room + ". Choose another room number.");
+            }
+
+            id = RoomRecord.IdFor(room);
+            for (var n = 2; Rooms.Get(id) != null; n++)
+            {
+                id = RoomRecord.IdFor(room) + "-" + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
         var action = SaveRow(DataTable.Rooms, "inserted", id, new Dictionary<string, string>
         {
             ["Room"] = room,
@@ -1319,9 +1380,10 @@ public sealed class BoardService
             ["Scout"] = "",
             ["Leaders"] = "",
         });
-        return action == "inserted" ? ActionResult.Success : ActionResult.Error("Room '" + room + "' Already Exists.");
+        return action == "inserted" ? ActionResult.Success : ActionResult.Error("ERROR: There's already a room " + room + ". Choose another room number.");
     }
 
+    /// <summary>A room with no board in it, from the Event page or the Rooms page.</summary>
     public ActionResult RemoveRoom(string roomId)
     {
         lock (_lock)
@@ -1334,7 +1396,7 @@ public sealed class BoardService
 
             if (room.Scout.Length > 0)
             {
-                return ActionResult.Error("Room '" + room.Room + "' is currently in use, cannot remove.");
+                return ActionResult.Error("ERROR: Room " + room.Room + " has a board in it. Complete, reset or move that board first.");
             }
         }
 
@@ -1373,10 +1435,11 @@ public sealed class BoardService
             return ActionResult.Error("ERROR: No Such Room" + roomId);
         }
 
+        // In the Rename dialog's words, as AddRoom's are.
         newName = (newName ?? "").Trim();
         if (newName.Length == 0)
         {
-            return ActionResult.Error("ERROR: Room # is required.");
+            return ActionResult.Error("ERROR: Enter a room number.");
         }
 
         // "N/A" marks adults who have gone home, so a room by that name would
@@ -1390,7 +1453,7 @@ public sealed class BoardService
 
         if (newName.Contains(','))
         {
-            return ActionResult.Error("ERROR: A room name cannot contain a comma");
+            return ActionResult.Error("ERROR: A room number can't contain a comma. Leave the comma out.");
         }
 
         var oldName = room.Room;
@@ -1401,7 +1464,7 @@ public sealed class BoardService
 
         if (Rooms.Records.Any(r => r != room && r.Room == newName))
         {
-            return ActionResult.Error("ERROR: Room '" + newName + "' already exists.");
+            return ActionResult.Error("ERROR: There's already a room " + newName + ". Choose another room number.");
         }
 
         var scouts = Scouts.Where("Room", oldName);
@@ -1448,10 +1511,9 @@ public sealed class BoardService
             else
             {
                 var roomSnap = Snap(room);
-                var label = boardType == BoardTypes.Project ? "project reviews" : "final boards";
                 room.BoardType = boardType;
                 Rooms.Store();
-                PushUndo($"switching room {room.Room} to {label}", [roomSnap]);
+                PushUndo($"switching room {room.Room} to {Kinds(boardType)}", [roomSnap]);
                 result = ActionResult.Success;
             }
         }

@@ -288,7 +288,7 @@ public class BoardServiceTests
         s.RegisterAdult(Seed.Adult("Dunn", "Dee", "2004", "Member", "Unavailable"));
         var result = s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{Seed.AdultId("Dunn", "Dee", "2004")}");
         Assert.False(result.Ok);
-        Assert.Contains("Unavailable", result.Message, StringComparison.Ordinal);
+        Assert.Equal("ERROR: Dee Dunn said no thanks to final boards. Choose someone else.", result.Message);
     }
 
     [Fact]
@@ -325,10 +325,33 @@ public class BoardServiceTests
     {
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = SeatableEvent(box);
-        Assert.Contains("not qualified", s.SeatBoard("ROOM:101", scout, m1, $"{chair},{m1},{m2}").Message, StringComparison.Ordinal);
+        Assert.Equal("ERROR: Bob Baker isn't a chair for final boards. Choose a qualified chair, or make them a chair on the Adults page.",
+            s.SeatBoard("ROOM:101", scout, m1, $"{chair},{m1},{m2}").Message);
         s.RegisterAdult(Seed.Adult("Dunn", "Dee", "2004", "Member", "Member"));
-        Assert.Contains("not one of the board members",
-            s.SeatBoard("ROOM:101", scout, chair, $"{m1},{m2},{Seed.AdultId("Dunn", "Dee", "2004")}").Message, StringComparison.Ordinal);
+        Assert.Equal("ERROR: Ann Able would chair the board but isn't one of its members. Add them to the board, or choose another chair.",
+            s.SeatBoard("ROOM:101", scout, chair, $"{m1},{m2},{Seed.AdultId("Dunn", "Dee", "2004")}").Message);
+        Assert.StartsWith("ERROR: No one is chosen to chair the board.", s.SeatBoard("ROOM:101", scout, "", $"{chair},{m1},{m2}").Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SeatingRefusalsSayWhatToDoInTheWindowsWords()
+    {
+        // The window shows these under "Couldn't seat the board", the "ERROR: "
+        // taken off, so the board type is the window's, a count has its own
+        // singular or plural (never "(s)"), and someone who left has gone
+        // home, never "been disabled".
+        using var box = new Sandbox();
+        var (s, scout, chair, m1, m2) = SeatableEvent(box);
+        Assert.Equal("ERROR: Only 2 members are on the board, and a final board needs at least 3. Add 1 more.",
+            s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1}").Message);
+        Assert.Equal("ERROR: Only 1 member is on the board, and a final board needs at least 3. Add 2 more.",
+            s.SeatBoard("ROOM:101", scout, chair, chair).Message);
+        Assert.Equal("ERROR: The board has no members yet. Add at least 3 for a final board.",
+            s.SeatBoard("ROOM:101", scout, chair, "").Message);
+
+        Assert.True(s.DisableAdult(m2).Ok);
+        Assert.Equal("ERROR: Cat Cole has gone home. Mark them back on the Adults page, or choose someone else.",
+            s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Message);
     }
 
     [Fact]
@@ -336,10 +359,11 @@ public class BoardServiceTests
     {
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = SeatableEvent(box);
-        Assert.False(s.AddRoom("101", BoardTypes.Final).Ok);
-        Assert.False(s.AddRoom("  ", BoardTypes.Final).Ok);
+        Assert.Equal("ERROR: There's already a room 101. Choose another room number.", s.AddRoom("101", BoardTypes.Final).Message);
+        Assert.Equal("ERROR: Enter a room number.", s.AddRoom("  ", BoardTypes.Final).Message);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
-        Assert.False(s.RemoveRoom("ROOM:101").Ok);
+        Assert.Equal("ERROR: Room 101 has a board in it. Complete, reset or move that board first.", s.RemoveRoom("ROOM:101").Message);
+        Assert.Single(s.Snapshot(DataTable.Rooms));
     }
 
     [Fact]
@@ -410,11 +434,25 @@ public class BoardServiceTests
         }
     }
 
+    [Fact]
+    public async Task ARefusedSignUpGeniusKeyCarriesItsStatusForTheWindow()
+    {
+        // The window says "check the key" for a 401 or 403 by the status, not
+        // by reading the message; the message, which the log keeps, is unchanged
+        // and never carries the key.
+        using var http = new HttpClient(new CannedResponse("{}", System.Net.HttpStatusCode.Unauthorized));
+        var sug = new SignUpGenius(http, "made-up-key", _ => { }, _ => { });
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => sug.FindSignupIdAsync(CancellationToken.None));
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, ex.StatusCode);
+        Assert.StartsWith("SignUpGenius answered HTTP 401 for https://", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("made-up-key", ex.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>Answers every request with the same JSON, so no network or key is needed.</summary>
-    private sealed class CannedResponse(string json) : HttpMessageHandler
+    private sealed class CannedResponse(string json, System.Net.HttpStatusCode status = System.Net.HttpStatusCode.OK) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(json) });
+            Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(json) });
     }
 
     private static (BoardService Service, string Scout, string Chair, string M1, string M2) UnderReview(Sandbox box)
@@ -564,7 +602,7 @@ public class BoardServiceTests
     }
 
     [Theory]
-    [InlineData("B3", "Unavailable")]
+    [InlineData("B3", "said no thanks to final boards")]
     [InlineData("A2", "more than once")]
     public void ChangingMembersKeepsTheSeatingRules(string extra, string refusal)
     {
@@ -581,8 +619,23 @@ public class BoardServiceTests
     {
         using var box = new Sandbox();
         var (s, scout) = BoardInReview(box);
-        Assert.Contains("not qualified", s.ChangeBoardMembers(scout, Id("A2"), $"{Id("A1")},{Id("A2")},{Id("A3")}").Message);
-        Assert.Contains("Only 2", s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("A2")}").Message);
+        Assert.Contains("isn't a chair for final boards", s.ChangeBoardMembers(scout, Id("A2"), $"{Id("A1")},{Id("A2")},{Id("A3")}").Message);
+        Assert.Equal("ERROR: Only 2 members would be left, and a final board needs at least 3. Add a member first, or use Replace.",
+            s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A1")},{Id("A2")}").Message);
+    }
+
+    [Fact]
+    public void TheChairLeavingASittingBoardIsToldHowToLetThemGo()
+    {
+        // The window keeps the chair when no one left can take over, so the
+        // refusal says what to do rather than that the chair isn't a member.
+        using var box = new Sandbox();
+        var (s, scout) = BoardInReview(box);
+        Assert.Equal("ERROR: X A1 is the only member who can chair this board. Use Replace to swap in a qualified chair, or add one first.",
+            s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A2")},{Id("A3")},{Id("B1")}").Message);
+        Assert.Equal("ERROR: X A1 chairs this board. Change chair before they leave.",
+            s.ChangeBoardMembers(scout, Id("A1"), $"{Id("A2")},{Id("A3")},{Id("B2")}").Message);
+        Assert.Equal("101", AdultRow(s, Id("A1"))["Room"]);
     }
 
     [Fact]
@@ -691,13 +744,30 @@ public class BoardServiceTests
         s.AddRoom("101", BoardTypes.Final);
         s.AddRoom("102", BoardTypes.Final);
 
-        Assert.Contains("already exists", s.RenameRoom("ROOM:101", "102").Message);
-        Assert.Contains("required", s.RenameRoom("ROOM:101", "  ").Message);
+        Assert.Equal("ERROR: There's already a room 102. Choose another room number.", s.RenameRoom("ROOM:101", "102").Message);
+        Assert.Equal("ERROR: Enter a room number.", s.RenameRoom("ROOM:101", "  ").Message);
         Assert.False(s.RenameRoom("ROOM:404", "103").Ok);
 
         // Renaming a room to the name it already has is a harmless no-op.
         Assert.True(s.RenameRoom("ROOM:101", "101").Ok);
         Assert.Equal("101", s.Snapshot(DataTable.Rooms).Single(r => r["ID"] == "ROOM:101")["Room"]);
+    }
+
+    [Fact]
+    public void ARoomCanBeAddedUnderTheNameARenamedRoomGaveUp()
+    {
+        // A renamed room keeps its ID ("ROOM:101" now named 110): a new room
+        // 101 takes the next free ID, as the Java version's Add room does.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+        Assert.True(s.RenameRoom("ROOM:101", "110").Ok);
+
+        Assert.True(s.AddRoom("101", BoardTypes.Project).Ok);
+        var rooms = s.Snapshot(DataTable.Rooms);
+        Assert.Equal("110", rooms.Single(r => r["ID"] == "ROOM:101")["Room"]);
+        Assert.Equal("101", rooms.Single(r => r["ID"] == "ROOM:101-2")["Room"]);
+        Assert.Equal("ERROR: There's already a room 101. Choose another room number.", s.AddRoom("101", BoardTypes.Final).Message);
     }
 
     [Fact]
@@ -908,7 +978,8 @@ public class BoardServiceTests
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = SeatableEvent(box);
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
-        Assert.False(s.DisableAdult(chair).Ok);
+        Assert.Equal("ERROR: Ann Able is on the board in room 101. Replace or remove them on the Event page first.", s.DisableAdult(chair).Message);
+        Assert.Equal("101", AdultRow(s, chair)["Room"]);
     }
 
     [Fact]
@@ -932,9 +1003,10 @@ public class BoardServiceTests
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["BoardChair"] = "Someone Else" });
 
+        // The refusal names the step and says what to do instead.
         var refusal = s.Undo();
         Assert.False(refusal.Ok);
-        Assert.Contains("Alex Aldridge", refusal.Message);
+        Assert.Equal("Alex Aldridge has changed since, so Undo can't take back seating Alex Aldridge's board. Reverse it by hand instead.", refusal.Message);
         Assert.Equal(BoardStatus.Seated, Status(s, scout));
 
         // Everything older sits behind the change that can't be taken back.
@@ -951,7 +1023,7 @@ public class BoardServiceTests
         Assert.True(s.SetRoomType("ROOM:101", BoardTypes.Project).Ok);
         s.SaveRow(DataTable.Rooms, "deleted", "ROOM:101", new Dictionary<string, string>());
 
-        Assert.Contains("no longer", s.Undo().Message);
+        Assert.StartsWith("Room 101 is no longer on the list, so Undo can't take back switching room 101 to project reviews.", s.Undo().Message, StringComparison.Ordinal);
         Assert.Empty(s.Snapshot(DataTable.Rooms));
     }
 

@@ -73,9 +73,12 @@ public static class BoardCheck
                 }
                 else
                 {
+                    // Short sentences, one thing each: this is read out as the
+                    // board is built, and a clause nested after a semicolon is
+                    // hard to follow by ear.
                     Warn("Same unit",
-                        $"{names} {(conflicts.Count == 1 ? "is" : "are")} in the youth's own unit. The council doesn't permit that; "
-                        + "the national rule, which this board still meets, needs only one member from outside the unit.");
+                        $"{names} {(conflicts.Count == 1 ? "is" : "are")} in the youth's own unit. The council doesn't allow that. "
+                        + "The national rule needs only one member from outside the unit, and this board meets it.");
                 }
             }
 

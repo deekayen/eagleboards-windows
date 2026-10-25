@@ -4,8 +4,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:EagleBoards.App"
         Title="Eagle Board Scheduler"
-        Width="600" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterScreen">
+        Width="600" MinWidth="480" MinHeight="320" SizeToContent="Height" ResizeMode="CanResize"
+        WindowStartupLocation="CenterScreen"
+        FocusManager.FocusedElement="{Binding ElementName=DataFolderBox}">
   <Window.Resources>
     <Style x:Key="FieldLabel" TargetType="Label" BasedOn="{StaticResource {x:Type Label}}">
       <Setter Property="Padding" Value="0" />
@@ -14,64 +15,110 @@
     <Style x:Key="FieldHint" TargetType="TextBlock" BasedOn="{StaticResource Hint}">
       <Setter Property="Margin" Value="0,4,0,0" />
     </Style>
+    <!-- A button after the box it fills, in a column of its own. -->
+    <Style x:Key="FieldButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Grid.Column" Value="1" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
   </Window.Resources>
 
-  <DockPanel>
-    <!-- Command area, as at the foot of a Windows dialog. -->
-    <Border DockPanel.Dock="Bottom" Padding="24,16" BorderThickness="0,1,0,0"
+  <!-- In reading order, so Tab and a screen reader meet the form before the
+       buttons that answer it: the form scrolls in the first row (never
+       taller than the screen, F7) and the command area stays in the last.
+       Each field's hint is its help text, read with it. -->
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+      <StackPanel Margin="24,20,24,24">
+        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Start an event" AutomationProperties.HeadingLevel="Level1" />
+        <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Text="Choose where the data is kept and which network the check-in stations are on. The check-in website runs until you close the scheduler." />
+        <app:InfoBar x:Name="StartNotice" Margin="0,16,0,0" IsClosable="True" />
+
+        <StackPanel x:Name="Form">
+          <Label Style="{StaticResource FieldLabel}" Content="_Data folder" Target="{Binding ElementName=DataFolderBox}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="DataFolderBox" VerticalContentAlignment="Center" TextChanged="OnPathsChanged" AutomationProperties.Name="Data folder"
+                     AutomationProperties.IsRequiredForForm="True"
+                     AutomationProperties.HelpText="{Binding Text, ElementName=DataFolderHint}" />
+            <Button Style="{StaticResource FieldButton}" Click="OnBrowseDataFolder" AutomationProperties.Name="Browse for the data folder"><AccessText Text="_Browse..." /></Button>
+          </Grid>
+          <TextBlock x:Name="DataFolderHint" Style="{StaticResource FieldHint}" Text="Holds the settings, the adult history, and a folder for each event named by its date." />
+
+          <Label Style="{StaticResource FieldLabel}" Content="_Event date" Target="{Binding ElementName=EventDate}" />
+          <StackPanel Orientation="Horizontal">
+            <DatePicker x:Name="EventDate" Width="160" SelectedDateChanged="OnDateChanged" AutomationProperties.Name="Event date"
+                        AutomationProperties.HelpText="{Binding Text, ElementName=EventFolderText}" />
+            <!-- Read out when the date changes it (A11, E9). -->
+            <TextBlock x:Name="EventFolderText" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="12,0,0,0"
+                       AutomationProperties.LiveSetting="Polite" />
+          </StackPanel>
+
+          <Label Style="{StaticResource FieldLabel}" Content="_Adult history" Target="{Binding ElementName=HistoryBox}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="HistoryBox" VerticalContentAlignment="Center" TextChanged="OnPathsChanged" AutomationProperties.Name="Adult history"
+                     AutomationProperties.HelpText="{Binding Text, ElementName=HistoryStatus}" />
+            <Button Style="{StaticResource FieldButton}" Click="OnBrowseHistory" AutomationProperties.Name="Browse for the adult history file"><AccessText Text="Br_owse..." /></Button>
+          </Grid>
+          <TextBlock x:Name="HistoryStatus" Style="{StaticResource FieldHint}" />
+
+          <Label Style="{StaticResource FieldLabel}" Content="Check-in _network" Target="{Binding ElementName=NetworkBox}" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Name="NetworkBox" DisplayMemberPath="Label" HorizontalAlignment="Stretch" AutomationProperties.Name="Check-in network"
+                      AutomationProperties.HelpText="{Binding Text, ElementName=NetworkHint}" />
+            <Button Style="{StaticResource FieldButton}" Click="OnRescan" AutomationProperties.Name="Rescan the networks"><AccessText Text="Res_can" /></Button>
+          </Grid>
+          <TextBlock x:Name="NetworkHint" Style="{StaticResource FieldHint}"
+                     Text="The venue Wi-Fi the check-in tablets or laptops use. Serving only that network keeps the site off virtual and VPN adapters." />
+
+          <Label Style="{StaticResource FieldLabel}" Content="_Port" Target="{Binding ElementName=PortBox}" />
+          <TextBox x:Name="PortBox" Width="96" HorizontalAlignment="Left" VerticalContentAlignment="Center" AutomationProperties.Name="Port"
+                   AutomationProperties.IsRequiredForForm="True"
+                   AutomationProperties.HelpText="A number from 1 to 65535." />
+
+          <Label Style="{StaticResource FieldLabel}" Content="SignUpGenius API _key" Target="{Binding ElementName=SugKeyBox}" />
+          <PasswordBox x:Name="SugKeyBox" VerticalContentAlignment="Center" PasswordChanged="OnSugKeyChanged" AutomationProperties.Name="SignUpGenius API key"
+                       AutomationProperties.HelpText="{Binding Text, ElementName=SugStatus}" />
+          <TextBlock x:Name="SugStatus" Style="{StaticResource FieldHint}" TextWrapping="Wrap" />
+          <CheckBox x:Name="SugCheck" Margin="0,12,0,0" IsChecked="{x:Null}" Content="_Import the event's sign-ups from SignUpGenius" />
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Command area, as at the foot of a Windows dialog: what's happening,
+         then Start and Cancel. -->
+    <Border Grid.Row="1" Padding="24,16" BorderThickness="0,1,0,0"
             Background="{DynamicResource SolidBackgroundFillColorBaseBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button x:Name="StartButton" Style="{StaticResource AccentButtonStyle}" IsDefault="True" MinWidth="120" Click="OnStart"><AccessText Text="_Start" /></Button>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <!-- Each step is read out as the event starts (A11). -->
+        <TextBlock x:Name="ProgressText" Style="{StaticResource Secondary}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0"
+                   AutomationProperties.LiveSetting="Polite" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button x:Name="StartButton" Style="{StaticResource AccentButtonStyle}" IsDefault="True" MinWidth="120" Click="OnStart"
+                  AutomationProperties.Name="Start"><AccessText Text="_Start" /></Button>
           <Button Content="Cancel" IsCancel="True" MinWidth="120" Margin="8,0,0,0" />
         </StackPanel>
-        <TextBlock x:Name="ProgressText" Style="{StaticResource Secondary}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" />
-      </DockPanel>
+      </Grid>
     </Border>
-
-    <StackPanel Margin="24,20,24,24">
-      <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Start an event" />
-      <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,8,0,0"
-                 Text="Choose where the data is kept and which network the check-in stations are on. The check-in website runs until you close the scheduler." />
-      <app:InfoBar x:Name="StartNotice" Margin="0,16,0,0" IsClosable="True" />
-
-      <StackPanel x:Name="Form">
-        <Label Style="{StaticResource FieldLabel}" Content="_Data folder" Target="{Binding ElementName=DataFolderBox}" />
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Content="Browse..." Margin="8,0,0,0" Click="OnBrowseDataFolder" />
-          <TextBox x:Name="DataFolderBox" VerticalContentAlignment="Center" TextChanged="OnPathsChanged" AutomationProperties.Name="Data folder" />
-        </DockPanel>
-        <TextBlock Style="{StaticResource FieldHint}" Text="Holds the settings, the adult history, and a folder for each event named by its date." />
-
-        <Label Style="{StaticResource FieldLabel}" Content="_Event date" Target="{Binding ElementName=EventDate}" />
-        <StackPanel Orientation="Horizontal">
-          <DatePicker x:Name="EventDate" Width="160" SelectedDateChanged="OnDateChanged" AutomationProperties.Name="Event date" />
-          <TextBlock x:Name="EventFolderText" Style="{StaticResource Secondary}" VerticalAlignment="Center" Margin="12,0,0,0" />
-        </StackPanel>
-
-        <Label Style="{StaticResource FieldLabel}" Content="_Adult history" Target="{Binding ElementName=HistoryBox}" />
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Content="Browse..." Margin="8,0,0,0" Click="OnBrowseHistory" />
-          <TextBox x:Name="HistoryBox" VerticalContentAlignment="Center" TextChanged="OnPathsChanged" AutomationProperties.Name="Adult history" />
-        </DockPanel>
-        <TextBlock x:Name="HistoryStatus" Style="{StaticResource FieldHint}" />
-
-        <Label Style="{StaticResource FieldLabel}" Content="Check-in _network" Target="{Binding ElementName=NetworkBox}" />
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Content="Rescan" Margin="8,0,0,0" Click="OnRescan" />
-          <ComboBox x:Name="NetworkBox" DisplayMemberPath="Label" HorizontalAlignment="Stretch" AutomationProperties.Name="Check-in network" />
-        </DockPanel>
-        <TextBlock Style="{StaticResource FieldHint}"
-                   Text="The venue Wi-Fi the check-in tablets or laptops use. Serving only that network keeps the site off virtual and VPN adapters." />
-
-        <Label Style="{StaticResource FieldLabel}" Content="_Port" Target="{Binding ElementName=PortBox}" />
-        <TextBox x:Name="PortBox" Width="96" HorizontalAlignment="Left" VerticalContentAlignment="Center" AutomationProperties.Name="Port" />
-
-        <Label Style="{StaticResource FieldLabel}" Content="SignUpGenius API _key" Target="{Binding ElementName=SugKeyBox}" />
-        <PasswordBox x:Name="SugKeyBox" VerticalContentAlignment="Center" PasswordChanged="OnSugKeyChanged" AutomationProperties.Name="SignUpGenius API key" />
-        <TextBlock x:Name="SugStatus" Style="{StaticResource FieldHint}" TextWrapping="Wrap" />
-        <CheckBox x:Name="SugCheck" Margin="0,12,0,0" IsChecked="{x:Null}" Content="_Import the event's sign-ups from SignUpGenius" />
-      </StackPanel>
-    </StackPanel>
-  </DockPanel>
+  </Grid>
 </Window>

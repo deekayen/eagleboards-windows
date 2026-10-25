@@ -6,7 +6,14 @@ using QRCoder;
 namespace EagleBoards.App;
 
 /// <summary>One check-in address, rendered as a QR code image for <see cref="QrWindow"/>.</summary>
-internal sealed record QrCode(string Url, BitmapImage Image);
+internal sealed record QrCode(string Url, BitmapImage Image)
+{
+    /// <summary>
+    /// What a screen reader says for the list item: not the record's
+    /// "QrCode { Url = ..., Image = System.Windows.Media.Imaging.BitmapImage }" (A4).
+    /// </summary>
+    public override string ToString() => $"QR code for {Url}";
+}
 
 /// <summary>
 /// A QR code per check-in address, for a tablet's camera instead of typing

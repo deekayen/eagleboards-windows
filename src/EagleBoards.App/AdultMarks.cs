@@ -9,7 +9,9 @@ namespace EagleBoards.App;
 /// The marks after an adult's name (SPEC.md D-20): the Wood Badge pentagon for
 /// an adult counting today toward a Wood Badge ticket item, and a warning
 /// triangle for one in the selected youth's own unit. Each is an icon with its
-/// meaning in a tooltip and said to a screen reader. Put it straight after the
+/// meaning in a tooltip and said to a screen reader: named, with the tooltip's
+/// words as help text, since neither can take focus to show its tooltip to a
+/// keyboard user (the row's buttons say the same). Put it straight after the
 /// name, in the name's TextBlock (an InlineUIContainer), so it follows the last
 /// word when the name wraps. Takes no room when there's nothing to mark.
 /// </summary>
@@ -44,6 +46,7 @@ public sealed class AdultMarks : StackPanel
         Orientation = Orientation.Horizontal;
         VerticalAlignment = VerticalAlignment.Center;
         AutomationProperties.SetName(_woodBadge, "Wood Badge");
+        AutomationProperties.SetHelpText(_woodBadge, (string)_woodBadge.ToolTip);
         AutomationProperties.SetName(_sameUnit, "Same unit");
         _sameUnit.SetResourceReference(TextBlock.FontFamilyProperty, "SymbolThemeFontFamily");
         _sameUnit.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCautionBrush");
@@ -71,6 +74,7 @@ public sealed class AdultMarks : StackPanel
         _woodBadge.Visibility = WoodBadge ? Visibility.Visible : Visibility.Collapsed;
         _sameUnit.Visibility = SameUnitAs is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
         _sameUnit.ToolTip = SameUnitAs is { Length: > 0 } youth ? "Same unit as " + youth : null;
+        AutomationProperties.SetHelpText(_sameUnit, _sameUnit.ToolTip as string ?? "");
     }
 }
 

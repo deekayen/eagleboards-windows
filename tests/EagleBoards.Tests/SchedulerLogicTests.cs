@@ -206,6 +206,25 @@ public class SchedulerLogicTests
         Assert.Empty(parentOnly.Leaders);
     }
 
+    // The next two are the Java version's own cases (scripts/test-board-builder.js),
+    // the same adults and answers, so the versions name the same leader.
+
+    [Fact]
+    public void ALeaderFromAnotherUnitIsFoundByFirstAndLastName()
+    {
+        var elsewhere = new AdultInfo("L2", "Smith", "Sam", "Troop9", "", "Member", "Member");
+        Assert.Equal(["L2"], SchedulerLogic.IntroductionFor(FinalScout, [elsewhere])!.Leaders.Select(a => a.Id));
+    }
+
+    [Fact]
+    public void AnAdultWithNoNameIsNobodysLeader()
+    {
+        // Every Leader field contains "", so a blank name once matched them all.
+        var blank = new AdultInfo("B", "", "", "Troop9", "", "Member", "Member");
+        Assert.Empty(SchedulerLogic.IntroductionFor(FinalScout, [blank])!.Leaders);
+        Assert.Empty(SchedulerLogic.Locate(FinalScout, [blank], includeParents: true));
+    }
+
     [Fact]
     public void AProjectReviewHasNoIntroductionToRemindAbout()
     {

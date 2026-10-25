@@ -10,6 +10,10 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         Page = page;
         Host.Content = page;
+
+        // Something has the focus once it opens (C3); Help > Donate then
+        // moves it on to the Support card.
+        Loaded += (_, _) => page.FocusFirst();
     }
 
     public SettingsPage Page { get; }

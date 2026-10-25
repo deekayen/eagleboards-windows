@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EagleBoards.App;
@@ -74,6 +75,73 @@ internal static class OffScreen
         }
 
         return null;
+    }
+
+    /// <summary>The first <typeparamref name="T"/> under <paramref name="from"/> (itself excluded) that passes <paramref name="test"/>.</summary>
+    public static T? Descendant<T>(DependencyObject from, Func<T, bool>? test = null) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(from); i++)
+        {
+            var child = VisualTreeHelper.GetChild(from, i);
+            if (child is T found && (test == null || test(found)))
+            {
+                return found;
+            }
+
+            if (Descendant(child, test) is { } deeper)
+            {
+                return deeper;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Text typed at <paramref name="target"/>, through the input manager as
+    /// a keyboard's is, so what WPF does with typed text after the elements
+    /// have seen it (access keys) happens too. RaiseEvent would skip that.
+    /// </summary>
+    public static void Type(IInputElement target, string text)
+    {
+        TextCompositionManager.StartComposition(new TextComposition(InputManager.Current, target, text));
+        Pump();
+    }
+
+    /// <summary>A letter typed with Alt held: Windows sends it as system text, which is what runs an access key.</summary>
+    public static void TypeWithAlt(IInputElement target, string letter)
+    {
+        TextCompositionManager.StartComposition(new SystemTextComposition(target, letter));
+        Pump();
+    }
+
+    /// <summary>
+    /// A key pressed with no modifier, from the element with the focus:
+    /// PreviewKeyDown tunnels down to it, then KeyDown bubbles back up, as
+    /// from a keyboard. (Modifiers are read from the real keyboard, so a test
+    /// can't hold Shift or Ctrl.)
+    /// </summary>
+    public static void Press(Window window, Key key)
+    {
+        var target = Keyboard.FocusedElement as UIElement ?? window;
+        var source = PresentationSource.FromVisual(window)!;
+        var down = new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, key) { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+        target.RaiseEvent(down);
+        if (!down.Handled)
+        {
+            target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, key) { RoutedEvent = Keyboard.KeyDownEvent });
+        }
+
+        Pump();
+    }
+
+    private sealed class SystemTextComposition : TextComposition
+    {
+        public SystemTextComposition(IInputElement target, string text)
+            : base(InputManager.Current, target, "")
+        {
+            SystemText = text;
+        }
     }
 }
 

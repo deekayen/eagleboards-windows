@@ -7,10 +7,10 @@
         WindowStartupLocation="CenterOwner" SizeToContent="Height">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="24">
-      <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Point a tablet's camera here" />
+      <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Point a tablet's camera here" AutomationProperties.HeadingLevel="Level1" />
       <TextBlock Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,4,0,16"
                  Text="Opens the check-in website without typing the address in by hand. If the venue has more than one network, use the code for the one the tablet is on." />
-      <ItemsControl x:Name="CodeList" Focusable="False">
+      <ItemsControl x:Name="CodeList" Focusable="False" AutomationProperties.Name="Check-in addresses">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type app:QrCode}">
             <Border Style="{StaticResource Card}" Margin="0,0,0,16">

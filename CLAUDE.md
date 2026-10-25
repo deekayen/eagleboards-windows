@@ -78,9 +78,10 @@ runs a native WPF app instead of the Java app's browser pages.
   `-- --demo docs/images` renders `social-preview.png`, GitHub's social
   preview, through the window's own handlers.
 - **CI is the acceptance gate** (`.github/workflows/build.yml`, windows-latest):
-  build, unit tests, the event test, snapshots (artifact), self-contained publish,
-  and a smoke test of the published exe (`scripts/smoke-test-exe.sh`). Prefer
-  pushing and reading the run over re-running the whole suite locally.
+  no participant data tracked, build, unit tests, the window tests, the event
+  test, snapshots (artifact), self-contained publish, and a smoke test of the
+  published exe (`scripts/smoke-test-exe.sh`). Prefer pushing and reading the
+  run over re-running the whole suite locally.
 - **Releases** (`.github/workflows/release.yml`): Run workflow (today's date)
   or push a `vYYYY.MM.DD[.N]` tag. The tag is the only place the version lives;
   it's stamped into the exe with `-p:Version`, and local builds say `dev`. The
@@ -96,7 +97,10 @@ runs a native WPF app instead of the Java app's browser pages.
 1. **Never commit PII or secrets.** CSV/spreadsheets, dated `YYYY-MM-DD/`
    folders, the adult history, `.env` are gitignored and blocked by
    `scripts/hooks/pre-commit`. Install it per clone:
-   `git config core.hooksPath scripts/hooks`.
+   `git config core.hooksPath scripts/hooks`. CI's "No participant data in
+   the tree" step catches one that got in anyway; keep its pattern in step
+   with the hook and `.gitignore`. SECURITY.md tells contributors the same,
+   and how to report a vulnerability.
 2. **Never touch real data.** Tests, snapshots and practice runs use synthetic
    names in a temp folder. `C:\eagleboards` on the owner's machine is the live
    data folder, and the old Java checkout also holds live data: don't read,
@@ -215,6 +219,45 @@ runs a native WPF app instead of the Java app's browser pages.
   colour alone. Status colours are not settings (SPEC.md D-19): the
   `*Color` keys are gone from `ConfigRecord`, and an older file's are dropped
   on save.
+- **Accessibility follows the Microsoft Writing Style Guide's rules** (the
+  owner's choice). What that means in this code:
+  - An icon beside its words is a `Glyph` (`<app:Glyph Text="&#xE716;" />`),
+    a `SilentText` screen readers skip; a TextBlock would be read as a stray
+    private-use character. An icon-only button is named for what it does
+    (`AutomationProperties.Name="Rename room"`), not what it shows.
+  - An `InfoBar` is a live region (assertive for an error), read out as
+    "Severity: Title. Message" when shown or changed, and not again for the
+    same words. A message shown from code that runs on every change (a list
+    rebuilt, a refresh) passes `announce: false`, or it talks over the user.
+  - A step that worked needs no message when the screen shows it (D-14 still
+    holds); a screen reader user hears it from `Announcer.Say`, speech only,
+    nothing on screen.
+  - Choice lists hold `Option(Key, Value)`, label-and-value lists
+    `Fact(Key, Value)`, never a `KeyValuePair`: an item with no name of its
+    own is read by its `ToString`, and a KeyValuePair's reads
+    "[ROOM:102, 102 · Final board]".
+  - A dialog field's label is a `Label` targeting it: "_Room number" puts the
+    access key on R, and the field's name drops the "_". A problem with one
+    field is an `AppDialog.Check`, which focuses that field and gives it the
+    message as help text; `Validate` is for the dialog as a whole.
+  - Titles are headings (`AutomationProperties.HeadingLevel`: Level1 a page
+    or pane title, as `CardTitle` has, Level2 a section). In Help's
+    FlowDocument it's the `Heading` paragraph, because a plain Paragraph has
+    no automation peer and ignores the property.
+  - Focus is never left on something that went away. A page shown, a list
+    rebuilt or a step taken keeps focus on the same row, or moves it to the
+    page's main control (`TablePage.FocusContent`), never to the window.
+  - F6 and Shift+F6 move between panes and Ctrl+Tab between pages. A bare
+    letter never runs a button in the main window: WPF fires an access key
+    without Alt when focus is in a list, and a stray key there mustn't seat
+    a board. Help's *Keyboard shortcuts* tables are the main window's key
+    contract: change them with the keys.
+  - Help and messages say select, open, choose and enter, not click, press
+    or point, with the mouse way first where both are given; they name the
+    place (the details pane, under Board members), never only left, right,
+    above or below; menu paths read **Edit** > **Undo**, the > not bold; key
+    names are the guide's (Ctrl+Comma, Down arrow, Shift+F10, Application
+    key).
 - User-facing text says **event**, not "tonight" or "evening": boards happen
   in the daytime too.
 - Values read back from the files carry the format's escapes (a comma saved as
@@ -254,7 +297,8 @@ runs a native WPF app instead of the Java app's browser pages.
 
 ## Workflow
 
-- Branch `main`, remote `origin` = `deekayen/eagleboards-windows` (private).
+- Branch `main`, remote `origin` = `deekayen/eagleboards-windows` (public:
+  everything committed, history included, is world-readable).
 - Fixes that also apply to the Java project are worth porting there (and vice
   versa); the two are separate repositories with no shared history.
 - **No AI attribution** in commits, issues, PR text, or anywhere in history,

@@ -2,13 +2,20 @@
 
 **Check-in and room scheduling for Eagle Scout board of review events.**
 Youth and adults sign themselves in on a tablet; the person running the event
-seats boards in a few clicks, with every Guide to Advancement rule checked
+seats boards in a few steps, with every Guide to Advancement rule checked
 before anyone sits down, and sees every room's time at a glance.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/event-dark.png">
-  <img src="docs/images/event.png" alt="The Event page mid-event, with the File, Edit, View and Help menus across the top: the Youth list with three waiting and four on a board; the rooms, with Find a person above them, showing Arthur Eldred's final board in room 101 overdue at 49 minutes (an alarm clock on a pink-red fill) and Rob Corddry's project review in 200A running long at 28 minutes (a timer clock on an orange tint); and the details pane showing Arthur Eldred's board in review, chaired by Neil Armstrong, ready to complete">
+  <img src="docs/images/event.png" alt="Screenshot of the Event page during an event: one room overdue, another running long, and a board ready to complete in the details pane.">
 </picture>
+
+In the picture, the menu bar has File, Edit, View and Help. The Youth list
+has three youth waiting and four on a board. In Rooms, under Find a person,
+Arthur Eldred's final board in room 101 is overdue at 49 minutes (an alarm
+clock on a pink-red fill), and Rob Corddry's project review in 200A is running
+long at 28 minutes (a timer clock on an orange tint). The details pane shows
+Arthur Eldred's board in review, chaired by Neil Armstrong, ready to complete.
 
 The pictures use a made-up event whose cast is famous Eagle Scouts; nothing in
 them is real. They're rendered by `tests/EagleBoards.UiSnapshots`.
@@ -25,20 +32,23 @@ them is real. They're rendered by `tests/EagleBoards.UiSnapshots`.
 - **Rules checked as you build, not after.** Board size (3 to 6 for a board of
   review), a qualified chair, nobody on two boards or gone home, and the
   council's same-unit rule, with the national floor enforced when you
-  override it. Problems are listed above the Seat button, in plain words,
+  override it. Problems are listed under the board's members, in plain words,
   and a warning mark follows the name of anyone from the youth's own unit
   (a Wood Badge pentagon marks those counting the event toward Wood Badge).
-- **Every room timed.** Convening, in review, running long, overdue. Times
-  follow the Guide to Advancement and can be changed in Settings.
-- **Where everyone is.** Type anyone's name over the rooms, youth or adult,
-  and see which room they're in, or that they're waiting, free or gone home.
-  Each youth's leader and parents, and which room
-  they're in, for fetching them and for afterwards.
+- **Every room timed.** Convening, in review, running long, overdue, each
+  shown as a word and an icon, never colour alone, in one palette that every
+  version of the scheduler shares and that's checked for colour blindness.
+  Times follow the Guide to Advancement and can be changed in Settings.
+- **Where everyone is.** Type anyone's name in **Find a person**, youth or
+  adult, and see which room they're in, or that they're waiting, free or gone
+  home. Each youth's leader and parents, and which room they're in, for
+  fetching them and for afterwards. On a board of review, **Start review**
+  first reminds you whom to fetch to introduce the youth, and where they are.
 - **Results and a report.** Every board and its result, saved to a CSV file
   for Excel.
 - **A Windows 11 app.** Light and dark mode, your accent colour, usable
-  from the keyboard, with controls labelled for screen readers. Runs on
-  Windows 10 too.
+  from the keyboard (Help lists every shortcut), with controls labelled for
+  screen readers. Runs on Windows 10 too.
 - **Your data stays on your computer.** Plain CSV files in a folder you
   choose, nothing sent anywhere. (Optional: import the event's sign-ups from
   SignUpGenius.)
@@ -48,8 +58,9 @@ them is real. They're rendered by `tests/EagleBoards.UiSnapshots`.
 Download `EagleBoards.exe` from
 [**Releases**](https://github.com/deekayen/eagleboards-windows/releases). It's
 one file with its own .NET runtime: nothing to install. The version is in
-**File › Settings**. The exe isn't code-signed yet, so the first time Windows
-may say it *protected your PC*: choose **More info**, then **Run anyway**.
+**File** > **Settings**. The exe isn't code-signed yet, so the first time
+Windows may say it *protected your PC*: choose **More info**, then **Run
+anyway**.
 
 **Requirements.** Windows 11 on the admin computer. Windows 10 (22H2) should
 work too, without Windows 11's translucent window background; please report
@@ -58,7 +69,7 @@ anything that doesn't. The check-in stations only need a web browser.
 ## Running an event
 
 1. Put `EagleBoards.exe` anywhere (for example in the data folder,
-   `C:\eagleboards`) and double-click it.
+   `C:\eagleboards`) and open it.
 2. The start-up window asks for:
    - **Data folder**: holds `config.properties`, the adult history
      (`Master_AdultHistory.csv`), and one folder per event named by its date.
@@ -75,39 +86,58 @@ anything that doesn't. The check-in stations only need a web browser.
      account can read it, and never in the data folder. Paste it once; it's
      there the next time. Empty the box and start to remove it. (The Java
      version's launcher still reads its own key from a `.env` file.)
-3. Press **Start**. The first time, Windows Firewall asks whether to allow the
-   scheduler on the network: allow **private** networks, or the stations can't
-   connect.
-4. Point each check-in station's browser at the check-in address at the
-   bottom of the window (right-click it to copy), e.g. `http://192.168.1.23:8080`.
-5. Add rooms with **Add room** and run the event from the **Event** page.
-   **Help › Eagle Boards help** (F1) walks through seating, starting and
-   completing boards. The menu bar has the rest: **View** switches to a page
-   for each table (Results, Adults, Youth, Pre-registered, Adult history
-   CSV, Rooms; Ctrl+2 to 7), each one editable where it is but the adult
-   history, and to **Approved proposals** (Ctrl+8), the project proposals
-   approved at earlier events in the data folder, for a youth who comes
-   without the signed page. **File** has Save report, the check-in QR code
-   and Settings.
-   An adult who would rather not use the tablet is signed in with **Add
-   adult** on the Adults page.
+3. Select **Start**. The first time, Windows Firewall asks whether to allow
+   the scheduler on the network: allow **private** networks, or the stations
+   can't connect.
+4. On each check-in station, open a browser and go to the check-in address,
+   shown after **Check-in address** at the foot of the main window; for
+   example, `http://192.168.1.23:8080`. To copy the address, open its
+   shortcut menu (right-click it, or move to it with F6 and use Shift+F10),
+   and then select **Copy address**.
+5. In Rooms, select **Add room** for each room.
+6. Run the event from the **Event** page. **Help** > **Eagle Boards help**
+   (F1) walks through seating, starting and completing boards, and its
+   **Keyboard shortcuts** section lists every key.
+
+The menu bar has the rest. **View** switches to a page for each table
+(Results, Adults, Youth, Pre-registered, Adult history CSV and Rooms;
+Ctrl+2 through Ctrl+7), each one editable where it is but the adult history:
+double-click a cell, or select it and use F2, and a cell with a list of
+choices opens it on one click. **View** also has **Approved proposals**
+(Ctrl+8), the project proposals approved at earlier events in the data
+folder, for a youth who comes without the signed page. **File** has
+**Save report**, the check-in **QR code** and **Settings**. An adult who
+would rather not use the tablet is signed in with **Add adult** on the Adults
+page.
 
 Closing the scheduler stops the check-in site. Everything is saved as it
 happens; there is no "save" step.
 
 ### Seat and complete a board
 
-Select a waiting youth and a board is proposed: a free room, a qualified
-chair, and members from other units. **Seat board** convenes it in that room;
-**Start review** brings the youth in.
+1. Select a waiting youth in the Youth list. The details pane proposes a
+   board: a free room, a qualified chair, and members from other units.
+2. Select **Seat board** to convene it in that room. The members read the
+   paperwork; the youth waits outside.
 
-![Selecting Bill Amend, who has waited 53 minutes, proposes room 200B with Guion Bluford as chair and Steve Fossett, both names followed by the Wood Badge pentagon; after Seat board, room 200B shows the board convening and Bill Amend moves to On a board](docs/images/seat-board.gif)
+   ![Animation of seating the board proposed for Bill Amend in room 200B.](docs/images/seat-board.gif)
 
-When the youth comes out, choose the result, add a note if you like, and
-**Complete**. The youth moves to Finished and the room is free for the next
-board.
+   In the animation, Bill Amend has waited 53 minutes. His board is room
+   200B, with Guion Bluford as chair and Steve Fossett, both names followed
+   by the Wood Badge pentagon. After **Seat board**, room 200B shows the
+   board convening and Bill Amend moves to On a board.
+3. When the members have read the paperwork, select **Start review** to bring
+   the youth in. On a board of review it first reminds you whom to fetch to
+   introduce the youth, and where they are; a project review starts at once.
+4. When the youth comes out, choose the result, add a note if you like, and
+   select **Complete**. The youth moves to Finished and the room is free for
+   the next board.
 
-![In light mode, completing Arthur Eldred's overrunning board: Approved is chosen and a note typed, both above the board's members, then Complete moves Arthur Eldred to Finished, marked Completed, and room 101 is free again](docs/images/complete-board.gif)
+   ![Animation of completing Arthur Eldred's board, in light mode.](docs/images/complete-board.gif)
+
+   In the animation, Arthur Eldred's board has run long. Approved is chosen
+   and a note typed; then **Complete** moves Arthur Eldred to Finished,
+   marked Completed, and room 101 is free again.
 
 ### Command line
 
@@ -118,11 +148,22 @@ and skips the start-up window:
 EagleBoards.exe -d 2026-09-22 -a Master_AdultHistory.csv -c config.properties -port 8080 -bind 192.168. -sugkey %SUG_KEY%
 ```
 
-`-d` data folder for the event · `-a` adult history · `-c` config · `-p`
-district pre-registration CSV · `-sugkey`/`-sugid` SignUpGenius · `-port` ·
-`-bind` IPv4 prefix to serve on (`127.0.0.1` keeps it off the network) · `-v`
-verbose log. `EagleBoards.Server` (for tests, or a machine with no desktop)
-takes the same options and runs the check-in site with no window.
+Each option takes one value, except `-v`:
+
+| Option | What it does |
+| --- | --- |
+| `-d` | The data folder for the event |
+| `-a` | The adult history |
+| `-c` | The config file |
+| `-p` | The district's pre-registration CSV |
+| `-sugkey` | The SignUpGenius API key |
+| `-sugid` | The SignUpGenius sign-up ID (optional) |
+| `-port` | The port to serve on (8080 if not given) |
+| `-bind` | The start of the IPv4 address to serve on (`127.0.0.1` keeps it off the network) |
+| `-v` | Write a verbose log |
+
+`EagleBoards.Server` (for tests, or a machine with no desktop) takes the same
+options and runs the check-in site with no window.
 
 If the `-a` file isn't there yet (a new install), a new, empty adult history is
 started at that path, and its full path is written to the log (`eagleboards.log`
@@ -133,13 +174,15 @@ fails exits with code 1.
 
 The scheduler is free, and built and kept up by a volunteer. If it helps your
 district's board events, you can chip in:
-[GitHub Sponsors](https://github.com/sponsors/deekayen) ·
-[Ko-fi](https://ko-fi.com/deekayen) ·
-[Liberapay](https://liberapay.com/deekayen) ·
-[PayPal](https://paypal.me/deekayen) ·
-[Venmo](https://venmo.com/drdnorman) ·
-[Buy Me a Coffee](https://buymeacoff.ee/deekayen).
-The same links are in the app, under **Help › Donate**.
+
+- [GitHub Sponsors](https://github.com/sponsors/deekayen)
+- [Ko-fi](https://ko-fi.com/deekayen)
+- [Liberapay](https://liberapay.com/deekayen)
+- [PayPal](https://paypal.me/deekayen)
+- [Venmo](https://venmo.com/drdnorman)
+- [Buy Me a Coffee](https://buymeacoff.ee/deekayen)
+
+The same links are in the app, under **Help** > **Donate**.
 
 ## How it's built
 
@@ -152,6 +195,10 @@ writes the **same data files** as the Java version, so an existing data
 folder keeps working and either version can pick up where the other left off
 if one crashes mid-event (`scripts/test-handoff.sh` checks both directions).
 Just never run both at once: they would fight over the port and the files.
+
+The check-in stations reach the Kestrel server inside the app over the venue
+network; the server and the app's window both go through `BoardService` to
+the CSV files:
 
 ```
   Check-in stations (any browser)             Admin computer
@@ -198,8 +245,6 @@ Deliberate changes. The server-side ones each have a unit test in
   can't leave half a file. Old files in the Windows ANSI code page (accented
   names in an adult history from the 2019 build) and files saved by Excel with
   a byte-order mark are read correctly.
-- **Status colours** come from the Windows theme instead of `config.properties`;
-  the colour keys stay in the file, untouched, for the Java version.
 - **HTTP details.** A refused board action is `409` with the reason as text
   (the Java server used `304`, which may not carry a body). Success is still
   `200 OK.`
@@ -213,6 +258,7 @@ src/EagleBoards.Server   headless console host (tests, no-desktop use)
 src/EagleBoards.App      the WPF admin app (EagleBoards.exe)
 tests/EagleBoards.Tests       xUnit: the rule and auto-select cases all three versions share, storage, lifecycle
 tests/EagleBoards.Tests/cases those cases, copied from eagleboards-shared (test-cases.lock pins the commit)
+tests/EagleBoards.UiTests     xUnit: the operator window driven off-screen over synthetic data
 tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and this README's pictures
 scripts/test-board-event.sh   the Java project's HTTP end-to-end event, run against this server
 scripts/test-handoff.sh       the Java and Windows versions taking turns on one event folder
@@ -221,12 +267,17 @@ scripts/test-handoff.sh       the Java and Windows versions taking turns on one 
 ```bat
 dotnet build -c Release
 dotnet test tests/EagleBoards.Tests -c Release
+dotnet test tests/EagleBoards.UiTests -c Release
 bash scripts/test-board-event.sh
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots-dark --dark
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --site %TEMP%\eb-site
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- --demo docs/images
 ```
+
+The window tests open the main window off-screen, never on the desktop: a
+proposed board following sign-ins, a choice cell opening on one click, the
+Start review reminder's words.
 
 `--site` renders this README's pictures and the Windows walkthrough on
 [eagleboards.page](https://eagleboards.page), from the same demo event: copy
@@ -238,17 +289,20 @@ runs the same end-to-end test against the Java server, for comparison, and
 `EB_JAR=... bash scripts/test-handoff.sh` has the two versions take turns on
 one event folder, as they would if one crashed mid-event.
 
-**Cutting a release.** On GitHub go to **Actions → release → Run workflow**.
-That releases `main` as today's date (`v2026.09.22`); type a version to
-override it, e.g. `2026.09.22.1` for a second release the same day. Or tag a
-commit and push the tag (`git tag v2026.09.22 && git push origin v2026.09.22`).
+**Cutting a release.** On GitHub, go to **Actions** > **release** > **Run
+workflow**. That releases `main` as today's date (`v2026.09.22`); type a
+version to override it, for example `2026.09.22.1` for a second release the
+same day. Or tag a commit and push the tag
+(`git tag v2026.09.22 && git push origin v2026.09.22`).
 Either way the workflow builds, runs every test, checks the exe carries no data
 files, smoke-tests the exact exe, and only then publishes it with a SHA-256
 checksum. The version is stamped in from the tag; there's no file to bump.
 Every push to `main` also leaves a build as the **EagleBoards-win-x64**
 artifact on its Actions run; use a release for an event.
 
-See [CLAUDE.md](CLAUDE.md) for the working rules (data privacy above all).
+See [CLAUDE.md](CLAUDE.md) for the working rules (data privacy above all), and
+[SECURITY.md](SECURITY.md) for what's sensitive and how to report a
+vulnerability.
 
 ## Privacy
 

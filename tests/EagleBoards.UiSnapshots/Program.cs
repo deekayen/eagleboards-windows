@@ -114,6 +114,14 @@ internal static class Program
                     ("7d-rooms.png", () => Invoke(w, "ShowPage", "Rooms")),
                     // Proposals approved at the earlier events (SPEC.md D-22).
                     ("7e-approved-proposals.png", () => Invoke(w, "ShowPage", "ApprovedProposals")),
+                    // A room card with the keyboard focus, not selected (Ctrl+arrow):
+                    // Fluent's focus ring, outside the card.
+                    ("1b-room-focus.png", () => FocusRoom(w, 0)),
+                    // Large display scaling on a small laptop: a 1366 x 768 screen
+                    // at 125%, then the window's minimum. Below its minimum the
+                    // Event page scrolls; nothing is cut off.
+                    ("1c-event-1093x566.png", () => Resize(w, 1093, 566)),
+                    ("1d-event-800x560.png", () => Resize(w, 800, 560)),
                 ];
             });
 
@@ -138,8 +146,8 @@ internal static class Program
             reset.AddMessage("**Beauregard Bram** goes back to waiting. Room 101 and its members are freed, and the board would need seating again.");
             Snap(reset, outDir, "10-confirm-dialog.png");
             var add = new AppDialog(owner, "Add a room", "Add room");
-            add.AddText("Room number");
-            add.AddChoice("Used for", [new(BoardTypes.Final, "Final board"), new(BoardTypes.Project, "Project review")], BoardTypes.Final);
+            add.AddText("_Room number");
+            add.AddChoice("_Used for", [new(BoardTypes.Final, "Final board"), new(BoardTypes.Project, "Project review")], BoardTypes.Final);
             add.AddMessage("For project reviews sharing one room, add one entry per table, like 200A and 200B.");
             Snap(add, outDir, "11-form-dialog.png");
 
@@ -147,7 +155,7 @@ internal static class Program
             // (SPEC.md D-20), showing a Wood Badge adult.
             var bram = main.QueueList.Items.Cast<ScoutRow>().First(s => s.Last == "Bram");
             var member = new AppDialog(owner, "Add a member?", "Add");
-            var choice = (System.Windows.Controls.ComboBox)Invoke(main, "AddAdultChoice", member, "Add to the board in room 101", Invoke(main, "JoinChoices", bram)!)!;
+            var choice = (System.Windows.Controls.ComboBox)Invoke(main, "AddAdultChoice", member, "_Add to the board in room 101", Invoke(main, "JoinChoices", bram)!)!;
             choice.SelectedItem = choice.Items.Cast<PickRow>().First(p => p.WoodBadge);
             Snap(member, outDir, "13-choice-dialog.png");
 
@@ -309,6 +317,36 @@ internal static class Program
         }
 
         win.Hide();
+    }
+
+    /// <summary>
+    /// The Event page with the keyboard focus on a room card and its focus
+    /// visual shown, as after Ctrl+arrow keys. A focus set in code shows none
+    /// unless the keyboard was the last input, which it never is here, so the
+    /// harness turns on what Windows' "always show focus" setting would.
+    /// </summary>
+    private static void FocusRoom(MainWindow win, int index)
+    {
+        Invoke(win, "ShowPage", "Event");
+        win.PersonFind.Text = "";
+        Pump();
+        if (win.RoomList.ItemContainerGenerator.ContainerFromIndex(index) is System.Windows.Controls.ListBoxItem card)
+        {
+            AlwaysShowFocus(true);
+            card.Focus();
+        }
+    }
+
+    private static void AlwaysShowFocus(bool on) =>
+        typeof(System.Windows.Input.KeyboardNavigation).GetProperty("AlwaysShowFocusVisual", BindingFlags.Static | BindingFlags.NonPublic)?.SetValue(null, on);
+
+    /// <summary>The Event page in a window this size.</summary>
+    private static void Resize(MainWindow win, double width, double height)
+    {
+        AlwaysShowFocus(false);
+        Invoke(win, "ShowPage", "Event");
+        win.Width = width;
+        win.Height = height;
     }
 
     /// <summary>Open a cell's editor on a table page, as a double-click would.</summary>

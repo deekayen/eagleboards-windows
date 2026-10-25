@@ -59,7 +59,7 @@ public class BoardCheckTests
         var issues = Check(Final, [Chair, A("m1", "Troop1001"), A("m2", "Troop4")]);
         Assert.Empty(Titles(issues, IssueLevel.Block));
         Assert.Equal(["Same unit"], Titles(issues, IssueLevel.Warn));
-        Assert.Contains("m1 m1", issues[0].Message);
+        Assert.StartsWith("m1 m1 is in the youth's own unit. ", issues[0].Message);
     }
 
     [Fact]

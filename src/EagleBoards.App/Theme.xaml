@@ -17,9 +17,13 @@
     <Setter Property="Padding" Value="12" />
   </Style>
 
-  <!-- Section heading inside a card. -->
+  <!-- A card's title, a heading screen readers can jump to (H in NVDA and
+       Narrator), at the top level: the Event page has no title of its own.
+       Its "Youth" and "Rooms" are MainWindow's PaneTitle Labels, set alike,
+       so their access keys reach the lists. -->
   <Style x:Key="CardTitle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
     <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="AutomationProperties.HeadingLevel" Value="Level1" />
   </Style>
 
   <!-- Explanatory text under a field or setting. -->
@@ -61,9 +65,30 @@
     </Style.Triggers>
   </Style>
 
+  <!-- A label with an access key ("_Add room") is an AccessText, which
+       Fluent's buttons need for the key. As the button's content it takes its
+       colour from the button, not the template's disabled state, so it gets
+       the same trigger as a TextBlock label. -->
+  <Style x:Key="ButtonAccessText" TargetType="AccessText">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=ButtonBase}, FallbackValue=True}" Value="False">
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="AccentButtonAccessText" TargetType="AccessText">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=ButtonBase}, FallbackValue=True}" Value="False">
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorDisabledBrush}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
   <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
     <Style.Resources>
       <Style TargetType="TextBlock" BasedOn="{StaticResource ButtonText}" />
+      <Style TargetType="AccessText" BasedOn="{StaticResource ButtonAccessText}" />
     </Style.Resources>
   </Style>
 
@@ -76,6 +101,7 @@
   <Style x:Key="PrimaryCommandButton" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
     <Style.Resources>
       <Style TargetType="TextBlock" BasedOn="{StaticResource AccentButtonText}" />
+      <Style TargetType="AccessText" BasedOn="{StaticResource AccentButtonAccessText}" />
     </Style.Resources>
     <Setter Property="Margin" Value="0,0,8,0" />
     <Setter Property="Padding" Value="12,6" />
@@ -136,6 +162,8 @@
        build on the named ones; {x:Type DataGridCell} would be the classic look. -->
   <!-- Fluent selects grid rows with the accent fill (a bright block in dark
        mode); use the subtle fill Windows lists use, readable in both themes. -->
+  <!-- StatusPalette swaps both for the system's highlight colours in a
+       contrast theme, where these Fluent colours are fixed. -->
   <SolidColorBrush x:Key="DataGridRowSelectedBackgroundThemeBrush" Color="{DynamicResource SubtleFillColorSecondary}" />
   <SolidColorBrush x:Key="DataGridRowSelectedForegroundThemeBrush" Color="{DynamicResource TextFillColorPrimary}" />
 
@@ -143,9 +171,32 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <!-- The current cell's outline. Fluent's cell template uses this key but
+       doesn't define it, so it fell back to the classic theme's black, which
+       can't be seen in dark mode: use Fluent's focus colour (black in light,
+       white in dark). -->
+  <SolidColorBrush x:Key="{x:Static DataGrid.FocusBorderBrushKey}" Color="{DynamicResource FocusStrokeColorOuter}" />
+
+  <!-- The selected row in an accent outline, as the selected room card is:
+       the subtle fill alone is about 1.1:1, so the row a page's command acts
+       on could only be told by its tint. Every row has the border, so nothing
+       moves on selection. -->
+  <Style x:Key="GridRow" TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
+    <Setter Property="BorderThickness" Value="0,2" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Style.Triggers>
+      <Trigger Property="IsSelected" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- MinRowHeight, not RowHeight: a long list of members or notes wraps
+       and the row grows, rather than being cut off mid-name. -->
   <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
-    <Setter Property="RowHeight" Value="36" />
+    <Setter Property="MinRowHeight" Value="36" />
     <Setter Property="CellStyle" Value="{StaticResource GridCell}" />
+    <Setter Property="RowStyle" Value="{StaticResource GridRow}" />
     <Setter Property="AutoGenerateColumns" Value="False" />
     <Setter Property="HeadersVisibility" Value="Column" />
     <Setter Property="GridLinesVisibility" Value="None" />

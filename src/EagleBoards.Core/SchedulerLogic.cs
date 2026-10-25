@@ -389,6 +389,10 @@ public static class SchedulerLogic
     /// scout's Leader field, and who shares the unit or whose first name also
     /// appears) and parents (same unit and same last name). Once a leader is
     /// found, parents are only included when <paramref name="includeParents"/>.
+    /// An empty name matches nothing: every Leader field "contains" "", so
+    /// an adult signed in with no last name was everyone's leader, and named
+    /// in Start review's reminder. The Java (<c>introductionFor</c>) and Mac
+    /// (<c>locate</c>) versions guard it the same way.
     /// </summary>
     public static List<LocatedAdult> Locate(ScoutInfo scout, IEnumerable<AdultInfo> adults, bool includeParents)
     {
@@ -402,20 +406,20 @@ public static class SchedulerLogic
             var aLast = a.Last.ToLowerInvariant();
             var aFirst = a.First.ToLowerInvariant();
             var found = false;
-            if (leaderLower.Contains(aLast, StringComparison.Ordinal))
+            if (aLast.Length > 0 && leaderLower.Contains(aLast, StringComparison.Ordinal))
             {
                 if (scout.UnitName == a.UnitName)
                 {
                     leaders.Add(a);
                     found = true;
                 }
-                else if (leaderLower.Contains(aFirst, StringComparison.Ordinal))
+                else if (aFirst.Length > 0 && leaderLower.Contains(aFirst, StringComparison.Ordinal))
                 {
                     leaders.Add(a);
                 }
             }
 
-            if (!found && a.UnitName == scout.UnitName && lastLower == aLast)
+            if (!found && aLast.Length > 0 && a.UnitName == scout.UnitName && lastLower == aLast)
             {
                 parents.Add(a);
             }

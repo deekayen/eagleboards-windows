@@ -68,8 +68,16 @@ internal static class StatusPalette
             }
 
             app.Resources["StatusBorderBrush"] = SystemColors.WindowTextBrush;
+
+            // Theme.xaml's selected-row brushes are built from Fluent colours,
+            // which a contrast theme doesn't change: use the system's.
+            app.Resources["DataGridRowSelectedBackgroundThemeBrush"] = SystemColors.HighlightBrush;
+            app.Resources["DataGridRowSelectedForegroundThemeBrush"] = SystemColors.HighlightTextBrush;
             return;
         }
+
+        app.Resources.Remove("DataGridRowSelectedBackgroundThemeBrush");
+        app.Resources.Remove("DataGridRowSelectedForegroundThemeBrush");
 
         var dark = IsDark();
         foreach (var (key, light, darkValue) in Colors)

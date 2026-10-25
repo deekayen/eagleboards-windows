@@ -6,11 +6,33 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Reads the code and uploads artifacts; nothing here writes to the repository.
+permissions:
+  contents: read
+
 jobs:
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+
+      - name: No participant data in the tree
+        shell: bash
+        # .gitignore and scripts/hooks/pre-commit keep these out of a commit
+        # made here; this catches one that got in some other way (a clone
+        # without the hook, a forced add, an upload on GitHub). The same
+        # patterns as the hook: spreadsheets and CSVs, dated event folders,
+        # the adult history and board results, .env and logins, the legacy
+        # launchers, the inherited jar (it embeds an API key), and skill
+        # data. config.properties is the tracked template, timings only.
+        run: |
+          if git ls-files \
+            | grep -Ei '\.(csv|xls|xlsx|xlsm|ods)$|(^|/)20[0-9]{2}-[0-9]{2}-[0-9]{2}/|Board_Results|Master_AdultHistory|adult_history|(^|/)\.env$|LOGIN_INFO|(^|/)RunScheduler\.(sh|bat)$|EagleBoardScheduler_20190618\.jar$|(^|/)original/|(^|/)\.claude/skills/.*\.toml$' \
+            | grep -Eiv '\.example\.toml$'; then
+            echo "::error::data files or secrets are tracked"
+            exit 1
+          fi
+          echo "no participant data or secrets tracked"
 
       - uses: actions/setup-dotnet@v6
         with:
