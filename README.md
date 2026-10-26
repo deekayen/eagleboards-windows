@@ -10,7 +10,7 @@ before anyone sits down, and sees every room's time at a glance.
   <img src="docs/images/event.png" alt="Screenshot of the Event page during an event: one room overdue, another running long, and a board ready to complete in the details pane.">
 </picture>
 
-In the picture, the menu bar has File, Edit, View and Help. The Youth list
+In the picture, the menu bar has File, Edit, View, Board and Help. The Youth list
 has three youth waiting and four on a board. In Rooms, under Find a person,
 Arthur Eldred's final board in room 101 is overdue at 49 minutes (an alarm
 clock on a pink-red fill), and Rob Corddry's project review in 200A is running
