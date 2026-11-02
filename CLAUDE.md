@@ -304,6 +304,33 @@ runs a native WPF app instead of the Java app's browser pages.
   choice, locate, statuses, timers, sort orders, find a person), and
   `BoardCheckTests` the seating review.
 
+## Writing code others can read
+
+The rules a newcomer should be able to rely on. They apply to code you write
+or change; don't sweep the rest of the code to match.
+
+- **Names say what a thing is or does.** No abbreviations. A bare `true` or
+  `false` in a call says nothing: give the argument its name at the call
+  site (`mayKeepCurrentRoom: true`) or put the value in a named local.
+- **A comment says why, not what.** Every special case in the flow of a
+  method (an early return, an exception, a fallback) carries a comment
+  saying why it is there, citing the rule or event it came from (a SPEC.md
+  item, `the 2026-10-27 event`). Don't restate what the next line does.
+  Types and members have a `<summary>` in the style of their neighbours.
+- **A file is named for what it holds.** New code is one type per file, named
+  for that type (`BoardCommands.cs`). A file of related small types is named
+  for the group, never `Ui`, `Helpers` or `Utils`. When you next touch `Ui.cs`
+  or `Rows.cs`, split or rename them for what they hold.
+- **A big file is shrunk when you next change that area, not all at once.**
+  `MainWindow.xaml.cs` is split by the section comments it already has; the
+  window tests reach members of it by name (`OffScreen.Invoke`/`Field`), so
+  keep it one type (partial files) and run `EagleBoards.UiTests` after each
+  move.
+- **Decisions have one home.** A rule more than one version shares is a
+  SPEC.md item, cited from the code. A decision only Windows makes about its
+  structure or tooling is a short record in
+  [`docs/decisions`](docs/decisions/README.md).
+
 ## Workflow
 
 - Branch `main`, remote `origin` = `deekayen/eagleboards-windows` (public:
