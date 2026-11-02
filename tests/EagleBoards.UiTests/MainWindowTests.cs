@@ -153,6 +153,58 @@ public class MainWindowTests
     });
 
     [Fact]
+    public void AProposalIsNeverProposedARoomSetUpForFinalBoards() => OffScreen.Run(() =>
+    {
+        // Reported after the 2026-10-27 event: a project review was proposed
+        // a final board's room. Only the operator switching a room's type
+        // (or choosing a room) puts it there.
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Member, BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member, BoardRoles.Member);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Project);
+        var w = e.Window;
+
+        Open(w, "Aldridge");
+        Assert.Equal(["Abernathy", "Blackwood"], Picks(w));
+        Assert.Null(w.BuilderRoom.SelectedValue);
+        Assert.False(w.SeatButton.IsEnabled);
+
+        // The operator switches the room: it is proposed at once.
+        var room = e.Service.Snapshot(DataTable.Rooms).Single()["ID"];
+        Assert.True(e.Service.SetRoomType(room, BoardTypes.Project).Ok);
+        OffScreen.Pump();
+
+        Assert.Equal(room, w.BuilderRoom.SelectedValue);
+        Assert.True(w.SeatButton.IsEnabled);
+
+        // And switched back, it is taken away again.
+        Assert.True(e.Service.SetRoomType(room, BoardTypes.Final).Ok);
+        OffScreen.Pump();
+
+        Assert.Null(w.BuilderRoom.SelectedValue);
+        Assert.False(w.SeatButton.IsEnabled);
+    });
+
+    [Fact]
+    public void AProposalTakesTheProjectRoomWhenThereIsOneBesideAFinalRoom() => OffScreen.Run(() =>
+    {
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Room("102", BoardTypes.Project);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Member, BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member, BoardRoles.Member);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Project);
+        var w = e.Window;
+
+        Open(w, "Aldridge");
+
+        var projectRoom = e.Service.Snapshot(DataTable.Rooms).Single(r => r["Room"] == "102")["ID"];
+        Assert.Equal(projectRoom, w.BuilderRoom.SelectedValue);
+        Assert.True(w.SeatButton.IsEnabled);
+    });
+
+    [Fact]
     public void OneClickOnARoleOpensItsListAndAPickIsSaved() => OffScreen.Run(() =>
     {
         // eagleboards-windows#17: Member to Chair took a click to select the

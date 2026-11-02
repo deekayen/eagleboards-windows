@@ -92,6 +92,9 @@ public partial class MainWindow : Window
 
     private string? _builderRoomId;
 
+    /// <summary>The operator chose <see cref="_builderRoomId"/> themselves, so it stays even if it isn't the board's type.</summary>
+    private bool _roomChosenByOperator;
+
     /// <summary>The board last proposed, to tell it from the operator's own (SPEC.md D-12).</summary>
     private ProposedBoard? _proposal;
 
@@ -903,6 +906,7 @@ public partial class MainWindow : Window
         {
             // Building a board: a free room clicked is the room for it.
             _builderRoomId = card.Id;
+            _roomChosenByOperator = true;
             ShowDetails();
         }
     }
@@ -967,11 +971,7 @@ public partial class MainWindow : Window
         if (_adults.Any(IsPicked) && !ProposalUntouched())
         {
             // Keep their picks; just make sure there's a sensible room.
-            if (free.All(r => r.Id != _builderRoomId))
-            {
-                _builderRoomId = (free.FirstOrDefault(r => r.BoardType == scout.BoardType) ?? free.FirstOrDefault())?.Id;
-            }
-
+            KeepOrChooseRoom(scout, free, free.FirstOrDefault(r => r.BoardType == scout.BoardType)?.Id, keepable: true);
             return;
         }
 
@@ -985,13 +985,28 @@ public partial class MainWindow : Window
 
         _chairId = pick.ChairIds.FirstOrDefault();
 
-        // The same youth keeps the room chosen for them while it's free.
-        if (_proposal?.ScoutId != scout.Id || free.All(r => r.Id != _builderRoomId))
-        {
-            _builderRoomId = pick.RoomId ?? free.FirstOrDefault()?.Id;
-        }
-
+        KeepOrChooseRoom(scout, free, pick.RoomId, keepable: _proposal?.ScoutId == scout.Id);
         _proposal = new ProposedBoard(scout.Id, ids, _chairId);
+    }
+
+    /// <summary>
+    /// The room for the board being built. The room already chosen stays while
+    /// it's free, and while it is this youth's board type or the operator chose
+    /// it themselves; otherwise it is <paramref name="proposed"/>. Nothing is
+    /// proposed in a room set up for the other board type: a project review
+    /// never lands in a final board's room on its own. With no room of the
+    /// right type free, the operator switches one's type or chooses another.
+    /// </summary>
+    private void KeepOrChooseRoom(ScoutRow scout, List<RoomCard> free, string? proposed, bool keepable)
+    {
+        var keep = keepable
+            && free.FirstOrDefault(r => r.Id == _builderRoomId) is { } kept
+            && (_roomChosenByOperator || kept.BoardType == scout.BoardType);
+        if (!keep)
+        {
+            _builderRoomId = proposed;
+            _roomChosenByOperator = false;
+        }
     }
 
     /// <summary>The picks are still the board last proposed: the operator hasn't changed it.</summary>
@@ -1442,6 +1457,7 @@ public partial class MainWindow : Window
         if (!_quiet)
         {
             _builderRoomId = BuilderRoom.SelectedValue as string;
+            _roomChosenByOperator = true;
             ShowDetails();
         }
     }
@@ -1555,6 +1571,7 @@ public partial class MainWindow : Window
 
         _chairId = null;
         _builderRoomId = null;
+        _roomChosenByOperator = false;
         _proposal = null;
         RefreshAll();
         Open(scout);
