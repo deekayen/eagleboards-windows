@@ -191,8 +191,13 @@ internal sealed class TestEvent : IDisposable
     {
         Service.RegisterScout(new Dictionary<string, string>
         {
-            ["Last"] = last, ["First"] = first, ["UnitType"] = "Troop", ["Unit"] = unit,
-            ["BoardType"] = boardType, ["Email"] = $"{last}@example.org", ["Leader"] = leader,
+            ["Last"] = last,
+            ["First"] = first,
+            ["UnitType"] = "Troop",
+            ["Unit"] = unit,
+            ["BoardType"] = boardType,
+            ["Email"] = $"{last}@example.org",
+            ["Leader"] = leader,
         });
         return $"SCOUT:{last}:{first}:{unit}";
     }
@@ -217,8 +222,14 @@ internal sealed class TestEvent : IDisposable
 
     private static Dictionary<string, string> AdultForm(string last, string first, string unit, string finalRole, string projectRole) => new()
     {
-        ["Last"] = last, ["First"] = first, ["UnitType"] = "Troop", ["Unit"] = unit, ["Email"] = $"{last}@example.org",
-        ["Phone"] = "555-0100", ["FinalBoard"] = finalRole, ["ProjectReview"] = projectRole,
+        ["Last"] = last,
+        ["First"] = first,
+        ["UnitType"] = "Troop",
+        ["Unit"] = unit,
+        ["Email"] = $"{last}@example.org",
+        ["Phone"] = "555-0100",
+        ["FinalBoard"] = finalRole,
+        ["ProjectReview"] = projectRole,
     };
 
     private static MainWindow Show(MainWindow window)

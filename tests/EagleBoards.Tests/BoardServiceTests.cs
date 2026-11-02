@@ -1094,7 +1094,8 @@ public class BoardServiceTests
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
         var again = new Dictionary<string, string>(Seed.Adult("Baker", "Bob", "2002", "Member", "Member"))
         {
-            ["Phone"] = "555-000-1234", ["Supporting"] = scout,
+            ["Phone"] = "555-000-1234",
+            ["Supporting"] = scout,
         };
         s.RegisterAdult(again);
 

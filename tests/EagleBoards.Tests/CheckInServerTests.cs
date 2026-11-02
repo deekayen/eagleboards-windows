@@ -61,7 +61,10 @@ public class CheckInServerTests
         var svc = box.Open();
         svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
         {
-            ["Last"] = "Aldridge", ["First"] = "Alex", ["Email"] = "alex@example.org", ["DOB"] = "2010-04-01",
+            ["Last"] = "Aldridge",
+            ["First"] = "Alex",
+            ["Email"] = "alex@example.org",
+            ["DOB"] = "2010-04-01",
             ["Phone"] = "555-123-4567",
         });
         var server = new CheckInServer(svc, new CheckInServerOptions());
@@ -220,7 +223,10 @@ public class CheckInServerTests
         var svc = box.Open();
         svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
         {
-            ["Last"] = "Aldridge", ["First"] = "Alex", ["Email"] = "alex@example.org", ["DOB"] = "2010-04-01",
+            ["Last"] = "Aldridge",
+            ["First"] = "Alex",
+            ["Email"] = "alex@example.org",
+            ["DOB"] = "2010-04-01",
             ["Phone"] = "555-123-4567",
         });
         var server = new CheckInServer(svc, new CheckInServerOptions());
@@ -257,7 +263,9 @@ public class CheckInServerTests
         svc.SaveRow(DataTable.Scouts, "updated", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string> { ["Phone"] = "555-123-4567" });
         svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Bram:Beau:1002", new Dictionary<string, string>
         {
-            ["Last"] = "Bram", ["First"] = "Beau", ["Phone"] = "555-222-3333",
+            ["Last"] = "Bram",
+            ["First"] = "Beau",
+            ["Phone"] = "555-222-3333",
         });
         foreach (var query in new[]
         {
@@ -295,11 +303,15 @@ public class CheckInServerTests
         svc.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
         svc.SaveRow(DataTable.Scouts, "updated", "SCOUT:Aldridge:Alex:1001", new Dictionary<string, string>
         {
-            ["Phone"] = "555-123-4567", ["DOB"] = "2010-04-01",
+            ["Phone"] = "555-123-4567",
+            ["DOB"] = "2010-04-01",
         });
         svc.SaveRow(DataTable.ScoutsScheduled, "inserted", "SCOUT:Bram:Beau:1002", new Dictionary<string, string>
         {
-            ["Last"] = "Bram", ["First"] = "Beau", ["Phone"] = "555-222-3333", ["DOB"] = "2011-05-02",
+            ["Last"] = "Bram",
+            ["First"] = "Beau",
+            ["Phone"] = "555-222-3333",
+            ["DOB"] = "2011-05-02",
         });
         svc.RegisterAdult(new Dictionary<string, string>(Seed.Adult("Able", "Ann", "2001", "Member", "Chair")) { ["Phone"] = "555-765-4321" });
         var server = new CheckInServer(svc, new CheckInServerOptions());
@@ -349,9 +361,18 @@ public class CheckInServerTests
         var earlier = new Core.Storage.DataRecordFile<ScoutRecord>(Path.Combine(box.Root, "2020-01-14", "scouts.csv"), ScoutRecord.Factory);
         earlier.Add(new ScoutRecord(new Dictionary<string, string>
         {
-            ["ID"] = "SCOUT:Ashby:Ava:3101", ["Last"] = "Ashby", ["First"] = "Ava", ["UnitType"] = "Troop", ["Unit"] = "3101",
-            ["Email"] = "ava@example.org", ["Phone"] = "5551234567", ["DOB"] = "2010-04-01",
-            ["BoardType"] = BoardTypes.Project, ["Result"] = BoardResults.Approved, ["BoardChair"] = "Chair Person", ["Notes"] = "Trail steps",
+            ["ID"] = "SCOUT:Ashby:Ava:3101",
+            ["Last"] = "Ashby",
+            ["First"] = "Ava",
+            ["UnitType"] = "Troop",
+            ["Unit"] = "3101",
+            ["Email"] = "ava@example.org",
+            ["Phone"] = "5551234567",
+            ["DOB"] = "2010-04-01",
+            ["BoardType"] = BoardTypes.Project,
+            ["Result"] = BoardResults.Approved,
+            ["BoardChair"] = "Chair Person",
+            ["Notes"] = "Trail steps",
         }), false);
         earlier.Store();
 

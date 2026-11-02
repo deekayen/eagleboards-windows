@@ -11,10 +11,15 @@ public sealed class CommandLine
 {
     private static readonly Dictionary<string, string> OptionNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["d"] = "dir", ["dir"] = "dir",
-        ["a"] = "adults", ["adults"] = "adults", ["adult"] = "adults",
-        ["p"] = "prereg", ["prereg"] = "prereg",
-        ["c"] = "config", ["config"] = "config",
+        ["d"] = "dir",
+        ["dir"] = "dir",
+        ["a"] = "adults",
+        ["adults"] = "adults",
+        ["adult"] = "adults",
+        ["p"] = "prereg",
+        ["prereg"] = "prereg",
+        ["c"] = "config",
+        ["config"] = "config",
         ["port"] = "port",
         ["sugkey"] = "sugkey",
         ["sugid"] = "sugid",
@@ -23,10 +28,14 @@ public sealed class CommandLine
 
     private static readonly Dictionary<string, string> FlagNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["v"] = "verbose", ["verbose"] = "verbose",
-        ["?"] = "help", ["h"] = "help", ["help"] = "help",
+        ["v"] = "verbose",
+        ["verbose"] = "verbose",
+        ["?"] = "help",
+        ["h"] = "help",
+        ["help"] = "help",
         ["debug"] = "debug",
-        ["w"] = "windows", ["windows"] = "windows",
+        ["w"] = "windows",
+        ["windows"] = "windows",
     };
 
     private readonly Dictionary<string, string> _options = new(StringComparer.Ordinal);

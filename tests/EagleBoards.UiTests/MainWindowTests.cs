@@ -460,8 +460,12 @@ public class MainWindowTests
         // SPEC.md D-23. The words only: the reminder itself is a dialog.
         var youth = new ScoutRow(new Dictionary<string, string>
         {
-            ["ID"] = "S1", ["Last"] = "Aldridge", ["First"] = "Alexander", ["BoardType"] = BoardTypes.Final,
-            ["Room"] = "101", ["Status"] = BoardStatus.Seated,
+            ["ID"] = "S1",
+            ["Last"] = "Aldridge",
+            ["First"] = "Alexander",
+            ["BoardType"] = BoardTypes.Final,
+            ["Room"] = "101",
+            ["Status"] = BoardStatus.Seated,
         });
         AdultInfo Adult(string first, string last, string room) => new("A" + last, last, first, "Troop1001", room, BoardRoles.Member, BoardRoles.Member);
 

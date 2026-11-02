@@ -134,22 +134,22 @@ public class SharedCaseTests
                 break;
 
             case "suggest":
-            {
-                var youth = Youth(body["youth"]);
-                var pick = SchedulerLogic.AutoSelect(youth, Items(body["adults"]).Select(Adult).ToList(), [FreeRoom(youth)],
-                    Items(body["waiting"]).Select(Youth).ToList());
-                Compare(Proposal(youth, pick), expect);
-                break;
-            }
+                {
+                    var youth = Youth(body["youth"]);
+                    var pick = SchedulerLogic.AutoSelect(youth, Items(body["adults"]).Select(Adult).ToList(), [FreeRoom(youth)],
+                        Items(body["waiting"]).Select(Youth).ToList());
+                    Compare(Proposal(youth, pick), expect);
+                    break;
+                }
 
             case "fill":
-            {
-                var youth = Youth(body["youth"]);
-                var fill = SchedulerLogic.FillBoard(youth, Items(body["adults"]).Select(Adult).ToList(),
-                    Items(body["picked"]).Select(Text).ToList(), Items(body["waiting"]).Select(Youth).ToList());
-                Compare(Proposal(youth, fill), expect);
-                break;
-            }
+                {
+                    var youth = Youth(body["youth"]);
+                    var fill = SchedulerLogic.FillBoard(youth, Items(body["adults"]).Select(Adult).ToList(),
+                        Items(body["picked"]).Select(Text).ToList(), Items(body["waiting"]).Select(Youth).ToList());
+                    Compare(Proposal(youth, fill), expect);
+                    break;
+                }
 
             case "free-since":
                 var since = SchedulerLogic.FreeSinceTimes(

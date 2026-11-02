@@ -112,9 +112,13 @@ internal static class Demo
 
     private static Dictionary<string, string> Scout(int i, string boardType, string? unit = null, string leader = "") => new()
     {
-        ["Last"] = ScoutLast[i], ["First"] = ScoutFirst[i], ["UnitType"] = "Troop",
+        ["Last"] = ScoutLast[i],
+        ["First"] = ScoutFirst[i],
+        ["UnitType"] = "Troop",
         ["Unit"] = unit ?? (1001 + i).ToString(CultureInfo.InvariantCulture),
-        ["BoardType"] = boardType, ["Email"] = $"s{i}@example.org", ["Leader"] = leader,
+        ["BoardType"] = boardType,
+        ["Email"] = $"s{i}@example.org",
+        ["Leader"] = leader,
     };
 
     /// <summary>An hour into the event: two boards under way, one done, one postponed, a few waiting.</summary>
@@ -130,8 +134,13 @@ internal static class Demo
             var r = AdultRoles[i].Split('/');
             s.RegisterAdult(new Dictionary<string, string>
             {
-                ["Last"] = AdultLast[i], ["First"] = AdultFirst[i], ["UnitType"] = "Troop", ["Unit"] = (2001 + i).ToString(CultureInfo.InvariantCulture),
-                ["Email"] = $"a{i}@example.org", ["ProjectReview"] = r[0], ["FinalBoard"] = r[1],
+                ["Last"] = AdultLast[i],
+                ["First"] = AdultFirst[i],
+                ["UnitType"] = "Troop",
+                ["Unit"] = (2001 + i).ToString(CultureInfo.InvariantCulture),
+                ["Email"] = $"a{i}@example.org",
+                ["ProjectReview"] = r[0],
+                ["FinalBoard"] = r[1],
             });
         }
 

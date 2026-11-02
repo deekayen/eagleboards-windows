@@ -221,9 +221,17 @@ internal static class Program
             {
                 file.Add(new ScoutRecord(new Dictionary<string, string>
                 {
-                    ["ID"] = $"SCOUT:{e.Last}:{e.First}:{e.Unit}", ["Last"] = e.Last, ["First"] = e.First, ["UnitType"] = "Troop", ["Unit"] = e.Unit,
-                    ["BoardType"] = e.Type, ["Status"] = BoardStatus.Completed, ["Result"] = e.Result,
-                    ["BoardChair"] = e.Chair, ["BoardMembers"] = e.Members, ["Notes"] = e.Notes,
+                    ["ID"] = $"SCOUT:{e.Last}:{e.First}:{e.Unit}",
+                    ["Last"] = e.Last,
+                    ["First"] = e.First,
+                    ["UnitType"] = "Troop",
+                    ["Unit"] = e.Unit,
+                    ["BoardType"] = e.Type,
+                    ["Status"] = BoardStatus.Completed,
+                    ["Result"] = e.Result,
+                    ["BoardChair"] = e.Chair,
+                    ["BoardMembers"] = e.Members,
+                    ["Notes"] = e.Notes,
                 }), false);
             }
 
@@ -252,8 +260,13 @@ internal static class Program
             var r = roles[i].Split('/');
             s.RegisterAdult(new Dictionary<string, string>
             {
-                ["Last"] = last[i], ["First"] = first[i], ["UnitType"] = "Troop", ["Unit"] = unit.GetValueOrDefault(i, 2001 + i).ToString(),
-                ["Email"] = $"a{i}@example.org", ["ProjectReview"] = r[0], ["FinalBoard"] = r[1],
+                ["Last"] = last[i],
+                ["First"] = first[i],
+                ["UnitType"] = "Troop",
+                ["Unit"] = unit.GetValueOrDefault(i, 2001 + i).ToString(),
+                ["Email"] = $"a{i}@example.org",
+                ["ProjectReview"] = r[0],
+                ["FinalBoard"] = r[1],
                 ["WoodBadge"] = woodBadge.Contains(i) ? "Y" : "",
             });
         }
@@ -264,8 +277,13 @@ internal static class Program
         {
             s.RegisterScout(new Dictionary<string, string>
             {
-                ["Last"] = slast[i], ["First"] = sfirst[i], ["UnitType"] = "Troop", ["Unit"] = (1001 + i).ToString(),
-                ["BoardType"] = i >= 5 ? "Project" : "Final", ["Email"] = $"s{i}@example.org", ["Leader"] = i == 0 ? "Anneliese Abernathy" : "",
+                ["Last"] = slast[i],
+                ["First"] = sfirst[i],
+                ["UnitType"] = "Troop",
+                ["Unit"] = (1001 + i).ToString(),
+                ["BoardType"] = i >= 5 ? "Project" : "Final",
+                ["Email"] = $"s{i}@example.org",
+                ["Leader"] = i == 0 ? "Anneliese Abernathy" : "",
             });
         }
 

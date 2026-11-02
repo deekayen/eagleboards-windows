@@ -203,9 +203,15 @@ internal static class Site
             var a = Adults[i];
             s.RegisterAdult(new Dictionary<string, string>
             {
-                ["Last"] = a.Last, ["First"] = a.First, ["UnitType"] = "Troop", ["Unit"] = (2001 + i).ToString(CultureInfo.InvariantCulture),
-                ["Email"] = $"{a.First}.{a.Last}@example.org".ToLowerInvariant(), ["Phone"] = "555-0100",
-                ["ProjectReview"] = a.Project, ["FinalBoard"] = a.Final, ["WoodBadge"] = a.WoodBadge ? "Y" : "",
+                ["Last"] = a.Last,
+                ["First"] = a.First,
+                ["UnitType"] = "Troop",
+                ["Unit"] = (2001 + i).ToString(CultureInfo.InvariantCulture),
+                ["Email"] = $"{a.First}.{a.Last}@example.org".ToLowerInvariant(),
+                ["Phone"] = "555-0100",
+                ["ProjectReview"] = a.Project,
+                ["FinalBoard"] = a.Final,
+                ["WoodBadge"] = a.WoodBadge ? "Y" : "",
             });
         }
 
@@ -215,8 +221,12 @@ internal static class Site
             var y = Youth.Single(x => x.Last == last);
             s.RegisterScout(new Dictionary<string, string>
             {
-                ["Last"] = y.Last, ["First"] = y.First, ["UnitType"] = "Troop", ["Unit"] = y.Unit.ToString(CultureInfo.InvariantCulture),
-                ["BoardType"] = y.Type, ["Email"] = $"{y.First}.{y.Last}@example.org".ToLowerInvariant(),
+                ["Last"] = y.Last,
+                ["First"] = y.First,
+                ["UnitType"] = "Troop",
+                ["Unit"] = y.Unit.ToString(CultureInfo.InvariantCulture),
+                ["BoardType"] = y.Type,
+                ["Email"] = $"{y.First}.{y.Last}@example.org".ToLowerInvariant(),
             });
         }
 
