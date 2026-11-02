@@ -88,6 +88,14 @@ jobs:
       - name: Build
         run: dotnet build EagleBoards.slnx -c Release
 
+      # The rules in .editorconfig: whitespace, and the naming rules a newcomer
+      # relies on (CLAUDE.md, "Writing code others can read"). Only these two
+      # are enforced; the info-level style suggestions are not.
+      - name: Code style (.editorconfig)
+        run: |
+          dotnet format whitespace EagleBoards.slnx --verify-no-changes
+          dotnet format style EagleBoards.slnx --verify-no-changes --diagnostics IDE1006 --severity warn
+
       - name: Unit tests
         run: dotnet test tests/EagleBoards.Tests -c Release --no-build
 
