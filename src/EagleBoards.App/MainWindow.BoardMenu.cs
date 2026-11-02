@@ -91,6 +91,9 @@ public partial class MainWindow
         {
             // Building a board: a free room clicked is the room for it.
             _builderRoomId = card.Id;
+
+            // Clicking a free room is the operator's own choice, so it stays
+            // even when it is set up for the other board type (SPEC.md D-24).
             _roomChosenByOperator = true;
             ShowDetails();
         }

@@ -92,6 +92,8 @@ jobs:
       # relies on (CLAUDE.md, "Writing code others can read"). Only these two
       # are enforced; the info-level style suggestions are not.
       - name: Code style (.editorconfig)
+        # bash, not the Windows default, so a failing first command fails the step.
+        shell: bash
         run: |
           dotnet format whitespace EagleBoards.slnx --verify-no-changes
           dotnet format style EagleBoards.slnx --verify-no-changes --diagnostics IDE1006 --severity warn

@@ -25,8 +25,10 @@ csharp_style_namespace_declarations = file_scoped:suggestion
 csharp_new_line_before_open_brace = all
 
 # Names a newcomer can rely on (CLAUDE.md, "Writing code others can read").
-# Types, members and constants are PascalCase, interfaces start with I,
-# private and internal fields start with an underscore.
+# Checked, and enforced in CI: types, methods, properties, events and
+# constants are PascalCase, interfaces start with I, private and internal
+# fields start with an underscore. Not checked: public fields, enum members,
+# parameters and locals.
 dotnet_naming_symbols.types_and_members.applicable_kinds = class, struct, interface, enum, property, method, event, delegate
 dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
 dotnet_naming_style.pascal_case.capitalization = pascal_case

@@ -8,14 +8,6 @@ using System.Windows.Threading;
 
 namespace EagleBoards.App;
 
-public enum Severity
-{
-    Informational,
-    Success,
-    Warning,
-    Error,
-}
-
 /// <summary>
 /// An inline message, after WinUI's InfoBar: a tinted strip with an icon, a
 /// bold title and the message, sitting in the layout it is about rather

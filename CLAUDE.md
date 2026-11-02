@@ -78,8 +78,9 @@ runs a native WPF app instead of the Java app's browser pages.
   `-- --demo docs/images` renders `social-preview.png`, GitHub's social
   preview, through the window's own handlers.
 - **CI is the acceptance gate** (`.github/workflows/build.yml`, windows-latest):
-  no participant data tracked, build, unit tests, the window tests, the event
-  test, snapshots (artifact), self-contained publish, and a smoke test of the
+  no participant data tracked, build, code style (`dotnet format` whitespace
+  and the naming rules in `.editorconfig`), unit tests, the window tests, the
+  event test, snapshots (artifact), self-contained publish, and a smoke test of the
   published exe (`scripts/smoke-test-exe.sh`). Prefer pushing and reading the
   run over re-running the whole suite locally.
 - **Releases** (`.github/workflows/release.yml`): Run workflow (today's date)
@@ -309,7 +310,10 @@ runs a native WPF app instead of the Java app's browser pages.
 The rules a newcomer should be able to rely on. They apply to code you write
 or change; don't sweep the rest of the code to match.
 
-- **Names say what a thing is or does.** No abbreviations. A bare `true` or
+- **Names say what a thing is or does.** No abbreviations. `.editorconfig`
+  checks the shapes and CI fails on a miss: types, members, constants and
+  `static readonly` fields are PascalCase, interfaces start with `I`, other
+  private and internal fields start with `_`. A bare `true` or
   `false` in a call says nothing: give the argument its name at the call
   site (`mayKeepCurrentRoom: true`) or put the value in a named local.
 - **A comment says why, not what.** Every special case in the flow of a

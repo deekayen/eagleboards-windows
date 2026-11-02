@@ -4,7 +4,7 @@ using EagleBoards.Core;
 
 namespace EagleBoards.App;
 
-/// <summary>A card in the Available Rooms strip.</summary>
+/// <summary>A room, as its card in the Event page's Rooms pane.</summary>
 public sealed class RoomCard : Row
 {
     private string _room = "", _boardType = "", _scout = "", _leaders = "", _timer = "";

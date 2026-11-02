@@ -4,7 +4,7 @@ Status: accepted (2026-11-02)
 
 ## Context
 
-`MainWindow.xaml.cs` had grown to about 2,450 lines: the Event page's queue,
+`MainWindow.xaml.cs` had grown to about 2,400 lines: the Event page's queue,
 the rooms, the board builder, every board step, the dialogs, the keyboard
 handling and the menu commands in one file. A newcomer (or the owner, months
 later) could not find where a thing lived, and had to read a screen of fields

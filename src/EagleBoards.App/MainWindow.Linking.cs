@@ -90,6 +90,9 @@ public partial class MainWindow
         if (!_quiet)
         {
             _builderRoomId = BuilderRoom.SelectedValue as string;
+
+            // A room chosen from the list is the operator's own, so it stays
+            // even when it is set up for the other board type (SPEC.md D-24).
             _roomChosenByOperator = true;
             ShowDetails();
         }

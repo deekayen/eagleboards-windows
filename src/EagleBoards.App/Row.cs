@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace EagleBoards.App;
 
+/// <summary>What the Event page's lists and the details pane show a record as: change notification, so a bound list updates in place.</summary>
 public abstract class Row : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;

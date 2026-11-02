@@ -26,7 +26,7 @@ tooling, not the event's rules. Examples: how the main window is split into
 files, why the Fluent theme is still the experimental one.
 
 One short Markdown file per decision, numbered in the order written
-(`0001-split-the-main-window.md`), in this shape:
+(`0001-split-the-main-window-into-partial-files.md`: the slug is the title), in this shape:
 
 ```markdown
 # 0001. Title that states the decision
