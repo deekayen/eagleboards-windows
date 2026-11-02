@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;

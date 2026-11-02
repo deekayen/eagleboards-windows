@@ -1,13 +1,10 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Threading;
-using EagleBoards.Core.Records;
 using Microsoft.Win32;
 
 namespace EagleBoards.App;

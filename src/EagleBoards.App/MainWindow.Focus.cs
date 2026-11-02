@@ -1,15 +1,11 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
-using EagleBoards.Core.Records;
 using Microsoft.Win32;
 
 namespace EagleBoards.App;
@@ -55,7 +51,7 @@ public partial class MainWindow
     private void RestoreFocus(FocusMark mark)
     {
         var now = Keyboard.FocusedElement;
-        if (mark.Element.IsVisible || !Lost(now, mark.Element) || !mark.List.IsVisible)
+        if (mark.Element.IsVisible || !FocusSearch.HasLostFocus(now, mark.Element, this) || !mark.List.IsVisible)
         {
             return;
         }
@@ -69,34 +65,10 @@ public partial class MainWindow
 
         var row = rows.FirstOrDefault(p => p.Id == mark.RowId) ?? rows[Math.Clamp(mark.Index, 0, rows.Count - 1)];
         if (mark.List.ItemContainerGenerator.ContainerFromItem(row) is DependencyObject container
-            && (Find(container, e => AutomationProperties.GetAutomationId(e) == mark.Role) ?? Find(container, _ => true)) is { } target)
+            && (FocusSearch.FirstFocusable(container, e => AutomationProperties.GetAutomationId(e) == mark.Role) ?? FocusSearch.FirstFocusable(container, _ => true)) is { } target)
         {
             target.Focus();
         }
-    }
-
-    /// <summary>Focus has gone nowhere useful: to the window, a scroll area, or an element no longer shown.</summary>
-    private bool Lost(IInputElement? now, IInputElement? was) =>
-        now == null || ReferenceEquals(now, this) || ReferenceEquals(now, was) || now is ScrollViewer || now is UIElement { IsVisible: false } or UIElement { IsEnabled: false };
-
-    /// <summary>The first control under <paramref name="from"/> that can take the focus and passes <paramref name="test"/>.</summary>
-    private static UIElement? Find(DependencyObject from, Func<UIElement, bool> test)
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(from); i++)
-        {
-            var child = VisualTreeHelper.GetChild(from, i);
-            if (child is UIElement { Focusable: true, IsVisible: true, IsEnabled: true } element && test(element))
-            {
-                return element;
-            }
-
-            if (Find(child, test) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>
@@ -113,7 +85,7 @@ public partial class MainWindow
         {
             var now = Keyboard.FocusedElement is DependencyObject d && GetWindow(d) == this ? Keyboard.FocusedElement : null;
             var gone = before is UIElement { IsVisible: false } or UIElement { IsEnabled: false };
-            if (!gone && !Lost(now, null))
+            if (!gone && !FocusSearch.HasLostFocus(now, null, this))
             {
                 return;
             }

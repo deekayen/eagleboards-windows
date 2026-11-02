@@ -319,13 +319,16 @@ or change; don't sweep the rest of the code to match.
   Types and members have a `<summary>` in the style of their neighbours.
 - **A file is named for what it holds.** New code is one type per file, named
   for that type (`BoardCommands.cs`). A file of related small types is named
-  for the group, never `Ui`, `Helpers` or `Utils`. When you next touch `Ui.cs`
-  or `Rows.cs`, split or rename them for what they hold.
-- **A big file is shrunk when you next change that area, not all at once.**
-  `MainWindow.xaml.cs` is split by the section comments it already has; the
-  window tests reach members of it by name (`OffScreen.Invoke`/`Field`), so
-  keep it one type (partial files) and run `EagleBoards.UiTests` after each
-  move.
+  for the group, never `Ui`, `Helpers` or `Utils`. (`Ui.cs` and `Rows.cs` used
+  to be that: each is now a file per type.)
+- **A big type is made smaller when you next change that area.**
+  `MainWindow` is one type in a file per part (`MainWindow.Rooms.cs`,
+  `MainWindow.Picks.cs`; decision 0001): add to the part a change belongs to.
+  What reads no window state belongs in a class of its own (`BoardCommands`,
+  `FocusSearch`), moved when you touch it, with a test first if it isn't
+  covered. The window tests reach members of `MainWindow` by name
+  (`OffScreen.Invoke`/`Field`), so a member that moves to another type breaks
+  them: run `EagleBoards.UiTests` after each move.
 - **Decisions have one home.** A rule more than one version shares is a
   SPEC.md item, cited from the code. A decision only Windows makes about its
   structure or tooling is a short record in

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Globalization;
 using EagleBoards.Core;
 using EagleBoards.Core.Records;

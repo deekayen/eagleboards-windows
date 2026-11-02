@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -11,7 +10,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EagleBoards.Core;
-using Microsoft.Win32;
 
 namespace EagleBoards.App;
 

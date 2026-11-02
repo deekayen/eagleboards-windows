@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using EagleBoards.Core.Records;
 
 namespace EagleBoards.App;
 

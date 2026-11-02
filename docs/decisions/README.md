@@ -48,4 +48,6 @@ supersedes it and update the old one's status. The format is
 [MADR](https://adr.github.io/madr/) in its short form, after Michael Nygard's
 [Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
 
-None are written yet.
+Written so far:
+
+- [0001. Split the main window into partial files, one per part](0001-split-the-main-window-into-partial-files.md)
