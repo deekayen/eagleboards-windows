@@ -9,7 +9,7 @@ namespace EagleBoards.App;
 
 /// <summary>
 /// Loads WPF's Fluent theme (Windows 11 controls; light or dark with the
-/// system; the accent colour; Mica on Windows 11, a solid background on
+/// system; the accent color; Mica on Windows 11, a solid background on
 /// Windows 10), then the app's own styles, which build on it. The app and the
 /// snapshot harness both start here so they look the same.
 /// </summary>

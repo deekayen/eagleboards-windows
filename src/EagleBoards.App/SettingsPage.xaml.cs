@@ -11,7 +11,7 @@ namespace EagleBoards.App;
 
 /// <summary>
 /// Room timers and the refresh interval (the CONFIG record in
-/// config.properties), and About. Status colours aren't settings: they come
+/// config.properties), and About. Status colors aren't settings: they come
 /// from the shared palette (<see cref="StatusPalette"/>, SPEC.md D-13, D-19).
 /// </summary>
 public partial class SettingsPage : UserControl
@@ -32,7 +32,7 @@ public partial class SettingsPage : UserControl
 
     /// <summary>
     /// The project's funding links (.github/FUNDING.yml): the address kept,
-    /// the service shown, and read out as the list item's name rather than
+    /// the service shown, and read out as the list item's name instead of
     /// "[Ko-fi, https://ko-fi.com/deekayen]" (A4).
     /// </summary>
     private static readonly Option[] Support =

@@ -7,7 +7,7 @@ using EagleBoards.Core.Records;
 namespace EagleBoards.Tests;
 
 /// <summary>
-/// The board rules, auto-select and fill the rest, as the cases all three
+/// The board rules, auto-select, and fill the rest, as the cases all three
 /// versions share (SPEC.md D-5). cases/ is a byte-for-byte copy of
 /// eagleboards-shared/cases, pinned by test-cases.lock and checked in CI; a
 /// new case goes there, never only here (its README sets the format).

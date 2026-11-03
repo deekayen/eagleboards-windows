@@ -38,7 +38,7 @@ public sealed class ScoutRecord : PersonRecord
     /// <summary>
     /// The phone number column. Like the birthdate it stays in the file
     /// (SPEC.md D-1), but a youth's number is no longer taken at sign-in,
-    /// imported, shown, pre-filled or sent (D-8); one already on file is
+    /// imported, shown, pre-filled, or sent (D-8); one already on file is
     /// carried through untouched. Adults' numbers are not affected.
     /// </summary>
     public const string PhoneField = "Phone";

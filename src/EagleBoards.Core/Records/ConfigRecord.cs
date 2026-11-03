@@ -8,7 +8,7 @@ public sealed class ConfigRecord : DataRecord
     public const string DefaultId = "DEFAULT";
 
     /// <summary>
-    /// The status colour keys that followed these (RegisteredColor through
+    /// The status color keys that followed these (RegisteredColor through
     /// PostponedHiColor) are retired (SPEC.md D-19): a file that still has
     /// them loads, since only these keys are read, and saving drops them.
     /// </summary>
@@ -66,7 +66,7 @@ public sealed class ConfigRecord : DataRecord
     public int FinalRedMins => Int("FinalRedMins");
 
     /// <summary>
-    /// Integer setting, falling back to the default when blank, zero or
+    /// Integer setting, falling back to the default when blank, zero, or
     /// unparsable (as the browser pages' <c>parseInt(..) || default</c> did).
     /// </summary>
     private int Int(string key)

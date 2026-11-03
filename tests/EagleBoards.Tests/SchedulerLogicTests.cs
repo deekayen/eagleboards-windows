@@ -5,7 +5,7 @@ namespace EagleBoards.Tests;
 
 /// <summary>
 /// What only Windows' scheduler has. Which adults auto-select and fill the
-/// rest propose, free-since and the Supporting link are the cases all three
+/// rest propose, free-since, and the Supporting link are the cases all three
 /// versions share (<see cref="SharedCaseTests"/>); a case for those goes in
 /// eagleboards-shared, not here.
 /// </summary>

@@ -86,7 +86,7 @@ public class CheckInServerTests
     [Fact]
     public async Task TheSharedPagesLookUpAnEmailWithoutABirthdatePhoneOrEmail()
     {
-        // SPEC.md D-18, D-7 and D-8: the lookup answers with the fields its
+        // SPEC.md D-18, D-7, and D-8: the lookup answers with the fields its
         // form fills in, matched trimmed and in any case, and nothing more.
         using var box = new Sandbox();
         var svc = box.Open();
@@ -248,7 +248,7 @@ public class CheckInServerTests
     [Fact]
     public async Task ReturningYouthArePreFilledWithoutABirthdateOrPhoneNumber()
     {
-        // SPEC.md D-7, D-8 and O-5: one already on file stays there, but the
+        // SPEC.md D-7, D-8, and O-5: one already on file stays there, but the
         // sign-in page is never sent it.
         using var box = new Sandbox();
         var svc = box.Open();

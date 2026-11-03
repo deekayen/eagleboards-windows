@@ -1,6 +1,6 @@
 namespace EagleBoards.Core.Records;
 
-/// <summary>Shared behaviour of scouts and adults.</summary>
+/// <summary>Shared behavior of scouts and adults.</summary>
 public abstract class PersonRecord : DataRecord
 {
     protected PersonRecord(string type, IReadOnlyList<string> columns, IEnumerable<KeyValuePair<string, string>>? source)
@@ -45,7 +45,7 @@ public abstract class PersonRecord : DataRecord
         base.UpdateFields(touch);
 
         // The whole unit type, not its first letter: Pack and Post both
-        // abbreviate to "P", and Council, Community and Crew all to "C".
+        // abbreviate to "P", and Council, Community, and Crew all to "C".
         SetValue("UnitName", UnitType + Unit);
         SetValue("ShortName", ShortName);
     }
@@ -67,7 +67,7 @@ public abstract class PersonRecord : DataRecord
     }
 
     /// <summary>
-    /// People keep their stored times -- the base class's reset of day-old
+    /// People keep their stored times; the base class's reset of day-old
     /// stamps is for rooms, not for who signed in when.
     /// </summary>
     public override void PostLoadUpdate()

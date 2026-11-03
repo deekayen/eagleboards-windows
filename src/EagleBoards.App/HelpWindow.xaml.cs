@@ -6,7 +6,7 @@ namespace EagleBoards.App;
 
 /// <summary>
 /// The guide. It opens with the document focused (FocusedElement in the
-/// XAML), so Page down and the arrow keys scroll it at once rather than
+/// XAML), so Page down and the arrow keys scroll it at once, not
 /// after a Tab.
 /// </summary>
 public partial class HelpWindow : Window

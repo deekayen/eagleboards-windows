@@ -13,8 +13,8 @@ namespace EagleBoards.Core.Records;
 /// including the odd ones, because the CSV files on disk are shared with the
 /// Java version and with every event already recorded:
 /// <list type="bullet">
-/// <item>A field that is not a column can still be held (e.g. ShortName), it
-/// just never reaches the file.</item>
+/// <item>A field that is not a column can still be held (e.g. ShortName); it
+/// never reaches the file.</item>
 /// <item>Commas in a value are written as <c>~</c> and line breaks as <c>+</c>;
 /// there is no quoting.</item>
 /// <item>Times are <c>yyyy-MM-dd_HH:mm</c> plus a <c>+hhmm</c> offset, the
@@ -361,7 +361,7 @@ public abstract partial class DataRecord
         }
 
         // Truncated toward zero, as Java's integer division did, so a stamp a
-        // few seconds in the future (clock skew) reads 0 rather than unreadable.
+        // few seconds in the future (clock skew) reads 0, not unreadable.
         return (int)(Clock() - then.Value).TotalMinutes;
     }
 

@@ -307,7 +307,7 @@ public class EventPageTests
     public void ADisabledButtonsLabelLooksDisabled() => OffScreen.Run(() =>
     {
         // A label with an access key (an AccessText) took the button's own
-        // colour, not the template's, so Fill the rest looked enabled when full.
+        // color, not the template's, so Fill the rest looked enabled when full.
         using var e = new TestEvent();
         ReadyToSeat(e);
         var w = e.Window;

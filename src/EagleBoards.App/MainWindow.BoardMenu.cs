@@ -44,7 +44,7 @@ public partial class MainWindow
     /// <summary>A button of the details pane shown and enabled on the Event page, as its Board menu item is.</summary>
     private bool Usable(UIElement button) => OnEventPage && button.Visibility == Visibility.Visible && button.IsEnabled;
 
-    /// <summary>The open youth's next step, Seat board, Start review or Complete, if the pane has one to take.</summary>
+    /// <summary>The open youth's next step, Seat board, Start review, or Complete, if the pane has one to take.</summary>
     private Button? NextStepButton() => new[] { SeatButton, StartButton, CompleteButton }.FirstOrDefault(Usable);
 
     private void CanNextStep(object sender, CanExecuteRoutedEventArgs e) => e.CanExecute = NextStepButton() != null;
@@ -158,7 +158,7 @@ public partial class MainWindow
         var free = _rooms.Where(r => r.IsFree).Select(r => r.Info).ToList();
         if (_adults.Any(IsPicked) && !ProposalUntouched())
         {
-            // Keep their picks; just make sure there's a sensible room.
+            // Keep their picks; only make sure there's a sensible room.
             var freeRoomOfTheirType = RoomProposal.FirstFreeRoomOfType(scout.BoardType, free);
             KeepOrChooseRoom(scout, free, freeRoomOfTheirType, mayKeepCurrentRoom: true);
             return;

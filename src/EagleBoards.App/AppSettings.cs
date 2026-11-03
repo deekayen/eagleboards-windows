@@ -6,7 +6,7 @@ namespace EagleBoards.App;
 /// <summary>
 /// What the start-up window remembers between runs, kept per Windows user in
 /// %LOCALAPPDATA%\EagleBoards\settings.json. Holds paths and network
-/// choices only -- never participant data, and never the SignUpGenius key,
+/// choices only: never participant data, and never the SignUpGenius key,
 /// which <see cref="SignUpGeniusKeyStore"/> keeps encrypted in the registry.
 /// </summary>
 public sealed class AppSettings

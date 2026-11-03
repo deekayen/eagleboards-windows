@@ -95,7 +95,7 @@ public sealed class AdultRow : Row
     /// <summary>On a board now.</summary>
     public bool IsBusy => Room.Length > 0 && !IsDisabled;
 
-    /// <summary>"Gone home" rather than the file's "N/A".</summary>
+    /// <summary>"Gone home" instead of the file's "N/A".</summary>
     public string RoomText => IsDisabled ? "Gone home" : Room;
 
     /// <summary>Someone on a board or gone home can't be ticked for another.</summary>

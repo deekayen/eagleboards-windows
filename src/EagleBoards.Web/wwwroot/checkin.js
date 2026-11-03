@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// checkin.js -- what the check-in pages ask the Eagle Boards app, and how
+// checkin.js: what the check-in pages ask the Eagle Boards app, and how
 // they behave. Shared by every version; see README.md in this folder.
 //
 //   GET  /api/checked-in       -> { refreshSeconds, youth: [{ time, last, first, unitType, unit }],
@@ -17,7 +17,7 @@
 //   POST /register-youth       form fields -> 200 on success, else the reason
 //   POST /register-adult       form fields -> 200 on success, else the reason
 //
-// No birthdate is asked for, looked up or sent (SPEC.md D-7), and no youth
+// No birthdate is asked for, looked up, or sent (SPEC.md D-7), and no youth
 // phone number (D-8).
 //
 // Accessibility (WCAG 2.2 AA) lives here as much as in the markup: errors
@@ -125,7 +125,7 @@ function ebWelcomeLists() {
          });
       }).catch(function () {
          // This screen faces the people signing in; a failed read must never
-         // put an error in front of them. The lists just stay as they were.
+         // put an error in front of them. The lists stay as they were.
       });
    }
 
@@ -349,8 +349,8 @@ function ebSignInForm(form, options) {
    document.getElementById("leaveButton").addEventListener("click", function () { window.location.href = "/"; });
 }
 
-// Someone serving from a district, council or community role has no unit
-// number: the box is cleared, disabled and no longer required, and says why.
+// Someone serving from a district, council, or community role has no unit
+// number: the box is cleared, disabled, and no longer required, and says why.
 function ebUnitlessTypes(form, unitlessTypes) {
    var unit = form.elements.Unit;
    var hint = document.getElementById("Unit-hint");

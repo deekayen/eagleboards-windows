@@ -6,14 +6,14 @@ namespace EagleBoards.App;
 
 /// <summary>
 /// The status palette all three versions share (SPEC.md D-13 in
-/// eagleboards-shared): the status pills' and room timers' colours, light and
+/// eagleboards-shared): the status pills' and room timers' colors, light and
 /// dark, installed as brushes under fixed keys (<c>StatusSeatedBackgroundBrush</c>
 /// and so on). The values are the spec's palette table, where
-/// <c>scripts/check-palette.js</c> measures them for contrast and colour
+/// <c>scripts/check-palette.js</c> measures them for contrast and color
 /// blindness; change them there first. Its <c>check-drift.sh</c> finds any
-/// that differ here. This is the one place the app uses hex colours: Fluent's
-/// own caution and critical colours turn the same olive for deuteranopia. In a
-/// contrast theme the palette gives way to the system's colours, with a border.
+/// that differ here. This is the one place the app uses hex colors: Fluent's
+/// own caution and critical colors turn the same olive for deuteranopia. In a
+/// contrast theme the palette gives way to the system's colors, with a border.
 /// </summary>
 internal static class StatusPalette
 {
@@ -39,7 +39,7 @@ internal static class StatusPalette
     /// <summary>
     /// Puts the brushes for <paramref name="mode"/> in the application's
     /// resources, and with <see cref="ThemeMode.System"/> keeps them in step
-    /// when Windows switches between light, dark and a contrast theme.
+    /// when Windows switches between light, dark, and a contrast theme.
     /// </summary>
     public static void Install(Application app, ThemeMode mode)
     {
@@ -69,7 +69,7 @@ internal static class StatusPalette
 
             app.Resources["StatusBorderBrush"] = SystemColors.WindowTextBrush;
 
-            // Theme.xaml's selected-row brushes are built from Fluent colours,
+            // Theme.xaml's selected-row brushes are built from Fluent colors,
             // which a contrast theme doesn't change: use the system's.
             app.Resources["DataGridRowSelectedBackgroundThemeBrush"] = SystemColors.HighlightBrush;
             app.Resources["DataGridRowSelectedForegroundThemeBrush"] = SystemColors.HighlightTextBrush;

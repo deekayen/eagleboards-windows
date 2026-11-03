@@ -22,7 +22,7 @@ public partial class MainWindow
     /// They're listed under Leaders and parents from then on, with where to
     /// find them, and Start review reminds the operator to fetch them. Works
     /// for an adult on a board too: a Scoutmaster often is by then. With no
-    /// one to link, it says so rather than doing nothing (K10).
+    /// one to link, it says so instead of doing nothing (K10).
     /// </summary>
     private void OnLinkAdult(object sender, RoutedEventArgs e)
     {

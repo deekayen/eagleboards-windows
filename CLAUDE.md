@@ -1,9 +1,9 @@
-# CLAUDE.md — working notes for this repo
+# CLAUDE.md: working notes for this repo
 
 Guidance for anyone (human or AI) making changes here. Read this before editing.
 
 **Read `SPEC.md` in `deekayen/eagleboards-shared` before changing the
-operator screen, the check-in pages, the board rules or the data files.**
+operator screen, the check-in pages, the board rules, or the data files.**
 It is the source of truth for anything more than one version of Eagle
 Boards does; this repo does not decide shared behavior on its own.
 
@@ -26,10 +26,10 @@ runs a native WPF app instead of the Java app's browser pages.
 - `EagleBoards.Server`: headless host taking the Java jar's options, with the
   admin endpoints on. Used by the tests.
 - `EagleBoards.App`: the WPF app (`EagleBoards.exe`). Start-up window, the
-  main window (`MainWindow`: a menu bar -- File, Edit, View, Board, Help -- over the
+  main window (`MainWindow`: a menu bar (File, Edit, View, Board, Help) over the
   Event page, the youth queue, the rooms, and a details pane that builds and
   runs the selected youth's board; and a page per table, editable in place
-  (`TablePage`): Results, Adults, Youth, Pre-registered and Rooms, and the
+  (`TablePage`): Results, Adults, Youth, Pre-registered, and Rooms, and the
   Adult history CSV, read-only; then Approved proposals, read from the
   earlier events' folders (`EarlierEvents`, SPEC.md D-22), never written.
   No sidebar and no Admin window),
@@ -41,7 +41,7 @@ runs a native WPF app instead of the Java app's browser pages.
 - `dotnet build -c Release` (SDK 10; `global.json` pins the major and picks the
   Microsoft.Testing.Platform runner, so `dotnet test` takes `--project`;
   decision 0002).
-- `dotnet test --project tests/EagleBoards.Tests -c Release`: the rule, auto-select
+- `dotnet test --project tests/EagleBoards.Tests -c Release`: the rule, auto-select,
   and fill-the-rest cases all three versions share (`SharedCaseTests`, see
   below), storage format, lifecycle, the seating review, and each deliberate
   divergence from Java.
@@ -50,7 +50,7 @@ runs a native WPF app instead of the Java app's browser pages.
   proposed board following sign-ins (SPEC.md D-12), a choice cell opening on
   one click, the Start review reminder's words (D-23). Adults sign in over
   HTTP, as at the door. A click is raised as `Mouse.PreviewMouseDownEvent`,
-  the tunnelling event real input sends; `PreviewMouseLeftButtonDown` is
+  the tunneling event real input sends; `PreviewMouseLeftButtonDown` is
   direct, and raised on a cell reaches nothing else.
 - `bash scripts/test-board-event.sh`: the Java project's end-to-end HTTP
   event test, unchanged except for the launch lines and section 18's check of
@@ -72,8 +72,8 @@ runs a native WPF app instead of the Java app's browser pages.
   This is how to look at a UI change without driving the desktop. Check both
   themes. `-- --site <dir>` renders the README's pictures and
   eagleboards.page's Windows walkthrough with the site's cast of famous Eagle
-  Scouts: `event.png` (dark), `event-light.png`, `seat-board.gif` (dark) and
-  `complete-board.gif` (light), and the shared check-in pages (`checkin.png`,
+  Scouts: `event.png` (dark), `event-light.png`, `seat-board.gif` (dark), and
+  `complete-board.gif` (light), plus the shared check-in pages (`checkin.png`,
   `youth.png`, `adult.png`) through Edge headless. The README takes
   `event-light.png` as `docs/images/event.png` and `event.png` as
   `event-dark.png`; the site takes `event.png` and the GIFs as they are, so
@@ -109,10 +109,10 @@ runs a native WPF app instead of the Java app's browser pages.
    the tree" step catches one that got in anyway; keep its pattern in step
    with the hook and `.gitignore`. SECURITY.md tells contributors the same,
    and how to report a vulnerability.
-2. **Never touch real data.** Tests, snapshots and practice runs use synthetic
+2. **Never touch real data.** Tests, snapshots, and practice runs use synthetic
    names in a temp folder. `C:\eagleboards` on the owner's machine is the live
    data folder, and the old Java checkout also holds live data: don't read,
-   screenshot or test against either. Anything that defaults to "the usual data
+   screenshot, or test against either. Anything that defaults to "the usual data
    folder" (the start-up window does) must be pointed at a sandbox when
    exercised. The snapshot harness passes it an explicit `AppSettings` for
    exactly this reason. The same window reads the district's real
@@ -192,7 +192,7 @@ runs a native WPF app instead of the Java app's browser pages.
   the last action, once. Picks and table-page edits stay off the stack.
 - **No birthdate** (SPEC.md D-7): the `DOB` column stays in the youth file
   for the other versions, written empty; sign-in and imports drop it, and
-  nothing shows, pre-fills or exports it. Values already on file are left
+  nothing shows, pre-fills, or exports it. Values already on file are left
   alone (O-5).
 - **No youth phone number** (SPEC.md D-8): the same for a youth's `Phone`.
   `RegisterScout` and both imports drop it, and a repeat sign-in leaves one
@@ -205,17 +205,17 @@ runs a native WPF app instead of the Java app's browser pages.
   look.** `ThemeSetup` loads WPF's Fluent theme (`ThemeMode`, still marked
   experimental: WPF0001 is suppressed in the csproj) and then `Theme.xaml`,
   whose styles are `BasedOn` Fluent's; a style that isn't falls back to the
-  old look. Colours only from theme resources (`{DynamicResource ...}`),
-  never hex, so light, dark, high contrast and the accent colour work. The
+  old look. Colors only from theme resources (`{DynamicResource ...}`),
+  never hex, so light, dark, high contrast, and the accent color work. The
   one exception is the status palette (SPEC.md D-13): the status pills' and
-  room timers' colours are the same in all three versions, in
-  `StatusPalette.cs` as the spec's table has them (measured there for colour
-  blindness by `check-palette.js`; Fluent's caution and critical colours turn
+  room timers' colors are the same in all three versions, in
+  `StatusPalette.cs` as the spec's table has them (measured there for color
+  blindness by `check-palette.js`; Fluent's caution and critical colors turn
   the same olive for deuteranopia). Change the spec first. `StatusPalette`
   installs them as `Status*Brush` / `Timer*Brush` resources for light or
-  dark and gives way to system colours in a contrast theme. The timers' clocks
+  dark and gives way to system colors in a contrast theme. The timers' clocks
   (stopwatch, timer clock, alarm clock) are Segoe UI Symbol glyphs, since
-  Segoe Fluent Icons has no timer or alarm clock. The other fixed colours are
+  Segoe Fluent Icons has no timer or alarm clock. The other fixed colors are
   the Wood Badge pentagon's (SPEC.md D-20, `AdultMarks.cs`, drawn from
   eagleboards-shared's `artwork/wood-badge.svg`).
   Commands live in the page and details pane, in context menus, and in the
@@ -226,7 +226,7 @@ runs a native WPF app instead of the Java app's browser pages.
   about, not pop-ups; success needs no message when the screen already shows
   it. Dialogs (`AppDialog`) only for the irreversible or an override, with
   verb buttons that answer the title. Status is text plus an icon, never
-  colour alone. Status colours are not settings (SPEC.md D-19): the
+  color alone. Status colors are not settings (SPEC.md D-19): the
   `*Color` keys are gone from `ConfigRecord`, and an older file's are dropped
   on save.
 - **Accessibility follows the Microsoft Writing Style Guide's rules** (the
@@ -269,16 +269,16 @@ runs a native WPF app instead of the Java app's browser pages.
     as a new KeyBinding. Remove room asks first (O-2, amended); tests answer
     the question through `MainWindow.Ask` and never show it. The app keeps
     Windows awake while it serves (`App`'s `KeepAwake`), never the harnesses.
-  - Help and messages say select, open, choose and enter, not click, press
+  - Help and messages say select, open, choose, and enter, not click, press,
     or point, with the mouse way first where both are given; they name the
     place (the details pane, under Board members), never only left, right,
-    above or below; menu paths read **Edit** > **Undo**, the > not bold; key
+    above, or below; menu paths read **Edit** > **Undo**, the > not bold; key
     names are the guide's (Ctrl+Comma, Down arrow, Shift+F10, Application
     key).
 - User-facing text says **event**, not "tonight" or "evening": boards happen
   in the daytime too.
-- Values read back from the files carry the format's escapes (a comma saved as
-  `~`); show names, notes and member lists through `Display.Text` /
+- Values read back from the files contain the format's escapes (a comma saved as
+  `~`); show names, notes, and member lists through `Display.Text` /
   `Display.List`, never raw. The snapshot harness restarts from the saved
   files before rendering so this shows up.
 - Nothing polls. Every change raises `BoardService.Changed`; the only thing
@@ -318,16 +318,16 @@ The rules a newcomer should be able to rely on. They apply to code you write
 or change; don't sweep the rest of the code to match.
 
 - **Names say what a thing is or does.** No abbreviations. `.editorconfig`
-  checks the shapes and CI fails on a miss: types, members, constants and
+  checks the shapes and CI fails on a miss: types, members, constants, and
   `static readonly` fields are PascalCase, interfaces start with `I`, other
   private and internal fields start with `_`. A bare `true` or
   `false` in a call says nothing: give the argument its name at the call
   site (`mayKeepCurrentRoom: true`) or put the value in a named local.
 - **A comment says why, not what.** Every special case in the flow of a
-  method (an early return, an exception, a fallback) carries a comment
+  method (an early return, an exception, a fallback) has a comment
   saying why it is there, citing the rule or event it came from (a SPEC.md
   item, `the 2026-10-27 event`). Don't restate what the next line does.
-  Types and members have a `<summary>` in the style of their neighbours.
+  Types and members have a `<summary>` in the style of their neighbors.
 - **A file is named for what it holds.** New code is one type per file, named
   for that type (`BoardCommands.cs`). A file of related small types is named
   for the group, never `Ui`, `Helpers` or `Utils`. (`Ui.cs` and `Rows.cs` used
@@ -354,3 +354,22 @@ or change; don't sweep the rest of the code to match.
   versa); the two are separate repositories with no shared history.
 - **No AI attribution** in commits, issues, PR text, or anywhere in history,
   as in every Eagle Boards repository.
+
+## Writing style
+
+Docs, comments, commit messages, and release notes follow the owner's
+technical writing rules. Not every workstation has the full guide or its
+Vale linter, so the rules that matter most here are:
+
+<!-- vale off -->
+- No em dashes, and no `--` standing in for one. Use a comma, parentheses,
+  a colon, or a new sentence.
+- Oxford commas in every list of three or more.
+- A colon introduces a list or an explanation, never a second independent
+  clause. No sentence starts with "But."
+- No sales or corporate words (robust, seamless, leverage, utilize,
+  comprehensive, streamline) and no minimizers (simply, just, easily).
+- No `-ing` tail that restates the sentence ("..., ensuring X"), no
+  "serves as" or "acts as" for "is," and no "rather than" by reflex.
+- US spelling. Name who acts. Vary sentence length and openings.
+<!-- vale on -->

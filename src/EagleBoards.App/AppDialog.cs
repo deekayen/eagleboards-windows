@@ -9,7 +9,7 @@ namespace EagleBoards.App;
 /// <summary>
 /// A modal dialog after WinUI's ContentDialog: the title asks the question,
 /// the body explains, and the buttons answer it with verbs ("Seat board",
-/// "Cancel"), primary on the left in the accent colour. Fields have their
+/// "Cancel"), primary on the left in the accent color. Fields have their
 /// label above them. Replaces MessageBox, whose OK/Cancel don't answer
 /// anything.
 /// </summary>

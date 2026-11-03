@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------------
-# smoke-test-exe.sh — prove a published EagleBoards.exe actually works.
+# smoke-test-exe.sh: prove a published EagleBoards.exe actually works.
 #
 #   bash scripts/smoke-test-exe.sh publish/EagleBoards.exe [port]
 #
@@ -58,7 +58,7 @@ fi
 
 # The site answering does not prove the window opened: when the main window
 # fails to build, the app catches it and the process (and its website) go on
-# (App.OnStartup). A running window carries the page's name in its title.
+# (App.OnStartup). A running window has the page's name in its title.
 WINPID=$(cat "/proc/$APP/winpid" 2>/dev/null || echo "$APP")
 title=""
 for _ in $(seq 1 30); do

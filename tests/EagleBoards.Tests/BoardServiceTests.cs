@@ -6,7 +6,7 @@ using EagleBoards.Core.Storage;
 namespace EagleBoards.Tests;
 
 /// <summary>
-/// Behaviour the HTTP event test (scripts/test-board-event.sh) doesn't
+/// Behavior the HTTP event test (scripts/test-board-event.sh) doesn't
 /// reach, mostly the places this port deliberately differs from the Java one.
 /// </summary>
 [Collection(ClockCollection.Name)]
@@ -310,7 +310,7 @@ public class BoardServiceTests
     public void ATableNeverSeatsStartsOrEndsABoard()
     {
         // SPEC.md P-6 (event test section 25): a board is seated, started,
-        // reset and completed only through the Event page's steps, which give
+        // reset, and completed only through the Event page's steps, which give
         // it a room and members and take them back.
         using var box = new Sandbox();
         var (s, scout, chair, m1, m2) = SeatableEvent(box);
@@ -828,7 +828,7 @@ public class BoardServiceTests
     public void TheChairLeavingASittingBoardIsToldHowToLetThemGo()
     {
         // The window keeps the chair when no one left can take over, so the
-        // refusal says what to do rather than that the chair isn't a member.
+        // refusal says what to do, not that the chair isn't a member.
         using var box = new Sandbox();
         var (s, scout) = BoardInReview(box);
         Assert.Equal("ERROR: X A1 is the only member who can chair this board. Use Replace to swap in a qualified chair, or add one first.",
@@ -950,7 +950,7 @@ public class BoardServiceTests
         Assert.Equal("101 Annex", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
         Assert.All([chair, m1, m2], id => Assert.Equal("101 Annex", AdultRow(s, id)["Room"]));
 
-        // The room's ID -- what Seat/Move/Remove address it by -- doesn't change.
+        // The room's ID (what Seat/Move/Remove address it by) doesn't change.
         Assert.True(s.StartReview(scout).Ok);
     }
 

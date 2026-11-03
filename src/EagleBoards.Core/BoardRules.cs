@@ -67,7 +67,7 @@ public static class BoardRules
     }
 
     /// <summary>
-    /// The members who share the scout's unit -- every one of them, not just
+    /// The members who share the scout's unit: every one of them, not only
     /// the first, so a stacked board is fixed in one pass. A blank unit on
     /// either side is unknown, not a match. Comparison is exact: UnitName is
     /// already normalized ("Troop1234"), so a case difference is a real one.

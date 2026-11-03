@@ -16,7 +16,7 @@ public sealed class CheckInServerOptions
 
     /// <summary>
     /// Serve on this address only (plus 127.0.0.1), so the socket never
-    /// appears on Hyper-V, WSL or VPN adapters. Null listens everywhere.
+    /// appears on Hyper-V, WSL, or VPN adapters. Null listens everywhere.
     /// </summary>
     public IPAddress? BindAddress { get; init; }
 
@@ -39,8 +39,8 @@ public sealed class CheckInServerOptions
 /// pages and the endpoints they call to anyone on the network.
 ///
 /// With <see cref="CheckInServerOptions.ServeAdminEndpoints"/> it also answers
-/// every other endpoint the Java server had -- the grid reads, record edits
-/// and board actions the old browser admin pages used -- with the same wire
+/// every other endpoint the Java server had (the grid reads, record edits,
+/// and board actions the old browser admin pages used) with the same wire
 /// formats, but only to requests from this machine. Nothing in the Windows
 /// app needs them (it calls <see cref="BoardService"/> directly); the
 /// headless server keeps them so the HTTP test suite written against the Java
@@ -290,7 +290,7 @@ public sealed class CheckInServer : IAsyncDisposable
 
     /// <summary>
     /// A board action. "OK." with 200 on success. A refusal is its reason as
-    /// plain text with 409 -- the Java server used 304, which may not carry a
+    /// plain text with 409. The Java server used 304, which may not carry a
     /// body here; the client contract (success is 200 and "OK") is unchanged.
     /// </summary>
     private static Handler BoardAction(Func<IReadOnlyDictionary<string, string>, ActionResult> act) => (context, p, _) =>
@@ -334,7 +334,7 @@ public sealed class CheckInServer : IAsyncDisposable
         if (!isLocal || !_options.ServeAdminEndpoints)
         {
             // A station needs names and units for the "who's here" lists, not
-            // phones, emails or dates of birth. Without the admin endpoints
+            // phones, emails, or dates of birth. Without the admin endpoints
             // (the app, decision 0003) this machine is held to the same: a web
             // page open in the operator's browser reaches it as loopback.
             var asked = columns.Concat(userData ?? []).Append(filterField ?? "Last");
@@ -496,7 +496,7 @@ public sealed class CheckInServer : IAsyncDisposable
         return cleaned.Length == 0 || cleaned == "none" ? null : cleaned;
     }
 
-    /// <summary>Utf8JsonWriter rather than the serializer: no reflection, so it survives trimming.</summary>
+    /// <summary>Utf8JsonWriter instead of the serializer: no reflection, so it survives trimming.</summary>
     private static Task SendJsonAsync(HttpContext context, Action<Utf8JsonWriter> write)
     {
         using var buffer = new MemoryStream();
@@ -604,7 +604,7 @@ public sealed class CheckInServer : IAsyncDisposable
     };
 
     /// <summary>
-    /// Insert, update or delete a record: <c>!nativeeditor_status</c>,
+    /// Insert, update, or delete a record: <c>!nativeeditor_status</c>,
     /// <c>gr_id</c> and the column values. Answers with the dhtmlx
     /// data-processor XML the old grids expected; a refused edit's action
     /// holds the reason as its text, in words for the operator, as the Java

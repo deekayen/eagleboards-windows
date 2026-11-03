@@ -2,8 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!-- The app's own styles, layered on WPF's Fluent theme (App.ThemeMode).
-       Colours come from the theme's resources only, never hex values, so
-       light, dark and high-contrast modes and the accent colour all follow
+       Colors come from the theme's resources only, never hex values, so
+       light, dark, and high-contrast modes and the accent color all follow
        Windows; the one exception is the shared status palette, installed by
        StatusPalette.cs (SPEC.md D-13). Sizes follow the Windows guidance: multiples of 4, 8px corners
        on surfaces, 4px on controls, the Windows type ramp. -->
@@ -38,7 +38,7 @@
 
   <!-- A Segoe Fluent Icons glyph (Segoe MDL2 Assets on Windows 10). Greyed
        in a disabled button or menu item, whose IsEnabled it inherits: it
-       takes its colour from the button, not the template's disabled state,
+       takes its color from the button, not the template's disabled state,
        so a room's icon-only buttons looked enabled with no room selected. -->
   <Style x:Key="Glyph" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{DynamicResource SymbolThemeFontFamily}" />
@@ -52,7 +52,7 @@
   </Style>
 
   <!-- Labels inside buttons. Fluent gives every TextBlock an implicit style
-       with a fixed colour, which beats the button template's disabled colour,
+       with a fixed color, which beats the button template's disabled color,
        so a disabled button's label would look enabled. Glyphs have their own
        style, above. -->
   <Style x:Key="ButtonText" TargetType="TextBlock">
@@ -75,7 +75,7 @@
 
   <!-- A label with an access key ("_Add room") is an AccessText, which
        Fluent's buttons need for the key. As the button's content it takes its
-       colour from the button, not the template's disabled state, so it gets
+       color from the button, not the template's disabled state, so it gets
        the same trigger as a TextBlock label. -->
   <Style x:Key="ButtonAccessText" TargetType="AccessText">
     <Style.Triggers>
@@ -173,13 +173,13 @@
   </Style>
 
   <!-- Fluent's cell template aligns on the cell's own VerticalAlignment:
-       centre every cell on its row, text and status labels alike. Fluent has
+       center every cell on its row, text and status labels alike. Fluent has
        no implicit row or cell styles (the DataGrid names its own), so these
        build on the named ones; {x:Type DataGridCell} would be the classic look. -->
   <!-- Fluent selects grid rows with the accent fill (a bright block in dark
        mode); use the subtle fill Windows lists use, readable in both themes. -->
-  <!-- StatusPalette swaps both for the system's highlight colours in a
-       contrast theme, where these Fluent colours are fixed. -->
+  <!-- StatusPalette swaps both for the system's highlight colors in a
+       contrast theme, where these Fluent colors are fixed. -->
   <SolidColorBrush x:Key="DataGridRowSelectedBackgroundThemeBrush" Color="{DynamicResource SubtleFillColorSecondary}" />
   <SolidColorBrush x:Key="DataGridRowSelectedForegroundThemeBrush" Color="{DynamicResource TextFillColorPrimary}" />
 
@@ -189,7 +189,7 @@
 
   <!-- The current cell's outline. Fluent's cell template uses this key but
        doesn't define it, so it fell back to the classic theme's black, which
-       can't be seen in dark mode: use Fluent's focus colour (black in light,
+       can't be seen in dark mode: use Fluent's focus color (black in light,
        white in dark). -->
   <SolidColorBrush x:Key="{x:Static DataGrid.FocusBorderBrushKey}" Color="{DynamicResource FocusStrokeColorOuter}" />
 
@@ -208,7 +208,7 @@
   </Style>
 
   <!-- MinRowHeight, not RowHeight: a long list of members or notes wraps
-       and the row grows, rather than being cut off mid-name. -->
+       and the row grows instead of being cut off mid-name. -->
   <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
     <Setter Property="MinRowHeight" Value="36" />
     <Setter Property="CellStyle" Value="{StaticResource GridCell}" />

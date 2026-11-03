@@ -5,7 +5,7 @@ Status: accepted (2026-11-03)
 ## Context
 
 `CheckInServer` answers two kinds of endpoint. The check-in ones
-(`/register-youth`, `/api/*` and the rest) are for the stations and answer
+(`/register-youth`, `/api/*`, and the rest) are for the stations and answer
 the network. The others (`/seat-board`, `/complete-board`, `/restore-board`,
 `/room-change`, `/update-config`, the `*-update` and `*-cells` endpoints) are
 the ones the Java version's browser admin pages used. They answer only

@@ -3,7 +3,7 @@
 What an operator or contributor would notice, newest first. Every release is
 on the [Releases page](https://github.com/deekayen/eagleboards-windows/releases)
 with its exe; this says why to update. Decisions behind the changes are in
-[`docs/decisions`](docs/decisions/README.md) and, for behaviour all three
+[`docs/decisions`](docs/decisions/README.md) and, for behavior all three
 versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
 
 ## Not yet released
@@ -26,7 +26,7 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   member from outside the unit (Guide to Advancement 8.0.3.0).
 - **The sign-in pages store only the sign-in fields**, each cut to 200
   characters (the list of youth an adult will introduce has far more room).
-  A room, a status or a result sent with a sign-in is ignored; the sign-in
+  A room, a status, or a result sent with a sign-in is ignored; the sign-in
   itself is still recorded.
 - **A data file open in Excel is reported honestly.** The message now says
   the last change may not be saved and what to do. Files are flushed to disk
@@ -40,8 +40,8 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   lists give this computer no more than a station gets. The older admin
   endpoints are served by the headless test server only (decision 0003).
 - *Rename room* and *Switch room type* have the same names in the Board
-  menu, the room's shortcut menu and Help. Help explains the room rule.
-- *Seat board*, when unavailable, carries the reason as help text for a
+  menu, the room's shortcut menu, and Help. Help explains the room rule.
+- *Seat board*, when unavailable, gives the reason as help text for a
   screen reader.
 
 ### For contributors

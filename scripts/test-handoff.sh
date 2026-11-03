@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------------
-# test-handoff.sh — the Java and Windows versions taking turns on one event.
+# test-handoff.sh: the Java and Windows versions taking turns on one event.
 #
 # The two versions read and write the same files, so if one crashes mid-event
 # the other should pick up where it left off. This runs part of an event on
@@ -15,7 +15,7 @@
 # never take one from a checkout that holds live data. Everything here runs
 # on a throwaway folder with SYNTHETIC names, bound to 127.0.0.1.
 #
-# Portability: bash, curl, awk, the .NET SDK and a JDK. No Python.
+# Portability: bash, curl, awk, the .NET SDK, and a JDK. No Python.
 # ------------------------------------------------------------------------
 
 set -u
@@ -114,14 +114,14 @@ act() {
 accepted() {
     case "${2#*|}" in
         OK*) ok "$1" ;;
-        *)   bad "$1 -- refused with '${2#*|}'" ;;
+        *)   bad "$1: refused with '${2#*|}'" ;;
     esac
 }
 
 refused() {
     case "${2#*|}" in
-        OK*) bad "$1 -- the server ACCEPTED it" ;;
-        "")  bad "$1 -- refused with an empty body" ;;
+        OK*) bad "$1: the server ACCEPTED it" ;;
+        "")  bad "$1: refused with an empty body" ;;
         *)   ok "$1" ;;
     esac
 }
@@ -260,8 +260,8 @@ handoff windows java
 
 echo
 if [ "$FAIL" -eq 0 ]; then
-    echo "HAND-OFF: PASS — $PASS checks"
+    echo "HAND-OFF: PASS ($PASS checks)"
 else
-    echo "HAND-OFF: FAIL — $FAIL of $((PASS + FAIL)) checks failed"
+    echo "HAND-OFF: FAIL ($FAIL of $((PASS + FAIL)) checks failed)"
     exit 1
 fi

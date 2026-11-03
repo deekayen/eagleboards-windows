@@ -16,8 +16,8 @@ public static class LanAddresses
 
     /// <summary>
     /// Every up, non-loopback IPv4 address, most likely venue network first:
-    /// one with a default gateway on a physical adapter. Hyper-V, WSL and VPN
-    /// adapters are listed last rather than hidden, in case one is the right
+    /// one with a default gateway on a physical adapter. Hyper-V, WSL, and VPN
+    /// adapters are listed last instead of hidden, in case one is the right
     /// answer at the event.
     /// </summary>
     public static List<LanAddress> Find()

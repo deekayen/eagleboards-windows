@@ -10,8 +10,8 @@ namespace EagleBoards.App;
 
 /// <summary>
 /// An inline message, after WinUI's InfoBar: a tinted strip with an icon, a
-/// bold title and the message, sitting in the layout it is about rather
-/// than floating over it. Stays until closed or replaced. A screen reader
+/// bold title and the message, sitting in the layout it is about instead
+/// of floating over it. Stays until closed or replaced. A screen reader
 /// meets it as one status message, severity first, and hears it when it
 /// appears or changes (a live region: assertive for an error).
 /// </summary>

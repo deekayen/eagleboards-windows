@@ -162,7 +162,7 @@ public class BoardMenuTests
         Assert.False(w.MoveRoomButton.IsEnabled);
         Assert.False(BoardCommands.RenameRoom.CanExecute(null, w));
 
-        // An icon-only button looks disabled too: its glyph kept the enabled colour.
+        // An icon-only button looks disabled too: its glyph kept the enabled color.
         static Color Of(object brush) => ((SolidColorBrush)brush).Color;
         var glyph = OffScreen.Descendant<Glyph>(w.RemoveRoomButton)!;
         Assert.Equal(Of(w.FindResource("TextFillColorDisabledBrush")), Of(glyph.Foreground));

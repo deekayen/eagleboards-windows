@@ -15,9 +15,9 @@ name: release
 # time, so there is no file to bump first.
 #
 # Nothing is released unless the exact exe being attached builds, passes the
-# tests and the board event test, carries no data files, reports the right
+# tests and the board event test, contains no data files, reports the right
 # version, opens its window and serves the check-in site in a smoke test, and
-# the commit has a passing build.yml run (which holds the checks only it runs:
+# the commit has a passing build.yml run (which has the checks only it runs:
 # no participant data in the tree, the shared check-in pages and rule cases
 # match their pins, code style).
 #
@@ -148,7 +148,7 @@ jobs:
             -p:Version="${{ steps.version.outputs.version }}" -o publish
           ls -la publish
 
-      - name: Refuse to publish an exe carrying data or secrets
+      - name: Refuse to publish an exe containing data or secrets
         shell: bash
         env:
           SUG_KEY: ${{ secrets.SUG_KEY }}
@@ -202,7 +202,7 @@ jobs:
           PREV=$(git describe --tags --abbrev=0 --match 'v*' "HEAD^" 2>/dev/null || true)
           {
             echo "Download **EagleBoards.exe** below and put it in the data folder (for example"
-            echo '`C:\eagleboards`), or anywhere you like. There is nothing to install: it carries'
+            echo '`C:\eagleboards`), or anywhere you like. There is nothing to install: it includes'
             echo "its own .NET runtime. Double-click it to start an event; see the README."
             echo
             echo "Windows may say it *protected your PC*, because the exe isn't code-signed. Choose"
@@ -212,7 +212,7 @@ jobs:
             echo "What changed: see [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/CHANGELOG.md)."
             echo
             echo "Don't run this and the Java version at the same time: they share the port and"
-            echo "the data files. The SignUpGenius key is not in this build: paste it into the"
+            echo "the data files. The SignUpGenius key is not in this build. Paste it into the"
             echo "start-up window once, and it's kept, encrypted, for your Windows account."
             echo
             echo 'Check the download with `certutil -hashfile EagleBoards.exe SHA256` against'

@@ -75,7 +75,7 @@ public partial class MainWindow
     /// After a step, when the control that had the focus has gone (a step's
     /// button collapses once its step is done; Gone home is disabled once
     /// pressed), the focus goes to the first of these that can take it, the
-    /// next step's button usually, rather than to the window, where the next
+    /// next step's button usually, not to the window, where the next
     /// Tab starts again at the top (C2). A step run with Ctrl+Enter from a
     /// control still shown leaves the focus where it was.
     /// </summary>

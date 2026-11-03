@@ -14,9 +14,9 @@ namespace EagleBoards.App;
 /// <summary>
 /// The operator's window: a menu bar over the pages Event (the youth queue,
 /// the rooms, and a details pane that builds and runs the selected youth's
-/// board), and a page per table (Results, Adults and the rest), editable in
+/// board), and a page per table (Results, Adults, and the rest), editable in
 /// place, besides the read-only Adult history CSV and Approved proposals.
-/// Settings, Help and the QR code open windows of their own.
+/// Settings, Help, and the QR code open windows of their own.
 ///
 /// Data is read from and written to <see cref="BoardService"/> in-process,
 /// and every change, including a sign-in on the website, raises
@@ -43,7 +43,7 @@ public partial class MainWindow : Window
     private readonly ListCollectionView _queueView;
     private readonly ListCollectionView _roomView;
 
-    /// <summary>The table pages by name (<see cref="TableSpec.Name"/>): Results, Adults and the rest.</summary>
+    /// <summary>The table pages by name (<see cref="TableSpec.Name"/>): Results, Adults, and the rest.</summary>
     private readonly Dictionary<string, TablePage> _tables = new(StringComparer.Ordinal);
 
     /// <summary>Every page and its View menu item, in the menu's order (Ctrl+1 and on).</summary>
@@ -146,14 +146,14 @@ public partial class MainWindow : Window
         }
 
         // The page's commands, with access keys that clash neither with the
-        // menu bar's F, E, V, B and H nor with the footer's Q. The grid's
+        // menu bar's F, E, V, B, and H nor with the footer's Q. The grid's
         // shortcut menu repeats them (TablePage).
         var results = _tables[TableSpecs.Results.Name];
         _openButton = results.AddCommand("", "_Open on Event page", "Show the selected board on the Event page", OpenBoard);
         results.AddCommand("", "Save _report...", "Save the event's results as a CSV file for Excel", () => OnReport(this, new RoutedEventArgs()));
         results.SelectionChanged += UpdatePageButtons;
 
-        // Verbs, as the page's other commands are: a button called just
+        // Verbs, as the page's other commands are: a button called plain
         // "Back" is heard as going back a page. Mark back's C, since B is
         // the Board menu's.
         var adults = _tables[TableSpecs.Adults.Name];
@@ -200,7 +200,7 @@ public partial class MainWindow : Window
 
         // The address is read off this screen and typed into every station, so
         // say plainly when it's one the stations can't use. A failed import is
-        // said with it, rather than lost behind it.
+        // said with it, not lost behind it.
         var importToo = session.ImportError != null
             ? " The SignUpGenius import failed too, so everyone signs in as a walk-in: " + session.ImportError
             : "";

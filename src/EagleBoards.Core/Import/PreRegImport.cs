@@ -88,7 +88,7 @@ internal abstract class PreRegConverter<T>(DataRecordFile<T> file, Action<string
         return File.Columns.FirstOrDefault(c => string.Equals(c, name, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>Split on commas, honouring "double" or 'single' quoted fields.</summary>
+    /// <summary>Split on commas, honoring "double" or 'single' quoted fields.</summary>
     internal static string[] ParseLine(string line)
     {
         var fields = new List<string>();

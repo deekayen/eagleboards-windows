@@ -49,7 +49,7 @@ public class MainWindowTests
         return OffScreen.Ancestor<DataGridCell>(column.GetCellContent(row))!;
     }
 
-    /// <summary>A key, as real input arrives: tunnelling down to the element, then bubbling up unless that was handled.</summary>
+    /// <summary>A key, as real input arrives: tunneling down to the element, then bubbling up unless that was handled.</summary>
     private static void Press(UIElement target, Key key)
     {
         var source = PresentationSource.FromVisual(target)!;
@@ -294,7 +294,7 @@ public class MainWindowTests
         {
             cell.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
             {
-                // As real input arrives: tunnelling down to the cell, raised as
+                // As real input arrives: tunneling down to the cell, raised as
                 // PreviewMouseLeftButtonDown on each element it passes.
                 RoutedEvent = Mouse.PreviewMouseDownEvent,
             });
@@ -397,7 +397,7 @@ public class MainWindowTests
         Assert.Equal("Final board role", AutomationProperties.GetName(list));
 
         // The test opens no popup, so the list is still closed: Down opens it
-        // rather than moving to Chair.
+        // instead of moving to Chair.
         Press(list, Key.Down);
         Assert.Equal(2, opened.Count);
         Assert.Equal(BoardRoles.Member, list.SelectedValue);

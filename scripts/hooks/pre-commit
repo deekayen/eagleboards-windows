@@ -13,22 +13,22 @@ for f in $staged; do
     case "$f" in
         *.csv|*.xls|*.xlsx|*.xlsm|*.ods)
             # No CSV is committed anymore (config moved to config.properties).
-            echo "BLOCKED: $f — spreadsheet/CSV files may contain participant data" >&2
+            echo "BLOCKED: $f (spreadsheet/CSV files may contain participant data)" >&2
             fail=1 ;;
     esac
     case "$f" in
         20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/*)
-            echo "BLOCKED: $f — dated run folders contain participant data" >&2
+            echo "BLOCKED: $f (dated run folders contain participant data)" >&2
             fail=1 ;;
         *Board_Results*|Master_AdultHistory*|LOGIN_INFO*|RunScheduler.sh|RunScheduler.bat|.env)
-            echo "BLOCKED: $f — contains PII or credentials" >&2
+            echo "BLOCKED: $f (contains PII or credentials)" >&2
             fail=1 ;;
         *EagleBoardScheduler_20190618.jar|original/*)
-            echo "BLOCKED: $f — the inherited binary embeds an API key; keep it out of git" >&2
+            echo "BLOCKED: $f (the inherited binary embeds an API key; keep it out of git)" >&2
             fail=1 ;;
     esac
-    # Skill data. A skill under .claude/ once kept a directory of real people --
-    # names, units, and 45 email addresses -- as TOML beside its code, and it
+    # Skill data. A skill under .claude/ once kept a directory of real people
+    # (names, units, and 45 email addresses) as TOML beside its code, and it
     # was committed because .gitignore un-ignored .claude/skills/ wholesale.
     # .claude/ is fully ignored now and that skill is gone from this repo; this
     # stays as the second line of defense. Templates ending .example.toml pass.
@@ -36,7 +36,7 @@ for f in $staged; do
         .claude/skills/*.example.toml|.claude/skills/*/*.example.toml)
             : ;;
         .claude/skills/*.toml|.claude/skills/*/*.toml)
-            echo "BLOCKED: $f — skill TOML holds real names, units and email addresses" >&2
+            echo "BLOCKED: $f (skill TOML holds real names, units, and email addresses)" >&2
             fail=1 ;;
     esac
 done
@@ -54,7 +54,7 @@ fi
 if [ "$fail" -ne 0 ]; then
     echo "" >&2
     echo "Commit rejected by scripts/hooks/pre-commit. If this is a false" >&2
-    echo "positive, adjust the hook — do not bypass with --no-verify." >&2
+    echo "positive, adjust the hook; do not bypass it with --no-verify." >&2
     exit 1
 fi
 exit 0

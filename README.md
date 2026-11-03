@@ -10,7 +10,7 @@ before anyone sits down, and sees every room's time at a glance.
   <img src="docs/images/event.png" alt="Screenshot of the Event page during an event: one room overdue, another running long, and a board ready to complete in the details pane.">
 </picture>
 
-In the picture, the menu bar has File, Edit, View, Board and Help. The Youth list
+In the picture, the menu bar has File, Edit, View, Board, and Help. The Youth list
 has three youth waiting and four on a board. In Rooms, under Find a person,
 Arthur Eldred's final board in room 101 is overdue at 49 minutes (an alarm
 clock on a pink-red fill), and Rob Corddry's project review in 200A is running
@@ -22,7 +22,7 @@ them is real. They're rendered by `tests/EagleBoards.UiSnapshots`.
 
 ## What it does
 
-- **Sign-in on any tablet, phone or laptop.** Stations open a web page on the
+- **Sign-in on any tablet, phone, or laptop.** Stations open a web page on the
   venue Wi-Fi; nothing to install on them. A sign-in appears on the admin
   computer at once, matched to its pre-registration when there is one.
 - **A board proposed for you.** Select a waiting youth and the scheduler
@@ -36,18 +36,18 @@ them is real. They're rendered by `tests/EagleBoards.UiSnapshots`.
   and a warning mark follows the name of anyone from the youth's own unit
   (a Wood Badge pentagon marks those counting the event toward Wood Badge).
 - **Every room timed.** Convening, in review, running long, overdue, each
-  shown as a word and an icon, never colour alone, in one palette that every
-  version of the scheduler shares and that's checked for colour blindness.
+  shown as a word and an icon, never color alone, in one palette that every
+  version of the scheduler shares and that's checked for color blindness.
   Times follow the Guide to Advancement and can be changed in Settings.
 - **Where everyone is.** Type anyone's name in **Find a person**, youth or
-  adult, and see which room they're in, or that they're waiting, free or gone
+  adult, and see which room they're in, or that they're waiting, free, or gone
   home. Each youth's leader and parents, and which room they're in, for
   fetching them and for afterwards. On a board of review, **Start review**
   first reminds you whom to fetch to introduce the youth, and where they are.
 - **Results and a report.** Every board and its result, saved to a CSV file
   for Excel.
-- **A Windows 11 app.** Light and dark mode, your accent colour, usable
-  from the keyboard (Help lists every shortcut), with controls labelled for
+- **A Windows 11 app.** Light and dark mode, your accent color, usable
+  from the keyboard (Help lists every shortcut), with controls labeled for
   screen readers. Runs on Windows 10 too.
 - **Your data stays on your computer.** Plain CSV files in a folder you
   choose, nothing sent anywhere. (Optional: import the event's sign-ups from
@@ -78,7 +78,7 @@ anything that doesn't. The check-in stations only need a web browser.
    - **Event date**: defaults to today; each event gets its own `YYYY-MM-DD`
      folder.
    - **Check-in network**: the venue Wi-Fi. Serving only that network keeps
-     the site off Hyper-V, WSL and VPN adapters. "All networks" is there too.
+     the site off Hyper-V, WSL, and VPN adapters. "All networks" is there too.
    - **Port** (8080).
    - **SignUpGenius API key**, and whether to **import the event's
      sign-ups**. The key is kept for your Windows account in the registry
@@ -96,22 +96,22 @@ anything that doesn't. The check-in stations only need a web browser.
    and then select **Copy address**.
 5. In Rooms, select **Add room** for each room.
 6. Run the event from the **Event** page. **Help** > **Eagle Boards help**
-   (F1) walks through seating, starting and completing boards, and its
+   (F1) walks through seating, starting, and completing boards, and its
    **Keyboard shortcuts** section lists every key.
 
 The menu bar has the rest. **View** switches to a page for each table
-(Results, Adults, Youth, Pre-registered, Adult history CSV and Rooms;
+(Results, Adults, Youth, Pre-registered, Adult history CSV, and Rooms;
 Ctrl+2 through Ctrl+7), each one editable where it is but the adult history:
-double-click a cell, or select it and use F2, and a cell with a list of
+double-click a cell, or select it and use F2. A cell with a list of
 choices opens it on one click. **View** also has **Approved proposals**
 (Ctrl+8), read only: the project proposals approved at earlier events in the
 data folder, for a youth who comes without the signed page. **Board** has the
 Event page's steps for the open youth: the next one, named for it (**Seat
-board**, **Start review** or **Complete**; Ctrl+Enter), **Postpone**,
-**Reset**, **Link an adult** and **Unlink**; then the selected room's **Add
-room**, **Move or swap board**, **Rename room** (F2), **Switch room type** and
+board**, **Start review**, or **Complete**; Ctrl+Enter), **Postpone**,
+**Reset**, **Link an adult**, and **Unlink**; then the selected room's **Add
+room**, **Move or swap board**, **Rename room** (F2), **Switch room type**, and
 **Remove room**, each available when its button is. **File** has
-**Save report**, the check-in **QR code** and **Settings**. An adult who
+**Save report**, the check-in **QR code**, and **Settings**. An adult who
 would rather not use the tablet is signed in with **Add adult** on the Adults
 page.
 
@@ -199,7 +199,7 @@ are replaced by a native WPF app using Windows' Fluent theme. It reads and
 writes the **same data files** as the Java version, so an existing data
 folder keeps working and either version can pick up where the other left off
 if one crashes mid-event (`scripts/test-handoff.sh` checks both directions).
-Just never run both at once: they would fight over the port and the files.
+Never run both at once: they would fight over the port and the files.
 
 The check-in stations reach the Kestrel server inside the app over the venue
 network; the server and the app's window both go through `BoardService` to
@@ -222,7 +222,7 @@ Deliberate changes. The server-side ones each have a unit test in
 
 - **The admin side is a Windows app.** `/scheduler`, `/admin`, `/configure`
   and `/help` are gone from the website. A sign-in in the browser shows up in
-  the scheduler immediately rather than at the next poll. Boards are built in
+  the scheduler immediately, not at the next poll. Boards are built in
   one pane with every rule listed as you go, instead of a pop-up per problem.
 - **Stations can only check in.** The endpoints the old admin pages used
   (seat, complete, record edits, room changes, settings) are not served by the
@@ -305,7 +305,7 @@ version to override it, for example `2026.09.22.1` for a second release the
 same day. Or tag a commit and push the tag
 (`git tag v2026.09.22 && git push origin v2026.09.22`).
 Either way the workflow wants a passing build of the same commit, builds, runs
-every test, checks the exe carries no data files, smoke-tests the exact exe, and
+every test, checks the exe contains no data files, smoke-tests the exact exe, and
 only then attaches it, with a SHA-256 checksum, to a **draft** release. Work
 through [`docs/release-checklist.md`](docs/release-checklist.md), and then
 publish the draft from the Releases page. The version is stamped in from the
@@ -324,12 +324,12 @@ no more than an event needs: sign-in no longer asks for a youth's birthdate or
 phone number, one sent by an older cached page is thrown away, and imports
 from pre-registration or SignUpGenius don't keep a youth's number either.
 Birthdates and youth phone numbers already in earlier event folders are left as
-they are but never shown, pre-filled or exported. Adults' phone numbers are
+they are but never shown, pre-filled, or exported. Adults' phone numbers are
 kept as before. Keep
 the folder on the admin computer, out of shared and cloud-synced folders, and
-out of git: `.gitignore`
+out of git. `.gitignore`
 and `scripts/hooks/pre-commit` refuse CSV and spreadsheet files, dated event
-folders, the adult history and `.env`. Install the hook once per clone with
+folders, the adult history, and `.env`. Install the hook once per clone with
 `git config core.hooksPath scripts/hooks`.
 
 ## License

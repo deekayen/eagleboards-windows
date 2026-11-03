@@ -54,7 +54,7 @@ internal static class AddAdultDialog
         dialog.AddMessage("Sign in an adult who would rather not use the tablet. They're signed in for today, as if they had used it.");
 
         // Access keys unique within the dialog (C10): S, F, L, T, U, E, H, B,
-        // J and W; the buttons answer Enter and Esc.
+        // J, and W; the buttons answer Enter and Esc.
         var search = dialog.AddText("_Signed in before?");
         Placeholder.SetText(search, "Search the adult history by name, email or unit");
         AutomationProperties.SetHelpText(search,
@@ -157,7 +157,7 @@ internal static class AddAdultDialog
 
         // Arrow down into the matches; a click or Enter there fills the form
         // in. Enter in the box takes the one match, or goes into the list,
-        // rather than pressing Add adult with the form still empty (C14).
+        // instead of pressing Add adult with the form still empty (C14).
         search.PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Enter && matches.Items.Count == 1)

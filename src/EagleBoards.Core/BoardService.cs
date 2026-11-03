@@ -53,7 +53,7 @@ public sealed class EventOptions
 
 /// <summary>
 /// Everything an event does to its data: check-in, the board
-/// lifecycle, rooms, settings and the generic record edits behind the Admin
+/// lifecycle, rooms, settings, and the generic record edits behind the Admin
 /// tables. The check-in website and the Windows admin app both go through
 /// here, so a rule enforced here holds however the request arrives.
 ///
@@ -70,7 +70,7 @@ public sealed class BoardService
 
     // What a public sign-in may put on a new record: the fields the shared
     // pages send (an ID too, which is how a returning person is matched).
-    // Anything else posted -- Room, Status, Result, RegNum, board members --
+    // Anything else posted (Room, Status, Result, RegNum, board members)
     // belongs to the event's steps, not to whoever reaches the website, and
     // is dropped. DOB and a youth's Phone are not here either (D-7, D-8).
     private static readonly string[] ScoutSignInFields = [.. ScoutRegFields, "ID", "BoardType"];
@@ -215,7 +215,7 @@ public sealed class BoardService
         }
 
         // A refusal names the step it can't take back and says what to do
-        // instead, not just that it "can't be undone automatically".
+        // instead, not only that it "can't be undone automatically".
         var entry = _undo[^1];
         foreach (var touched in entry.Records)
         {
@@ -259,7 +259,7 @@ public sealed class BoardService
     {
         public DataRecord Record { get; } = record;
 
-        /// <summary>Only an event's youth, adults and rooms are changed by anything Undo covers.</summary>
+        /// <summary>Only an event's youth, adults, and rooms are changed by anything Undo covers.</summary>
         public DataTable Table { get; } = record switch
         {
             ScoutRecord => DataTable.Scouts,
@@ -336,7 +336,7 @@ public sealed class BoardService
 
         // SPEC.md D-9: a new install has no adult history, and no release ships
         // one (it would hold participant data), so a missing one is started
-        // with just the header row, as the startup window does, rather than
+        // with only the header row, as the startup window does, not
         // refused. The full path is logged, so a mistyped -a shows up as a new
         // history in an unexpected place.
         if (!File.Exists(adultHistory))
@@ -494,13 +494,13 @@ public sealed class BoardService
             }
 
             // An empty email matches nothing: a walk-in who left it blank is
-            // not "pre-registered" just because some sign-up also has none.
+            // not "pre-registered" only because some sign-up also has none.
             var preRegistered = ScoutsScheduled.Get(scout.Id) != null
                 || (scout.Email.Length > 0 && ScoutsScheduled.Where("Email", scout.Email).Count > 0);
             var prefix = preRegistered ? 'P' : 'W';
 
             // Someone who submits the form twice keeps their place in the
-            // queue rather than being renumbered to the back of it.
+            // queue instead of being renumbered to the back of it.
             if (!scout.RegNum.StartsWith(prefix))
             {
                 scout.RegNum = prefix + NextSignInNumber(prefix).ToString(CultureInfo.InvariantCulture);
@@ -732,7 +732,7 @@ public sealed class BoardService
     /// who RSVP'd, plus the event's walk-ins, leaving out anyone already
     /// finished (Completed or Postponed) and anyone here for a project
     /// proposal, which has no introduction (SPEC.md D-23). Names and units
-    /// only -- this is read by the check-in stations, which see nothing more.
+    /// only: this is read by the check-in stations, which see nothing more.
     /// </summary>
     public List<(string Id, string First, string Last, string UnitName)> ScoutChoices()
     {
@@ -1103,7 +1103,7 @@ public sealed class BoardService
             return null;
         }
 
-        // Changing a board that is sitting, rather than seating one: someone
+        // Changing a board that is sitting, not seating one: someone
         // is leaving or joining, and the way out is Replace or Change chair.
         var changing = boardRoom != null;
         var type = scout.BoardType;
@@ -1330,7 +1330,7 @@ public sealed class BoardService
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// Swap two rooms: each one's scout, members and card move to the other.
+    /// Swap two rooms: each one's scout, members, and card move to the other.
     /// Either room may be empty, which makes it a move.
     /// </summary>
     public ActionResult ChangeRoom(string? roomId1, string? roomId2)
@@ -1474,7 +1474,7 @@ public sealed class BoardService
     }
 
     /// <summary>
-    /// Rename a room, on the room card itself rather than only the Admin
+    /// Rename a room, on the room card itself, not only the Admin
     /// tables. The room keeps its ID; every scout and adult currently in it
     /// moves to the new name with it, so a board in progress isn't stranded
     /// looking for a room that no longer matches.
@@ -1553,7 +1553,7 @@ public sealed class BoardService
 
     /// <summary>
     /// Switch a room between final boards and project reviews, on the room
-    /// card itself rather than only the Rooms page. A board already seated
+    /// card itself, not only the Rooms page. A board already seated
     /// there isn't disturbed (GTA 8.0.5.3): a final board may sit in a
     /// project-review room and back, as section 17 of the event test
     /// covers.
@@ -1599,14 +1599,14 @@ public sealed class BoardService
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// Insert, update or delete one record. <paramref name="status"/> is
+    /// Insert, update, or delete one record. <paramref name="status"/> is
     /// "inserted", "updated" or "deleted"; every field named in
     /// <paramref name="fields"/> that is one of the table's columns is written.
     /// Returns <paramref name="status"/> on success and "invalid" otherwise:
     /// no ID, updating a record that doesn't exist, inserting one that does,
     /// or an edit a table may not make (<see cref="Refusal"/>).
     ///
-    /// An adult's name, unit, contact and roles (<see cref="AdultRegFields"/>)
+    /// An adult's name, unit, contact, and roles (<see cref="AdultRegFields"/>)
     /// are one set of facts in the event's adults and the adult history, as a
     /// sign-in carries them (SPEC.md P-6): an edit to them here is made to the
     /// same adult in the history too, so someone promoted to chair today is
@@ -1675,7 +1675,7 @@ public sealed class BoardService
     /// Why a table may not make this edit, in words for the operator, or null
     /// to allow it (SPEC.md P-6). The adult history is read-only: a sign-in
     /// writes it, and an edit to the event's adults reaches it. A board is
-    /// seated, started, reset and completed only through the Event page's
+    /// seated, started, reset, and completed only through the Event page's
     /// steps, which give the youth a room and members and take them back, so
     /// an edit never sets Seated or In review, nor changes the status of a
     /// board that is sitting. The rest of a youth's record still corrects,

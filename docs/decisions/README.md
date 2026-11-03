@@ -11,9 +11,9 @@ messages:
 
 - `D-` a decision (for example D-24: a proposed board only takes a room of its
   own type),
-- `O-` a decision about wording or behaviour the owner settled,
+- `O-` a decision about wording or behavior the owner settled,
 - `P-` a place where the versions deliberately differ (for example P-1: the
-  menu bar rather than a sidebar).
+  menu bar instead of a sidebar).
 
 A decision that affects more than one version is made there first. Copying it
 here would let the two drift apart.

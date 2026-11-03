@@ -52,13 +52,13 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Reverses the most recent board step, room change, Gone home or Back,
+    /// Reverses the most recent board step, room change, Gone home, or Back,
     /// or Link or Unlink (Ctrl+Z). On the Event page a step undone is said
     /// aloud, since the screen shows it. On a table page, where it may not
     /// (table edits stay off the stack, so Ctrl+Z there undoes a board step),
     /// the page's message bar says what was undone, or why it couldn't be
-    /// (C12). Reset and Postpone keep their own confirmation dialog rather
-    /// than relying on this.
+    /// (C12). Reset and Postpone keep their own confirmation dialog instead
+    /// of relying on this.
     /// </summary>
     private void OnUndo(object sender, RoutedEventArgs e)
     {

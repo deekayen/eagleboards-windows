@@ -81,7 +81,7 @@ public sealed class AdultMarks : StackPanel
 /// <summary>
 /// The Wood Badge pentagon: eagleboards-shared's artwork/wood-badge.svg (the
 /// Mac's drawing), banded clockwise from the top corner in navy, red, black,
-/// green and yellow around a white face with a black center. Fixed colours in
+/// green, and yellow around a white face with a black center. Fixed colors in
 /// both themes (SPEC.md D-16, D-20), like the status palette: the white face
 /// keeps the navy and black visible on a dark background.
 /// </summary>

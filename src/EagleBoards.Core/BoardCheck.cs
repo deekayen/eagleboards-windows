@@ -132,7 +132,7 @@ public static class BoardCheck
     /// Why no room is chosen and what to do about it. A board is only
     /// proposed in a free room of its own type (SPEC.md D-24), so when the
     /// only free rooms are the other type's, the operator has to switch one
-    /// or choose it on purpose: they are told so, not just "choose a room".
+    /// or choose it on purpose: they are told so, not only "choose a room".
     /// </summary>
     private static string NoRoomAdvice(string boardType, IReadOnlyCollection<RoomInfo>? freeRooms)
     {

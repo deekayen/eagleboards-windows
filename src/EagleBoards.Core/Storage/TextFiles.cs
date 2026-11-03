@@ -18,7 +18,7 @@ public static class TextFiles
     /// on Windows in the ANSI code page; decoding those as UTF-8 would turn
     /// every accented name into U+FFFD and the next save would make that
     /// permanent. So: strict UTF-8 first, Windows-1252 if that fails. A
-    /// leading byte-order mark (Excel's "CSV UTF-8") is dropped rather than
+    /// leading byte-order mark (Excel's "CSV UTF-8") is dropped, not
     /// read as part of the first column name.
     /// </summary>
     public static string Read(string path)
@@ -42,7 +42,7 @@ public static class TextFiles
 
     /// <summary>
     /// Replace the file's contents via a temporary file in the same folder,
-    /// so a crash or power cut mid-write leaves the old file rather than half
+    /// so a crash or power cut mid-write leaves the old file, not half
     /// of a new one. The adult history accumulates across every event;
     /// a truncated copy of it is not recoverable from anywhere.
     /// </summary>

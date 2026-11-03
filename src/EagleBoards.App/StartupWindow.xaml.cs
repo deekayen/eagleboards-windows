@@ -36,7 +36,7 @@ public partial class StartupWindow : Window
     }
 
     /// <summary>
-    /// With given settings and key store rather than the saved ones (the
+    /// With given settings and key store instead of the saved ones (the
     /// snapshot harness uses a sandbox and a made-up key).
     /// </summary>
     public StartupWindow(AppSettings settings, SignUpGeniusKeyStore keys)

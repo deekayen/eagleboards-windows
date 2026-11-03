@@ -84,7 +84,7 @@ internal static class Program
         {
             // Seed, then start again from the saved files, as the app does
             // between runs: the window must show what the files hold (their
-            // escapes included), not just what was typed.
+            // escapes included), not only what was typed.
             Seed(session.Service);
             SeedEarlierEvents(root);
             session = Restart(session, plan);
@@ -189,7 +189,7 @@ internal static class Program
     }
 
     /// <summary>
-    /// A plain Application with the app's theme -- NOT EagleBoards.App.App,
+    /// A plain Application with the app's theme, NOT EagleBoards.App.App,
     /// whose startup (command line, start-up window, dialogs) WPF runs on the
     /// first message pump even without Run().
     /// </summary>
@@ -251,7 +251,7 @@ internal static class Program
         string[] roles = ["Chair/Chair", "Member/Chair", "Chair/Member", "Member/Member", "Member/Member", "Member/Member", "Member/Member", "Member/Member", "Unavailable/Member", "Member/Member", "Member/Member"];
 
         // The marks after a name (SPEC.md D-20): two counting toward Wood
-        // Badge, and one in each of two youth's units -- Ellsworth sits on
+        // Badge, and one in each of two youth's units: Ellsworth sits on
         // Bram's board, and Jankowski is free while Aldridge waits.
         int[] woodBadge = [3, 6];
         var unit = new Dictionary<int, int> { [4] = 1002, [9] = 1001 };
@@ -404,7 +404,7 @@ internal static class Program
     }
 
     /// <summary>
-    /// The window's content over the theme's base colour. On screen that base
+    /// The window's content over the theme's base color. On screen that base
     /// is Mica (Windows 11), which an off-screen render can't draw.
     /// </summary>
     internal static BitmapSource Render(Window win)

@@ -73,7 +73,7 @@ public static class Placeholder
             IsHitTestVisible = false;
 
             // Silent: the box is named with it already. Fluent's placeholder
-            // colour, as WinUI's TextBox uses: the tertiary text brush was
+            // color, as WinUI's TextBox uses: the tertiary text brush was
             // 3.3:1 in light, under the 4.5:1 text needs.
             _text = new SilentText { Text = text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
             _text.SetResourceReference(TextBlock.ForegroundProperty, "TextControlPlaceholderForeground");

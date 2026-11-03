@@ -7,7 +7,7 @@ namespace EagleBoards.UiSnapshots;
 /// <summary>
 /// Writes a looping animated GIF from same-sized frames. WPF's GifBitmapEncoder
 /// can't set frame delays or looping, so this does the file format itself: one
-/// palette for the whole animation (flat UI colours survive, text anti-aliasing
+/// palette for the whole animation (flat UI colors survive, text anti-aliasing
 /// snaps to the nearest entry, no dithering), and each frame after the first
 /// stores only the rectangle that changed.
 /// </summary>
@@ -26,7 +26,7 @@ internal static class GifWriter
         w.Write("GIF89a"u8);
         w.Write((ushort)width);
         w.Write((ushort)height);
-        w.Write((byte)0xF7); // global colour table, 8 bits, 256 entries
+        w.Write((byte)0xF7); // global color table, 8 bits, 256 entries
         w.Write((byte)0);
         w.Write((byte)0);
         foreach (var c in palette)
@@ -170,7 +170,7 @@ internal static class GifWriter
         return (x0, y0, x1, y1);
     }
 
-    /// <summary>GIF-flavoured LZW with 8-bit pixels, codes packed LSB first.</summary>
+    /// <summary>GIF-flavored LZW with 8-bit pixels, codes packed LSB first.</summary>
     private static byte[] Lzw(byte[] input)
     {
         const int clear = 256, end = 257, maxCode = 4095;

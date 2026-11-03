@@ -248,7 +248,7 @@ public static class TableSpecs
         ], ExportName: null, CanDelete: false, Frozen: 3, Filter: r => !BoardStatus.IsWaiting(r.Status));
 
     // The adults page lists only adults, so it is Adults, not People (SPEC.md
-    // P-6). A change to someone's name, unit, contact or roles is made in the
+    // P-6). A change to someone's name, unit, contact, or roles is made in the
     // adult history too (BoardService.SaveRow).
     public static readonly TableSpec Adults = new("Adults", "Adults",
         "The adults signed in at this event. To change a cell, double-click it, or select it and use F2. A choice, such as a role or Wood Badge, opens its list with one click, or with F4. A change to someone's name, unit, contact or roles is made in the adult history too.",
@@ -360,7 +360,7 @@ public sealed class TablePage : DockPanel
     private readonly TextBlock _count = new() { Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Bottom };
     private readonly TextBlock _description = new() { TextWrapping = TextWrapping.Wrap };
 
-    /// <summary>Each command button's glyph, label and action, for the grid's shortcut menu.</summary>
+    /// <summary>Each command button's glyph, label, and action, for the grid's shortcut menu.</summary>
     private readonly Dictionary<Button, (string Glyph, string Text, Action Click)> _commandItems = [];
 
     private readonly ContextMenu _menu = new();
@@ -379,7 +379,7 @@ public sealed class TablePage : DockPanel
     private bool _openList;
 
     /// <summary>
-    /// Opens a choice cell's list: on a click, F2, F4 or Alt+Down Arrow, and
+    /// Opens a choice cell's list: on a click, F2, F4, or Alt+Down Arrow, and
     /// when an arrow key would change a closed list's value. A test replaces
     /// it: a list's popup is kept on screen by WPF, so it would open on the
     /// desktop even from a window drawn off-screen.
@@ -505,7 +505,7 @@ public sealed class TablePage : DockPanel
         }));
         Grid.PreparingCellForEdit += (_, e) =>
         {
-            // Named after its column: "Final board role, combo box", not just "combo box".
+            // Named after its column: "Final board role, combo box", not only "combo box".
             if (e.EditingElement is Control editor)
             {
                 AutomationProperties.SetName(editor, (string)e.Column.Header);
@@ -679,7 +679,7 @@ public sealed class TablePage : DockPanel
 
     /// <summary>
     /// The keyboard's way into a choice cell, and out of a closed list's
-    /// trap. F2, F4 or Alt+Down Arrow on a choice cell opens its list, as one
+    /// trap. F2, F4, or Alt+Down Arrow on a choice cell opens its list, as one
     /// click does. A closed list takes Up and Down Arrow as a new value, and
     /// each value passed was saved, Chair on the way from Member to blank:
     /// those keys open the list instead, where they only move the highlight
@@ -796,7 +796,7 @@ public sealed class TablePage : DockPanel
     /// A command for this page, before Export and Delete, and in the grid's
     /// shortcut menu too, enabled when its button is.
     /// </summary>
-    /// <param name="text">The label; an "_" before a letter is its access key ("E_xport..."). Pages are shown one at a time, so letters may repeat between pages but not clash with the menu bar's F, E, V, B and H, nor the shortcut menu's T, E and F.</param>
+    /// <param name="text">The label; an "_" before a letter is its access key ("E_xport..."). Pages are shown one at a time, so letters may repeat between pages but not clash with the menu bar's F, E, V, B, and H, nor the shortcut menu's T, E, and F.</param>
     public Button AddCommand(string glyph, string text, string tooltip, Action click, bool pageCommand = true)
     {
         var label = new StackPanel { Orientation = Orientation.Horizontal };
@@ -980,7 +980,7 @@ public sealed class TablePage : DockPanel
     }
 
     /// <summary>
-    /// Save one changed cell. An adult's name, unit, contact and roles
+    /// Save one changed cell. An adult's name, unit, contact, and roles
     /// change in the adult history too (<see cref="BoardService.SaveRow"/>).
     /// </summary>
     private void OnEdited(RecordRow row, string field, string value)
@@ -1001,7 +1001,7 @@ public sealed class TablePage : DockPanel
     /// <summary>
     /// Delete the selected record, after asking. Never someone a board holds
     /// (SPEC.md P-6, amended 2026-10-24): why is said here instead, before
-    /// the question rather than after it, and again if the board was seated
+    /// the question, not after it, and again if the board was seated
     /// while the question was open.
     /// </summary>
     private void Delete()
@@ -1153,10 +1153,10 @@ public sealed class TablePage : DockPanel
 
     /// <summary>
     /// A text cell's look. Based on the column's default, which keeps
-    /// Fluent's own TextBlock colour off it, so Adults' greyed rows stay grey.
+    /// Fluent's own TextBlock color off it, so Adults' grayed rows stay gray.
     /// A long column wraps, its row growing to fit; any other ends in an
     /// ellipsis when cut short, with the whole value in its tooltip, shown
-    /// only then. A cut-off value used to just stop, mid-name.
+    /// only then. A cut-off value used to stop, mid-name.
     /// </summary>
     private static Style TextStyle(string path, bool wrap)
     {

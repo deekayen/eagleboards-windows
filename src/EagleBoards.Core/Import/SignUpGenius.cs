@@ -18,7 +18,7 @@ public sealed record SignUpEntry(string StartDate, string FirstName, string Last
 /// Slots whose item mentions "adult" become adult-history records, merged by
 /// email (a match gets its phone updated; two matches means the email is
 /// ambiguous and the entry is skipped). Everything else is a youth
-/// pre-registration, which is what makes a sign-in a "P" rather than a "W";
+/// pre-registration, which is what makes a sign-in a "P" instead of a "W";
 /// a youth's phone number is not imported (SPEC.md D-8).
 /// Entries are filtered by calendar month, not by day, as they always were.
 /// </summary>

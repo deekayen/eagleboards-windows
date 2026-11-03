@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# make-icon.sh -- rebuild EagleBoards.ico from EagleBoards.svg.
+# make-icon.sh: rebuild EagleBoards.ico from EagleBoards.svg.
 #
 #   bash scripts/make-icon.sh
 #
@@ -49,7 +49,7 @@ else
              "$(command -v microsoft-edge chromium google-chrome 2>/dev/null | head -1)"; do
         if [ -n "$b" ] && [ -x "$b" ]; then browser=$b; break; fi
     done
-    [ -n "$browser" ] || { echo "make-icon.sh: needs rsvg-convert, Edge or Chrome" >&2; exit 1; }
+    [ -n "$browser" ] || { echo "make-icon.sh: needs rsvg-convert, Edge, or Chrome" >&2; exit 1; }
 
     # Headless windows have a minimum size, so every size goes on one page at
     # a fixed place, is photographed once, and is cut out below. The browser
@@ -66,7 +66,7 @@ else
             x=$((x + size + 8))
         done
     } > "$work/sheet.html"
-    # A headless browser that can't draw the page waits rather than exits.
+    # A headless browser that can't draw the page waits instead of exiting.
     timeout 120 "$browser" --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
         --default-background-color=00000000 --user-data-dir="$dir/profile" \
         --window-size="$((x + 8)),300" --screenshot="$dir/sheet.png" "file:///$dir/sheet.html" >/dev/null 2>&1

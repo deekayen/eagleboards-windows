@@ -123,7 +123,7 @@ public class StorageTests
     [Fact]
     public void RetiredColourKeysLoadAndAreDroppedOnSave()
     {
-        // SPEC.md D-19: an older config.properties with the status colours
+        // SPEC.md D-19: an older config.properties with the status colors
         // still loads, and the next save leaves them out.
         using var box = new Sandbox();
         File.WriteAllText(box.ConfigPath, "Type=CONFIG\nID=DEFAULT\nName=DEFAULT\nFinalRedMins=50\n"

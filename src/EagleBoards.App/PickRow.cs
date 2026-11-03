@@ -20,7 +20,7 @@ public sealed class PickRow : Row
         Id = adult.Id;
 
         // Taken now, as the rest are: an edit on the Adults page then changes
-        // the row's Signature, so the list is rebuilt rather than kept stale.
+        // the row's Signature, so the list is rebuilt, not kept stale.
         Name = adult.FullName;
         WoodBadge = adult.IsWoodBadge;
         var role = adult.Info.RoleFor(scout.BoardType);

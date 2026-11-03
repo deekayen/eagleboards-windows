@@ -14,7 +14,7 @@ internal static class AccessKeyText
 
     /// <summary>
     /// Button content that shows the access key. Fluent's accent button
-    /// ignores an "_" in plain string content; an AccessText it honours.
+    /// ignores an "_" in plain string content; an AccessText it honors.
     /// </summary>
     public static AccessText Content(string text) => new() { Text = text };
 }

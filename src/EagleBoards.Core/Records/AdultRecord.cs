@@ -23,10 +23,10 @@ public sealed class AdultRecord : PersonRecord
         UpdateFields(true);
     }
 
-    /// <summary>Chair, Member or Unavailable, for final boards of review.</summary>
+    /// <summary>Chair, Member, or Unavailable, for final boards of review.</summary>
     public string FinalBoardRole => GetValue("FinalBoard");
 
-    /// <summary>Chair, Member or Unavailable, for project proposal reviews.</summary>
+    /// <summary>Chair, Member, or Unavailable, for project proposal reviews.</summary>
     public string ProjectReviewRole => GetValue("ProjectReview");
 
     /// <summary>This adult's role for a board of the given type.</summary>

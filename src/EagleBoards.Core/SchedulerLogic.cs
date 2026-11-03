@@ -251,7 +251,7 @@ public static class SchedulerLogic
     /// Times are the records' <c>yyyy-MM-dd_HH:mm±hhmm</c> stamps, which sort
     /// ordinally within one event. The member list is comma-joined and
     /// read back from the CSV with '~'; an ID whose name had a comma also holds
-    /// a '~', so each whole ID is looked for between separators rather than
+    /// a '~', so each whole ID is looked for between separators instead of
     /// splitting the list. The same helper is freeSinceTimes in the Java
     /// version and BoardSuggestion.freeSinceTimes on the Mac.
     /// </remarks>
@@ -441,7 +441,7 @@ public static class SchedulerLogic
     }
 
     /// <summary>
-    /// The adults who said they will introduce this scout to their board --
+    /// The adults who said they will introduce this scout to their board,
     /// often their Scoutmaster, who may be on another board and has to be
     /// fetched to introduce them when their review starts.
     /// </summary>

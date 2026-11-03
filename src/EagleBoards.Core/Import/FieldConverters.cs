@@ -64,7 +64,7 @@ internal static class FieldConverters
 
     /// <summary>
     /// Normalizes to 555-123-4567. A 12-character value is taken as already
-    /// formatted. (The Java version formatted from the raw text rather than
+    /// formatted. (The Java version formatted from the raw text instead of
     /// the extracted digits, so "(555) 123-4567" came out "(55-5) -123-".)
     /// </summary>
     public static bool Phone(DataRecord r, string value)
@@ -91,7 +91,7 @@ internal static class FieldConverters
         return true;
     }
 
-    /// <summary>Digits are the unit number; the first letter picks Crew, Pack or Troop.</summary>
+    /// <summary>Digits are the unit number; the first letter picks Crew, Pack, or Troop.</summary>
     public static bool Unit(DataRecord r, string value)
     {
         r.SetValue("Unit", new string([.. value.Where(char.IsDigit)]));
@@ -115,7 +115,7 @@ internal static class FieldConverters
         return true;
     }
 
-    /// <summary>Anything cancelled is dropped.</summary>
+    /// <summary>Anything canceled is dropped.</summary>
     public static bool NotCancelled(string value) => !value.Contains("cancel", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A scout's slot names the board: "... review ..." is Final, "... project ..." is Project.</summary>

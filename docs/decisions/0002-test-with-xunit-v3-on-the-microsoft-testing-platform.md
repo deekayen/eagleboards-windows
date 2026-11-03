@@ -23,7 +23,7 @@ was not an option.
 - `global.json` opts into the new runner (`"test": { "runner":
   "Microsoft.Testing.Platform" }`), as the SDK's own error message directs.
 - `dotnet test` names the project with `--project` (CI, CONTRIBUTING.md,
-  README.md and CLAUDE.md). A bare path is the VSTest form and is not
+  README.md, and CLAUDE.md). A bare path is the VSTest form and is not
   accepted in this mode.
 - The window tests turn parallelism off with
   `[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]`

@@ -60,7 +60,7 @@ jobs:
         shell: bash
         # The cases are written once, in eagleboards-shared/cases, and every
         # version runs all of them (SharedCaseTests). test-cases.lock pins the
-        # commit; a case edited, added or dropped here instead of there fails
+        # commit; a case edited, added, or dropped here instead of there fails
         # the build. The whole folder is fetched, so a case added there and
         # not copied here is caught too. CRs are stripped, as for the pages.
         run: |

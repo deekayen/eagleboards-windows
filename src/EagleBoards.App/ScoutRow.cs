@@ -37,7 +37,7 @@ public sealed class ScoutRow : Row
 
     /// <summary>
     /// Minutes since the record last changed. Waiting time for a Registered
-    /// youth; time on the board once seated -- the clock restarts at each
+    /// youth; time on the board once seated. The clock restarts at each
     /// status change, which is what the room-card timers run on.
     /// </summary>
     public int? Mins { get => _mins; private set { if (Set(ref _mins, value)) Raise(nameof(MinsTip)); } }

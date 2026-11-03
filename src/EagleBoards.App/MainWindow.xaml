@@ -11,7 +11,7 @@
        details pane that builds and runs the selected youth's board (the
        list/details pattern). Every table is a page of its own on the View
        menu, editable in place (TablePage): Results, Adults, Youth,
-       Pre-registered and Rooms, and the Adult history CSV, read-only; then
+       Pre-registered, and Rooms, and the Adult history CSV, read-only; then
        Approved proposals, read from the earlier events. Settings and Help open
        windows of their own. -->
 
@@ -36,7 +36,7 @@
 
     <!-- Status as a tinted label with an icon, in the shared status palette
          (StatusPalette, SPEC.md D-13): the words carry the meaning, the icon
-         and tint help scanning, and none of it relies on colour alone. The
+         and tint help scanning, and none of it relies on color alone. The
          icon is silent: the words beside it say it. -->
     <DataTemplate x:Key="StatusCell" DataType="{x:Type app:ScoutRow}">
       <Border x:Name="Pill" CornerRadius="{DynamicResource ControlCornerRadius}" Padding="7,1" HorizontalAlignment="Left" VerticalAlignment="Center"
@@ -195,7 +195,7 @@
     </DataTemplate>
 
     <!-- The builder's and the seated board's rows read left to right, who
-         first and then what can be done to them, in columns rather than a
+         first and then what can be done to them, in columns instead of a
          DockPanel docking the last button first: Tab and a screen reader
          follow the order shown. Each button's help text is the adult in full,
          marks included, since the marks' tooltips can't take focus; its
@@ -320,7 +320,7 @@
 
     <!-- Busy and gone-home adults in secondary text, both above 4.5:1: the
          Room column says which in words ("Gone home"), and italics tell a
-         gone-home row from a busy one without a fainter colour. On the
+         gone-home row from a busy one without a fainter color. On the
          grid's own row style, for the selected row's outline. -->
     <Style x:Key="AdultsRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource GridRow}">
       <Style.Triggers>
@@ -337,7 +337,7 @@
 
   <DockPanel>
     <!-- The menu bar: the pages, the windows beside them, the board's steps,
-         Settings, Help and Donate (SPEC.md P-1, P-6, D-17). No sidebar: the
+         Settings, Help, and Donate (SPEC.md P-1, P-6, D-17). No sidebar: the
          Event page has the window's whole width. Every command here also has
          a shortcut or a button where the operator works. Icons are silent:
          the item's words say it. -->
@@ -388,7 +388,7 @@
       <!-- The open youth's steps, then the selected room's (SPEC.md P-1,
            amended 2026-10-24), as the Mac's Board and Room menus have them,
            so every step and its shortcut is in a menu. B: clear of the other
-           menus' F, E, V and H, and of every page's commands. The commands
+           menus' F, E, V, and H, and of every page's commands. The commands
            enable the items as the buttons are, and show their shortcuts; the
            first item is named for the step the details pane shows
            (SyncBoardMenu). -->
@@ -443,7 +443,7 @@
 
     <!-- Content layer: the window's message, the page, and the check-in
          address, in rows in that order, so Tab and a screen reader meet them
-         as they're shown rather than the footer first. -->
+         as they're shown, not the footer first. -->
     <Border Background="{DynamicResource LayerFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0">
       <Grid>
@@ -459,7 +459,7 @@
         <Grid x:Name="PageHost" Grid.Row="1">
           <!-- ============================= Event ============================== -->
           <!-- Below its minimum width or height (large display scaling on a
-               small laptop) the Event page scrolls rather than losing its
+               small laptop) the Event page scrolls instead of losing its
                right and bottom, the details pane's Seat board among them.
                Above it, the window sizes the page to fit exactly
                (FitEventPage), so the lists keep their own scrolling. The
@@ -530,7 +530,7 @@
                 <DockPanel>
                   <!-- The title, then its commands, which wrap onto another
                        line when the card is narrow (large display scaling)
-                       rather than pushing the title out. The Board menu's
+                       instead of pushing the title out. The Board menu's
                        commands, so a button and its menu item are enabled
                        together: those for the selected room once one is. -->
                   <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
@@ -766,13 +766,13 @@
             </Grid>
           </ScrollViewer>
 
-          <!-- Results, Adults and the other tables: TablePage, added by the
+          <!-- Results, Adults, and the other tables: TablePage, added by the
                window, one page per table on the View menu (SPEC.md P-6). -->
         </Grid>
 
         <!-- Where the check-in stations should point. A row that wraps, not a
              StatusBar or a DockPanel: at large display scaling the address,
-             QR code and data path flow onto another line rather than off the
+             QR code and data path flow onto another line, not off the
              edge, and the path is shown whole, never cut to an ellipsis with
              the rest only in a tooltip. No clock: the taskbar has one, and no
              Undo: Edit > Undo and Ctrl+Z have it. -->

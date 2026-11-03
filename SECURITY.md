@@ -14,9 +14,9 @@ matters.
 | Adult names, emails, phones, board history | `adults.csv`, `Master_AdultHistory.csv` | Personal information, cumulative across years |
 | SignUpGenius API key | the Windows registry of the computer running the app, encrypted for one Windows account | Grants API access to the district's sign-ups |
 
-Eagle Boards no longer asks for, imports or keeps a youth's birthdate or phone
+Eagle Boards no longer asks for, imports, or keeps a youth's birthdate or phone
 number (SPEC.md D-7, D-8). Folders from earlier events may still hold them:
-they're left in place, and never shown, sent to a tablet or exported.
+they're left in place, and never shown, sent to a tablet, or exported.
 
 The data folder is chosen by the operator and lives outside this repository.
 Nothing in the repository or in a released exe contains participant data or a
@@ -25,7 +25,7 @@ key.
 ## Never commit these
 
 `.gitignore` excludes spreadsheets and CSV files, dated folders,
-`Master_AdultHistory*`, `*Board_Results*`, `LOGIN_INFO*` and `.env`.
+`Master_AdultHistory*`, `*Board_Results*`, `LOGIN_INFO*`, and `.env`.
 `scripts/hooks/pre-commit` refuses a commit that stages any of them, the
 inherited 2019 jar, or what looks like a SignUpGenius key. Install it once per
 clone:
@@ -51,7 +51,7 @@ timings, no personal information.
   (`SignUpGeniusKeyStore`). It's never in the data folder, which the Java
   version shares, or in a `.env` file. Empty the box and start to remove it.
 - On the command line, `-sugkey` takes the key, as the Java jar's does. Pass it
-  from an environment variable (`-sugkey %SUG_KEY%`) rather than writing it
+  from an environment variable (`-sugkey %SUG_KEY%`) instead of writing it
   into a launcher file, and remember that other programs on the computer can
   read a running program's command line.
 - SignUpGenius takes the key as a URL query parameter. Eagle Boards adds it
@@ -69,13 +69,13 @@ venue network for the length of one event.
 - **Only the check-in endpoints are served.** The sign-in pages, the
   `/api/*` calls they make, and the sign-in calls the Java version's pages
   made answer any address. The other endpoints (the record reads and edits,
-  board actions, room changes and settings that the Java version's admin
+  board actions, room changes, and settings that the Java version's admin
   pages used, and its email autofill) are not registered in the app: they
   answer `404` to everyone, the computer running it included, so a web page
   open in the operator's browser can't reach them through `localhost`. The
   headless test server serves them to its own computer only, and anyone else
   gets `403`. The admin pages themselves are gone (`404`): the scheduler,
-  records and settings are native windows. `CheckInServerTests` checks each
+  records, and settings are native windows. `CheckInServerTests` checks each
   of these (decision 0003).
 - **Responses are trimmed to what each page shows.** The lists at the door get
   names and units. An email lookup is a POST, so an address never lands in a
@@ -83,13 +83,13 @@ venue network for the length of one event.
   `Cache-Control: no-store` so the tablet doesn't keep them. A birthdate, or a
   youth's phone number, is never served.
 - Choose the venue network in the start-up window (or pass `-bind`), so the
-  site isn't served on Hyper-V, WSL or VPN adapters. Run it on the venue
+  site isn't served on Hyper-V, WSL, or VPN adapters. Run it on the venue
   network, never on a public interface or a port-forward, and close the
   scheduler when the event ends: that stops the site.
 
 ## Working with real data
 
-- Develop and test against synthetic data. Tests, the window tests and the
+- Develop and test against synthetic data. Tests, the window tests, and the
   snapshot harness make their own throwaway folders and serve on `127.0.0.1`
   only.
 - Never point a test, a snapshot or a practice run at a real data folder, and

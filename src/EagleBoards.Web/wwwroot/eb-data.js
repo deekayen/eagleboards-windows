@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// eb-data.js — adapter between the browser UI and the EagleBoardScheduler
+// eb-data.js: adapter between the browser UI and the EagleBoardScheduler
 // server protocols. The server side is unchanged from the original app:
 //
 //   GET  <entity>-cells?cols=A,B,C        -> <rows><row id="ID"><cell>..</cell></row></rows>
@@ -85,7 +85,7 @@ function ebAction(path, fields) {
 }
 
 // Autofill option list. The server emits dhtmlx-combo pseudo-JSON with
-// unquoted keys, so it is extracted with a regex rather than JSON.parse.
+// unquoted keys, so it is extracted with a regex instead of JSON.parse.
 function ebAutofillList(path) {
    return fetch(path + "?op=list").then(function (r) { return r.text(); }).then(function (text) {
       var out = [];

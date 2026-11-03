@@ -185,7 +185,7 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>A seated, running or finished board: its facts, and the members of one still running.</summary>
+    /// <summary>A seated, running, or finished board: its facts, and the members of one still running.</summary>
     private void ShowBoard(ScoutRow scout)
     {
         ShowFacts(scout);
