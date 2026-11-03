@@ -68,6 +68,24 @@ public sealed class BoardService
     private static readonly string[] ScoutRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Leader"];
     private static readonly string[] AdultRegFields = ["First", "Last", "Unit", "UnitType", "Email", "Phone", "ProjectReview", "FinalBoard"];
 
+    // What a public sign-in may put on a new record: the fields the shared
+    // pages send (an ID too, which is how a returning person is matched).
+    // Anything else posted -- Room, Status, Result, RegNum, board members --
+    // belongs to the event's steps, not to whoever reaches the website, and
+    // is dropped. DOB and a youth's Phone are not here either (D-7, D-8).
+    private static readonly string[] ScoutSignInFields = [.. ScoutRegFields, "ID", "BoardType"];
+    private static readonly string[] AdultSignInFields = [.. AdultRegFields, "ID", "WoodBadge", "Supporting"];
+
+    /// <summary>The longest value a public sign-in stores; a form's own limits are far below it.</summary>
+    private const int MaxSignInValueLength = 200;
+
+    /// <summary>
+    /// Whom an adult will introduce is a list of youth IDs joined by "|", one
+    /// of about 30 characters for each, so it gets room for a Scoutmaster who
+    /// introduces a whole troop.
+    /// </summary>
+    private const int MaxSupportingLength = 8000;
+
     /// <summary>How to reverse one change: every record it touched, and what it set on each.</summary>
     private sealed record UndoEntry(string Description, IReadOnlyList<Touched> Records);
 
@@ -451,24 +469,11 @@ public sealed class BoardService
     {
         lock (_lock)
         {
-            int pre = 0, walkIn = 0;
-            foreach (var s in Scouts.Records)
-            {
-                if (s.RegNum.StartsWith('P'))
-                {
-                    pre++;
-                }
-                else if (s.RegNum.StartsWith('W'))
-                {
-                    walkIn++;
-                }
-            }
-
             // A sign-in page cached from before SPEC.md D-7 still sends a
             // birthdate, and one from before D-8 a phone number. Nothing uses
             // either, so they are dropped here, never stored; one already on
             // the record is left as it is (O-5, D-8).
-            var incoming = new ScoutRecord(fields.Where(f => f.Key is not (ScoutRecord.DobField or ScoutRecord.PhoneField)));
+            var incoming = new ScoutRecord(SignInFields(fields, ScoutSignInFields));
             var scout = Scouts.Get(incoming.Id);
             if (scout != null)
             {
@@ -498,13 +503,62 @@ public sealed class BoardService
             // queue rather than being renumbered to the back of it.
             if (!scout.RegNum.StartsWith(prefix))
             {
-                scout.RegNum = prefix + ((preRegistered ? pre : walkIn) + 1).ToString(CultureInfo.InvariantCulture);
+                scout.RegNum = prefix + NextSignInNumber(prefix).ToString(CultureInfo.InvariantCulture);
             }
 
             Scouts.Store();
         }
 
         OnChanged(DataTable.Scouts);
+    }
+
+    /// <summary>
+    /// The fields of a public sign-in that may be stored: only the named
+    /// ones, each cut to <see cref="MaxSignInValueLength"/> (or, for the list
+    /// of youth an adult will introduce, <see cref="MaxSupportingLength"/>).
+    /// </summary>
+    private static IEnumerable<KeyValuePair<string, string>> SignInFields(
+        IEnumerable<KeyValuePair<string, string>> posted, string[] allowed) =>
+        posted.Where(f => allowed.Contains(f.Key, StringComparer.Ordinal))
+            .Select(f => new KeyValuePair<string, string>(f.Key, CutSignInValue(f.Key, f.Value)));
+
+    private static string CutSignInValue(string field, string value)
+    {
+        if (field != "Supporting")
+        {
+            return value.Length > MaxSignInValueLength ? value[..MaxSignInValueLength] : value;
+        }
+
+        // A list of IDs is cut between two of them: half an ID links no one,
+        // and would sit in the adult's record as if it did.
+        if (value.Length <= MaxSupportingLength)
+        {
+            return value;
+        }
+
+        var boundary = value.LastIndexOf('|', MaxSupportingLength);
+        return boundary > 0 ? value[..boundary] : "";
+    }
+
+    /// <summary>
+    /// The next sign-in number for a group ("P" or "W"): one more than the
+    /// highest in use, not a count of the youth. A youth deleted from the
+    /// Youth page leaves a gap that a count would fill again, giving two
+    /// youth the same number and the same place in the line.
+    /// </summary>
+    private int NextSignInNumber(char prefix)
+    {
+        var highest = 0;
+        foreach (var scout in Scouts.Records)
+        {
+            if (scout.RegNum.StartsWith(prefix)
+                && int.TryParse(scout.RegNum.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+            {
+                highest = Math.Max(highest, number);
+            }
+        }
+
+        return highest + 1;
     }
 
     /// <summary>
@@ -516,7 +570,7 @@ public sealed class BoardService
     {
         lock (_lock)
         {
-            var incoming = new AdultRecord(fields) { Room = "" };
+            var incoming = new AdultRecord(SignInFields(fields, AdultSignInFields)) { Room = "" };
             incoming.WoodBadge = incoming.WoodBadge == "Y" ? "Y" : "";
             incoming.Supporting = incoming.Supporting.Trim();
             var adult = Adults.Get(incoming.Id);
@@ -1150,6 +1204,19 @@ public sealed class BoardService
         if (chair.RoleFor(type) != BoardRoles.Chair)
         {
             return Refuse($"ERROR: {chair.FullName} isn't a chair for {Kinds(type)}. Choose a qualified chair, or make them a chair on the Adults page.");
+        }
+
+        // The national floor (Guide to Advancement 8.0.3.0 #2, SPEC.md D-4): the
+        // council's no-same-unit rule is only a warning that can be overridden,
+        // but a board still needs one member from outside the youth's unit.
+        // The window blocks it as the board is built; this is the server's
+        // answer to a request that never went through the window.
+        var candidates = members.Select(m => new BoardCandidate(m.Id, m.Last, m.First, m.UnitName)).ToList();
+        if (!BoardRules.HasNonUnitMember(scout.UnitName, candidates))
+        {
+            return Refuse(changing
+                ? "ERROR: Everyone left on the board is from the youth's unit, and a board needs at least one member from outside it (Guide to Advancement 8.0.3.0). Add someone from another unit first, or use Replace."
+                : "ERROR: Everyone on the board is from the youth's unit, and a board needs at least one member from outside it (Guide to Advancement 8.0.3.0). Add someone from another unit.");
         }
 
         return (members, chair, names.ToString());

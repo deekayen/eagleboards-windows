@@ -36,6 +36,105 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void ADeletedYouthsNumberIsNotGivenToTheNextWalkIn()
+    {
+        // The Youth page can delete someone who is waiting. Counting the
+        // youth left would number the next walk-in W3 again.
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        s.RegisterScout(Seed.Scout("Bram", "Beau", "1002", "Final"));
+        s.RegisterScout(Seed.Scout("Carrington", "Cora", "1003", "Final"));
+        Assert.Equal("deleted", s.SaveRow(DataTable.Scouts, "deleted", Seed.ScoutId("Bram", "Beau", "1002"), new Dictionary<string, string>()));
+
+        s.RegisterScout(Seed.Scout("Dunn", "Dee", "1004", "Final"));
+
+        var regNums = s.Snapshot(DataTable.Scouts).Select(r => r["RegNum"]).Order().ToArray();
+        Assert.Equal(["W1", "W3", "W4"], regNums);
+    }
+
+    [Fact]
+    public void ASignInStoresOnlyTheFieldsTheFormSends()
+    {
+        // The sign-in endpoints answer the whole network. What a station
+        // posts beyond the form's fields belongs to the event's steps.
+        using var box = new Sandbox();
+        var s = box.Open();
+        var posted = new Dictionary<string, string>(Seed.Scout("Aldridge", "Alex", "1001", "Final"))
+        {
+            ["RegNum"] = "P0",
+            ["Room"] = "101",
+            ["Status"] = BoardStatus.Seated,
+            ["Result"] = BoardResults.Approved,
+            ["BoardChair"] = "Someone",
+            ["Notes"] = "set from the website",
+        };
+
+        s.RegisterScout(posted);
+
+        var row = s.Snapshot(DataTable.Scouts).Single();
+        Assert.Equal("W1", row["RegNum"]);
+        Assert.Equal("", row["Room"]);
+        Assert.Equal(BoardStatus.Registered, row["Status"]);
+        Assert.Equal("", row["Result"]);
+        Assert.Equal("", row["BoardChair"]);
+        Assert.Equal("", row["Notes"]);
+    }
+
+    [Fact]
+    public void AnAdultSignInKeepsOnlyTheFieldsTheFormSendsAndCutsLongValues()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        var posted = new Dictionary<string, string>(Seed.Adult("Able", "Ann", "2001", "Member", "Chair"))
+        {
+            ["Room"] = "101",
+            ["Flags"] = "P",
+            ["WoodBadge"] = "Y",
+            ["Email"] = new string('x', 500) + "@example.org",
+        };
+
+        s.RegisterAdult(posted);
+
+        var row = AdultRow(s, Seed.AdultId("Able", "Ann", "2001"));
+        Assert.Equal("", row["Room"]);
+        Assert.Equal("W", row["Flags"]);
+        Assert.Equal("Y", row["WoodBadge"]);
+        Assert.Equal(200, row["Email"].Length);
+    }
+
+    [Fact]
+    public void AScoutmasterIntroducingAWholeTroopKeepsEveryLink()
+    {
+        // Supporting is a list of youth IDs, not a short field: a cap that
+        // cut it mid-ID would silently drop the last youth's link.
+        using var box = new Sandbox();
+        var s = box.Open();
+        var troop = string.Join('|', Enumerable.Range(1, 40).Select(i => Seed.ScoutId("Scout" + i, "Pat", "1001")));
+        var posted = new Dictionary<string, string>(Seed.Adult("Able", "Ann", "1001", "Member", "Chair")) { ["Supporting"] = troop };
+
+        s.RegisterAdult(posted);
+
+        Assert.True(troop.Length > 200);
+        Assert.Equal(troop, AdultRow(s, Seed.AdultId("Able", "Ann", "1001"))["Supporting"]);
+    }
+
+    [Fact]
+    public void AnAbsurdlyLongSupportingListIsCutBetweenTwoIdsNeverInsideOne()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        var ids = Enumerable.Range(1, 600).Select(i => Seed.ScoutId("Scout" + i, "Pat", "1001")).ToList();
+        var posted = new Dictionary<string, string>(Seed.Adult("Able", "Ann", "1001", "Member", "Chair")) { ["Supporting"] = string.Join('|', ids) };
+
+        s.RegisterAdult(posted);
+
+        var kept = AdultRow(s, Seed.AdultId("Able", "Ann", "1001"))["Supporting"].Split('|');
+        Assert.True(kept.Length is > 0 and < 600);
+        Assert.All(kept, id => Assert.Contains(id, ids));
+    }
+
+    [Fact]
     public void SubmittingTheSignInFormTwiceKeepsYourPlace()
     {
         using var box = new Sandbox();
@@ -651,6 +750,68 @@ public class BoardServiceTests
         Assert.False(r.Ok);
         Assert.Contains(refusal, r.Message);
         Assert.Equal("101", AdultRow(s, Id("A2"))["Room"]);
+    }
+
+    /// <summary>
+    /// SPEC.md D-4: the council's same-unit rule can be overridden, but never
+    /// below one member from outside the youth's unit. The window blocks it
+    /// as the board is built; the server must too, for a request that never
+    /// went through the window.
+    /// </summary>
+    private static (BoardService S, string Scout, string[] OwnUnit, string Outsider) UnitFloorEvent(Sandbox box)
+    {
+        var s = box.Open();
+        s.AddRoom("101", BoardTypes.Final);
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        string[] ownUnit = ["C1", "C2", "C3", "C4"];
+        foreach (var last in ownUnit)
+        {
+            s.RegisterAdult(Seed.Adult(last, "X", "1001", "Member", last == "C1" ? "Chair" : "Member"));
+        }
+
+        s.RegisterAdult(Seed.Adult("Outsider", "X", "2001", "Member", "Member"));
+        return (s, Seed.ScoutId("Aldridge", "Alex", "1001"),
+            [.. ownUnit.Select(last => Seed.AdultId(last, "X", "1001"))], Seed.AdultId("Outsider", "X", "2001"));
+    }
+
+    [Fact]
+    public void ABoardOfTheYouthsOwnUnitIsRefusedEvenWithEveryOtherRulesMet()
+    {
+        using var box = new Sandbox();
+        var (s, scout, own, _) = UnitFloorEvent(box);
+
+        var r = s.SeatBoard("ROOM:101", scout, own[0], $"{own[0]},{own[1]},{own[2]}");
+
+        Assert.False(r.Ok);
+        Assert.StartsWith("ERROR: Everyone on the board is from the youth's unit", r.Message, StringComparison.Ordinal);
+        Assert.Equal(BoardStatus.Registered, Status(s, scout));
+        Assert.Equal("", AdultRow(s, own[0])["Room"]);
+    }
+
+    [Fact]
+    public void SameUnitMembersAreAllowedWhileOneMemberIsFromOutside()
+    {
+        using var box = new Sandbox();
+        var (s, scout, own, outsider) = UnitFloorEvent(box);
+
+        var r = s.SeatBoard("ROOM:101", scout, own[0], $"{own[0]},{own[1]},{outsider}");
+
+        Assert.True(r.Ok, r.Message);
+    }
+
+    [Fact]
+    public void ChangingMembersCannotRemoveTheLastMemberFromOutsideTheUnit()
+    {
+        using var box = new Sandbox();
+        var (s, scout, own, outsider) = UnitFloorEvent(box);
+        Assert.True(s.SeatBoard("ROOM:101", scout, own[0], $"{own[0]},{own[1]},{outsider}").Ok);
+
+        var r = s.ChangeBoardMembers(scout, own[0], $"{own[0]},{own[1]},{own[2]}");
+
+        Assert.False(r.Ok);
+        Assert.StartsWith("ERROR: Everyone left on the board is from the youth's unit", r.Message, StringComparison.Ordinal);
+        Assert.Equal("101", AdultRow(s, outsider)["Room"]);
+        Assert.Equal("", AdultRow(s, own[2])["Room"]);
     }
 
     [Fact]
