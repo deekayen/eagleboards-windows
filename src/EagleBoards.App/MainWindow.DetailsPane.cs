@@ -145,6 +145,21 @@ public partial class MainWindow
     }
 
     /// <summary>
+    /// A message at the top of the details pane, brought into view. The buttons
+    /// it answers (Replace, Remove, Add member) are lower in the pane, so the
+    /// pane is usually scrolled past the bar: a refused change showed nothing
+    /// on screen in the 2026-11-03 live test, until the pane was scrolled
+    /// back up. Done once the layout has settled, since a step refreshes the
+    /// pane after it reports. Focus stays where it is, and a screen reader
+    /// hears the bar from its own live region.
+    /// </summary>
+    private void ShowDetailNotice(Severity severity, string title, string message)
+    {
+        DetailNotice.Show(severity, title, message);
+        Dispatcher.BeginInvoke(() => DetailNotice.BringIntoView(), DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
     /// The seating review's problems, each an InfoBar, rebuilt only when they
     /// change: every sign-in refreshes the pane, and a new bar each time was
     /// a new message to read out. A problem that appears while the operator

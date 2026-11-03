@@ -36,7 +36,7 @@ public partial class MainWindow
             .Select(a => new Option(a.Id, string.Join(" · ", new[] { a.FullName, Display.Unit(a.UnitName) }.Where(s => s.Length > 0)))).ToList();
         if (choices.Count == 0)
         {
-            DetailNotice.Show(Severity.Informational, "No adult to link",
+            ShowDetailNotice(Severity.Informational, "No adult to link",
                 _adults.Count == 0 ? "No adult has signed in yet." : $"Every adult who has signed in is already linked to {scout.FullName}.");
             return;
         }

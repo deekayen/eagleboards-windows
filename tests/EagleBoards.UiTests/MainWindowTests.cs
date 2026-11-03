@@ -261,6 +261,34 @@ public class MainWindowTests
     });
 
     [Fact]
+    public void ARefusedStepShowsItsErrorEvenWhenThePaneWasScrolledPastIt() => OffScreen.Run(() =>
+    {
+        // Found in the 2026-11-03 live test: Replace sits low in the details
+        // pane, the bar that says why a change was refused sits at its top,
+        // and nothing brought it into view.
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        for (var i = 0; i < 30; i++)
+        {
+            e.Adult($"Adult{i:D2}", "Pat", (2001 + i).ToString(CultureInfo.InvariantCulture), BoardRoles.Member, BoardRoles.Member);
+        }
+
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        w.DetailsScroll.ScrollToEnd();
+        OffScreen.Pump();
+        Assert.True(w.DetailsScroll.VerticalOffset > 0, "the pane has to scroll for this to mean anything");
+
+        OffScreen.Invoke(w, "Report", ActionResult.Error("ERROR: Everyone left on the board is from the youth's unit."), "Couldn't change the board", null!);
+        OffScreen.Pump();
+
+        Assert.True(w.DetailNotice.IsOpen);
+        var top = w.DetailNotice.TransformToAncestor(w.DetailsScroll).Transform(new Point(0, 0)).Y;
+        Assert.InRange(top, 0, w.DetailsScroll.ViewportHeight - 1);
+    });
+
+    [Fact]
     public void AProposalTakesTheProjectRoomWhenThereIsOneBesideAFinalRoom() => OffScreen.Run(() =>
     {
         using var e = new TestEvent();

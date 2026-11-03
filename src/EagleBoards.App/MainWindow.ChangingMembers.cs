@@ -41,7 +41,7 @@ public partial class MainWindow
             _adults.Where(a => ids.Contains(a.Id)).Select(a => new BoardCandidate(a.Id, a.Last, a.First, a.UnitName)));
         if (conflicts.Count > 0 && !DetailNotice.IsOpen)
         {
-            DetailNotice.Show(Severity.Warning, "Same unit",
+            ShowDetailNotice(Severity.Warning, "Same unit",
                 $"{string.Join(", ", conflicts.Select(c => $"{c.First} {c.Last}"))} {(conflicts.Count == 1 ? "is" : "are")} in the youth's own unit.");
         }
     }
@@ -61,7 +61,7 @@ public partial class MainWindow
         var choices = JoinChoices(scout);
         if (choices.Count == 0)
         {
-            DetailNotice.Show(Severity.Informational, "No one is free", "Everyone else is on a board, gone home, or unavailable for this board type.");
+            ShowDetailNotice(Severity.Informational, "No one is free", "Everyone else is on a board, gone home, or unavailable for this board type.");
             return;
         }
 
@@ -101,7 +101,7 @@ public partial class MainWindow
         if (leaving.Id == board.ChairId
             && !board.Members.Any(m => m.Id != leaving.Id && m.Info.RoleFor(scout.BoardType) == BoardRoles.Chair))
         {
-            DetailNotice.Show(Severity.Warning, $"{leaving.Name} is the only chair",
+            ShowDetailNotice(Severity.Warning, $"{leaving.Name} is the only chair",
                 "No one else on this board can chair it. Use Replace to swap in a qualified chair, or add one with Add member first.");
             return;
         }
@@ -120,7 +120,7 @@ public partial class MainWindow
         var choices = JoinChoices(scout);
         if (choices.Count == 0)
         {
-            DetailNotice.Show(Severity.Informational, "No one is free", "Everyone else is on a board, gone home, or unavailable for this board type.");
+            ShowDetailNotice(Severity.Informational, "No one is free", "Everyone else is on a board, gone home, or unavailable for this board type.");
             return;
         }
 
@@ -144,7 +144,7 @@ public partial class MainWindow
             .Select(m => new PickRow(m, scout)).ToList();
         if (qualified.Count == 0)
         {
-            DetailNotice.Show(Severity.Informational, "No one else can chair",
+            ShowDetailNotice(Severity.Informational, "No one else can chair",
                 "No other member of this board is qualified to chair. Replace someone with a qualified chair, or make a member a chair on the Adults page.");
             return;
         }
@@ -167,7 +167,7 @@ public partial class MainWindow
     {
         if (!result.Ok)
         {
-            DetailNotice.Show(Severity.Error, failure, Plain(result.Message));
+            ShowDetailNotice(Severity.Error, failure, Plain(result.Message));
         }
 
         RefreshAll();

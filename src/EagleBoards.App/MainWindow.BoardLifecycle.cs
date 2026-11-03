@@ -37,7 +37,7 @@ public partial class MainWindow
         var result = _svc.SeatBoard(roomId, scout.Id, _chairId, string.Join(",", picked.Select(a => a.Id)));
         if (!result.Ok)
         {
-            DetailNotice.Show(Severity.Error, "Couldn't seat the board", Plain(result.Message));
+            ShowDetailNotice(Severity.Error, "Couldn't seat the board", Plain(result.Message));
         }
 
         _chairId = null;
