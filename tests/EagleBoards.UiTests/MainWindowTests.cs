@@ -22,10 +22,10 @@ public class MainWindowTests
     }
 
     private static string[] Picks(MainWindow window) =>
-        window.PickList.Items.Cast<PickRow>().Select(p => p.Adult.Last).Order().ToArray();
+        [.. window.PickList.Items.Cast<PickRow>().Select(p => p.Adult.Last).Order()];
 
     private static string[] Available(MainWindow window) =>
-        window.AvailableList.Items.Cast<PickRow>().Select(p => p.Adult.Last).Order().ToArray();
+        [.. window.AvailableList.Items.Cast<PickRow>().Select(p => p.Adult.Last).Order()];
 
     /// <summary>A table page, shown, with its list-opening seam recording instead of opening a popup.</summary>
     private static TablePage Page(MainWindow window, string name, List<ComboBox>? opened = null)
@@ -366,7 +366,7 @@ public class MainWindowTests
         e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
         var adults = Page(e.Window, "Adults");
         var adult = adults.Rows.Single();
-        string Name(TablePage page, RecordRow row, string header) => AutomationProperties.GetName(Cell(page, row, header));
+        static string Name(TablePage page, RecordRow row, string header) => AutomationProperties.GetName(Cell(page, row, header));
 
         Assert.Equal("Anneliese Abernathy", adult.ToString());
         Assert.Equal("Abernathy", Name(adults, adult, "Last name"));
@@ -467,7 +467,7 @@ public class MainWindowTests
             ["Room"] = "101",
             ["Status"] = BoardStatus.Seated,
         });
-        AdultInfo Adult(string first, string last, string room) => new("A" + last, last, first, "Troop1001", room, BoardRoles.Member, BoardRoles.Member);
+        static AdultInfo Adult(string first, string last, string room) => new("A" + last, last, first, "Troop1001", room, BoardRoles.Member, BoardRoles.Member);
 
         Assert.Equal("Fetch **Jo Jones** to introduce **Alexander Aldridge** to the board. They're on the board in room 104.",
             MainWindow.IntroductionReminder(youth, new Introduction([Adult("Jo", "Jones", "104")], [])));

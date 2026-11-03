@@ -160,8 +160,8 @@ public sealed class InfoBar : Border
         protected override List<AutomationPeer> GetChildrenCore()
         {
             var bar = (InfoBar)Owner;
-            return new[] { bar._action, bar._close }.Where(b => b.IsVisible)
-                .Select(UIElementAutomationPeer.CreatePeerForElement).OfType<AutomationPeer>().ToList();
+            return [.. new[] { bar._action, bar._close }.Where(b => b.IsVisible)
+                .Select(UIElementAutomationPeer.CreatePeerForElement).OfType<AutomationPeer>()];
         }
     }
 }

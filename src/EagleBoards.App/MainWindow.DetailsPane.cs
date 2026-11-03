@@ -109,7 +109,7 @@ public partial class MainWindow
             p.SetChairQuietly(p.Id == _chairId);
         }
 
-        SetRows(PickList, picked.OrderByDescending(p => p.Id == _chairId).ToList());
+        SetRows(PickList, [.. picked.OrderByDescending(p => p.Id == _chairId)]);
         NoPicksText.Visibility = picked.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         // Found by the unit in full or as the file's short form ("T1001").
@@ -126,7 +126,7 @@ public partial class MainWindow
         NoAvailableText.Visibility = available.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var room = _rooms.FirstOrDefault(r => r.Id == _builderRoomId);
-        var issues = BoardCheck.Review(scout.Info, picked.Select(p => p.Adult.Info).ToList(), _chairId, room?.Info);
+        var issues = BoardCheck.Review(scout.Info, [.. picked.Select(p => p.Adult.Info)], _chairId, room?.Info);
         ShowIssues(scout, issues);
 
         var warn = issues.Any(i => i.Level == IssueLevel.Warn);
@@ -192,7 +192,7 @@ public partial class MainWindow
                 m.SetChairQuietly(m.Id == scout.BoardChairId);
             }
 
-            SetRows(BoardMemberList, members.OrderByDescending(m => m.IsChair).ThenBy(m => m.Adult.Last, StringComparer.OrdinalIgnoreCase).ToList());
+            SetRows(BoardMemberList, [.. members.OrderByDescending(m => m.IsChair).ThenBy(m => m.Adult.Last, StringComparer.OrdinalIgnoreCase)]);
         }
 
         ResultSection.Visibility = scout.Status == BoardStatus.InProgress ? Visibility.Visible : Visibility.Collapsed;

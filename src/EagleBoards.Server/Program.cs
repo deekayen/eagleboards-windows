@@ -19,7 +19,7 @@ if (cmd.Help)
     return 1;
 }
 
-void Log(string message) => Console.WriteLine(message);
+static void Log(string message) => Console.WriteLine(message);
 
 int port;
 try

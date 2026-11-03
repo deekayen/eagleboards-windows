@@ -53,7 +53,7 @@ public static class JavaProperties
                 i++;
             }
 
-            result[Unescape(key.ToString())] = Unescape(logical.Substring(i));
+            result[Unescape(key.ToString())] = Unescape(logical[i..]);
         }
 
         return result;

@@ -151,7 +151,7 @@ public sealed class BoardService
     public ActionResult Undo()
     {
         ActionResult result;
-        DataTable[] tables = [];
+        DataTable[] tables;
         lock (_lock)
         {
             result = UndoLocked(out tables);
@@ -226,7 +226,7 @@ public sealed class BoardService
             }
         }
 
-        tables = entry.Records.Select(t => t.Table).Distinct().ToArray();
+        tables = [.. entry.Records.Select(t => t.Table).Distinct()];
         foreach (var table in tables)
         {
             Table(table).Store();
@@ -401,7 +401,7 @@ public sealed class BoardService
     {
         lock (_lock)
         {
-            return Table(table).AllRecords.Select(r => r.Snapshot()).ToList();
+            return [.. Table(table).AllRecords.Select(r => r.Snapshot())];
         }
     }
 
@@ -684,7 +684,7 @@ public sealed class BoardService
     {
         lock (_lock)
         {
-            return ScoutChoiceRecords().Select(s => (s.Id, s.First, s.Last, s.UnitName)).ToList();
+            return [.. ScoutChoiceRecords().Select(s => (s.Id, s.First, s.Last, s.UnitName))];
         }
     }
 
@@ -696,7 +696,7 @@ public sealed class BoardService
     {
         lock (_lock)
         {
-            return ScoutChoiceRecords().Select(s => (s.Id, s.First, s.Last, s.UnitType, s.Unit)).ToList();
+            return [.. ScoutChoiceRecords().Select(s => (s.Id, s.First, s.Last, s.UnitType, s.Unit))];
         }
     }
 
@@ -707,14 +707,13 @@ public sealed class BoardService
             .Where(s => s.Status is BoardStatus.Completed or BoardStatus.Postponed)
             .Select(s => s.Id)
             .ToHashSet();
-        return ScoutsScheduled.Records.Concat(Scouts.Records)
+        return [.. ScoutsScheduled.Records.Concat(Scouts.Records)
             .Where(s => s.Last.Length > 0 && !done.Contains(s.Id))
             .GroupBy(s => s.Id)
             .Select(g => g.Last())
             .Where(s => s.BoardType != BoardTypes.Project)
             .OrderBy(s => s.Last, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(s => s.First, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+            .ThenBy(s => s.First, StringComparer.CurrentCultureIgnoreCase)];
     }
 
     // ------------------------------------------------------------------
@@ -1257,7 +1256,7 @@ public sealed class BoardService
         // "" and "N/A" are never a board's room ("N/A" marks adults gone home).
         room.Length == 0 || room == AdultRoom.Disabled
             ? []
-            : Adults.Records.Where(a => a.Room == room).ToList();
+            : [.. Adults.Records.Where(a => a.Room == room)];
 
     // ------------------------------------------------------------------
     // Rooms

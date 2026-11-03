@@ -12,7 +12,7 @@ internal static class FieldConverters
 {
     /// <summary>Capitalize the first letter, leave the rest alone.</summary>
     public static string CapitalizeName(string s) =>
-        s.Length > 0 && char.IsLetter(s[0]) ? char.ToUpperInvariant(s[0]) + s.Substring(1) : s;
+        s.Length > 0 && char.IsLetter(s[0]) ? char.ToUpperInvariant(s[0]) + s[1..] : s;
 
     private static string[] Words(string s) => s.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
@@ -75,7 +75,7 @@ internal static class FieldConverters
             return true;
         }
 
-        var digits = new string(value.Where(char.IsDigit).ToArray());
+        var digits = new string([.. value.Where(char.IsDigit)]);
         var sb = new StringBuilder();
         for (var i = 0; i < digits.Length; i++)
         {
@@ -94,7 +94,7 @@ internal static class FieldConverters
     /// <summary>Digits are the unit number; the first letter picks Crew, Pack or Troop.</summary>
     public static bool Unit(DataRecord r, string value)
     {
-        r.SetValue("Unit", new string(value.Where(char.IsDigit).ToArray()));
+        r.SetValue("Unit", new string([.. value.Where(char.IsDigit)]));
         var upper = value.Trim().ToUpperInvariant();
         r.SetValue("UnitType", upper.StartsWith('C') ? "Crew" : upper.StartsWith('P') ? "Pack" : "Troop");
         return true;

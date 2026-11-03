@@ -75,9 +75,9 @@ public partial class MainWindow
             var bar = page?.Notice ?? (DetailsHead.IsVisible ? DetailNotice : Notice);
             bar.Show(Severity.Error, "Couldn't undo", Plain(result.Message));
         }
-        else if (page != null)
+        else
         {
-            page.Notice.Show(Severity.Informational, "Undone", $"Undid {step}.");
+            page?.Notice.Show(Severity.Informational, "Undone", $"Undid {step}.");
         }
 
         RefreshAll();

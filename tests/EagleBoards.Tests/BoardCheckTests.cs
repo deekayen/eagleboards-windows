@@ -24,7 +24,7 @@ public class BoardCheckTests
     private static IReadOnlyList<BoardIssue> Check(ScoutInfo scout, AdultInfo[] picked, string? chairId = "chair", RoomInfo? room = null) =>
         BoardCheck.Review(scout, picked, chairId, room ?? FreeFinal);
 
-    private static string[] Titles(IEnumerable<BoardIssue> issues, IssueLevel level) => issues.Where(i => i.Level == level).Select(i => i.Title).ToArray();
+    private static string[] Titles(IEnumerable<BoardIssue> issues, IssueLevel level) => [.. issues.Where(i => i.Level == level).Select(i => i.Title)];
 
     [Fact]
     public void AGoodBoardHasNoIssues() =>

@@ -155,7 +155,7 @@ internal sealed class TestEvent : IDisposable
 {
     private readonly string _root;
     private readonly HttpClient _http = new();
-    private EventSession? _session;
+    private readonly EventSession? _session;
     private MainWindow? _window;
 
     public TestEvent()

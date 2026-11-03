@@ -314,7 +314,7 @@ public class EventPageTests
         Open(w, "Aldridge");
         Assert.False(w.FillButton.IsEnabled);
 
-        Color Of(object brush) => ((SolidColorBrush)brush).Color;
+        static Color Of(object brush) => ((SolidColorBrush)brush).Color;
         var label = OffScreen.Descendant<AccessText>(w.FillButton)!;
         Assert.Equal(Of(w.FindResource("TextFillColorDisabledBrush")), Of(label.Foreground));
         Assert.Equal(Of(w.FindResource("TextFillColorPrimaryBrush")), Of(OffScreen.Descendant<AccessText>(w.PostponeButton)!.Foreground));

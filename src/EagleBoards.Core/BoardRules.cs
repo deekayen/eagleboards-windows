@@ -79,7 +79,7 @@ public static class BoardRules
             return [];
         }
 
-        return members.Where(m => !string.IsNullOrEmpty(m.UnitName) && m.UnitName == scoutUnitName).ToList();
+        return [.. members.Where(m => !string.IsNullOrEmpty(m.UnitName) && m.UnitName == scoutUnitName)];
     }
 
     /// <summary>

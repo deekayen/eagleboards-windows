@@ -51,7 +51,7 @@ public class SharedCaseTests
             return [];
         }
 
-        return Directory.GetFiles(folder, "*.json").Order(StringComparer.Ordinal).Select(path =>
+        return [.. Directory.GetFiles(folder, "*.json").Order(StringComparer.Ordinal).Select(path =>
         {
             try
             {
@@ -61,7 +61,7 @@ public class SharedCaseTests
             {
                 return new CaseFile(Path.GetFileName(path), null, e.Message);
             }
-        }).ToList();
+        })];
     }
 
     /// <summary>Every case in every file this runner reads; the others fail <see cref="EveryCaseFileIsOneThisRunnerReads"/>.</summary>
@@ -136,8 +136,8 @@ public class SharedCaseTests
             case "suggest":
                 {
                     var youth = Youth(body["youth"]);
-                    var pick = SchedulerLogic.AutoSelect(youth, Items(body["adults"]).Select(Adult).ToList(), [FreeRoom(youth)],
-                        Items(body["waiting"]).Select(Youth).ToList());
+                    var pick = SchedulerLogic.AutoSelect(youth, [.. Items(body["adults"]).Select(Adult)], [FreeRoom(youth)],
+                        [.. Items(body["waiting"]).Select(Youth)]);
                     Compare(Proposal(youth, pick), expect);
                     break;
                 }
@@ -145,8 +145,8 @@ public class SharedCaseTests
             case "fill":
                 {
                     var youth = Youth(body["youth"]);
-                    var fill = SchedulerLogic.FillBoard(youth, Items(body["adults"]).Select(Adult).ToList(),
-                        Items(body["picked"]).Select(Text).ToList(), Items(body["waiting"]).Select(Youth).ToList());
+                    var fill = SchedulerLogic.FillBoard(youth, [.. Items(body["adults"]).Select(Adult)],
+                        [.. Items(body["picked"]).Select(Text)], [.. Items(body["waiting"]).Select(Youth)]);
                     Compare(Proposal(youth, fill), expect);
                     break;
                 }
@@ -183,7 +183,7 @@ public class SharedCaseTests
                         seated.Add(youth.Id);
                         boards[youth.BoardType]++;
                         var room = "R" + n;
-                        adults = adults.Select(a => pick.AllAdultIds.Contains(a.Id) ? a with { Room = room } : a).ToList();
+                        adults = [.. adults.Select(a => pick.AllAdultIds.Contains(a.Id) ? a with { Room = room } : a)];
                     }
                 }
 
@@ -232,7 +232,7 @@ public class SharedCaseTests
         _ => throw new ArgumentOutOfRangeException(nameof(verdict), verdict, null),
     };
 
-    private static JsonArray Strings(IEnumerable<string> values) => new(values.Select(v => (JsonNode?)JsonValue.Create(v)).ToArray());
+    private static JsonArray Strings(IEnumerable<string> values) => new([.. values.Select(v => (JsonNode?)JsonValue.Create(v))]);
 
     /// <summary>
     /// Windows words its shortages its own way, so they are compared as the

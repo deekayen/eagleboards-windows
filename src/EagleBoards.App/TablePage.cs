@@ -213,7 +213,7 @@ public sealed record PageRows(List<Dictionary<string, string>> Rows, string? Abo
 /// </summary>
 public static class TableSpecs
 {
-    private static Option[] Same(params string[] values) => values.Select(v => new Option(v, v)).ToArray();
+    private static Option[] Same(params string[] values) => [.. values.Select(v => new Option(v, v))];
 
     public static readonly Option[] BoardTypeChoices =
         [new("", ""), new(BoardTypes.Final, Display.BoardType(BoardTypes.Final)), new(BoardTypes.Project, Display.BoardType(BoardTypes.Project))];
@@ -326,7 +326,7 @@ public static class TableSpecs
         {
             var read = svc.ReadApprovedProposals();
             var unreadable = read.Unreadable.Select(u => RecordRow.DateText(u.Event)).ToList();
-            return new PageRows(read.Approvals.Select(a => a.Snapshot()).ToList(), InWords(read.About),
+            return new PageRows([.. read.Approvals.Select(a => a.Snapshot())], InWords(read.About),
                 unreadable.Count == 0 ? null : $"The youth from the {And(unreadable)} {(unreadable.Count == 1 ? "event" : "events")} couldn't be read, so any proposals approved there aren't listed. The other events are.");
         });
 
@@ -1062,7 +1062,7 @@ public sealed class TablePage : DockPanel
         try
         {
             // With a byte-order mark so Excel reads accented names correctly.
-            File.WriteAllText(dialog.FileName, _svc.ExportCsv(Spec.Table, Spec.Columns.Select(c => c.Field).ToList()), new UTF8Encoding(true));
+            File.WriteAllText(dialog.FileName, _svc.ExportCsv(Spec.Table, [.. Spec.Columns.Select(c => c.Field)]), new UTF8Encoding(true));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

@@ -229,7 +229,7 @@ public class BoardServiceTests
         // The rest of a sitting board's record still corrects.
         Assert.Equal("updated", s.SaveRow(DataTable.Scouts, "updated", scout, new Dictionary<string, string> { ["Notes"] = "Strong answers" }));
         Assert.Equal(BoardStatus.InProgress, Status(s, scout));
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
     }
 
     [Fact]
@@ -255,7 +255,7 @@ public class BoardServiceTests
         Assert.StartsWith("invalid|", Delete(DataTable.Scouts, scout));
         Assert.StartsWith("invalid|", Delete(DataTable.Adults, chair));
         Assert.Equal(BoardStatus.InProgress, Status(s, scout));
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
 
         // An adult on no board, or gone home, can go; and everyone, once the board is over.
         s.RegisterAdult(Seed.Adult("Dunn", "Dee", "2004", "Member", "Member"));
@@ -341,8 +341,8 @@ public class BoardServiceTests
         }
 
         Assert.True(s.SeatBoard("ROOM:101", scout, chair, $"{chair},{m1},{m2}").Ok);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("0", AdultRow(s, id)["Sel"]));
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("0", AdultRow(s, id)["Sel"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
         Assert.Equal(BoardStatus.Seated, Status(s, scout));
     }
 
@@ -536,7 +536,7 @@ public class BoardServiceTests
         var (s, scout, chair, m1, m2) = UnderReview(box);
         s.SaveRow(DataTable.Rooms, "updated", "ROOM:101", new Dictionary<string, string> { ["Room"] = "101 Annex" });
         Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("", AdultRow(s, id)["Room"]));
         Assert.Equal("", s.Snapshot(DataTable.Rooms).Single(r => r["ID"] == "ROOM:101")["Scout"]);
     }
 
@@ -547,7 +547,7 @@ public class BoardServiceTests
         var (s, scout, chair, m1, m2) = UnderReview(box);
         s.SaveRow(DataTable.Rooms, "deleted", "ROOM:101", new Dictionary<string, string>());
         Assert.True(s.CompleteBoard(scout, BoardResults.Approved, "").Ok);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("", AdultRow(s, id)["Room"]));
     }
 
     [Fact]
@@ -557,7 +557,7 @@ public class BoardServiceTests
         var (s, scout, chair, m1, m2) = UnderReview(box);
         s.SaveRow(DataTable.Rooms, "deleted", "ROOM:101", new Dictionary<string, string>());
         Assert.True(s.ResetBoard(scout).Ok);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("", AdultRow(s, id)["Room"]));
     }
 
     [Fact]
@@ -604,7 +604,7 @@ public class BoardServiceTests
         }
 
         var scout = Seed.ScoutId("Aldridge", "Alex", "1001");
-        string A(string last) => Seed.AdultId(last, "X", "2" + last);
+        static string A(string last) => Seed.AdultId(last, "X", "2" + last);
         Assert.True(s.SeatBoard("ROOM:101", scout, A("A1"), $"{A("A1")},{A("A2")},{A("A3")}").Ok);
         Assert.True(s.StartReview(scout).Ok);
         return (s, scout);
@@ -787,7 +787,7 @@ public class BoardServiceTests
         Assert.True(s.RenameRoom("ROOM:101", "101 Annex").Ok);
         Assert.Equal("101 Annex", s.Snapshot(DataTable.Rooms).Single()["Room"]);
         Assert.Equal("101 Annex", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101 Annex", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101 Annex", AdultRow(s, id)["Room"]));
 
         // The room's ID -- what Seat/Move/Remove address it by -- doesn't change.
         Assert.True(s.StartReview(scout).Ok);
@@ -838,7 +838,7 @@ public class BoardServiceTests
         Assert.True(s.Undo().Ok);
         Assert.Equal("101", s.Snapshot(DataTable.Rooms).Single()["Room"]);
         Assert.Equal("101", s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout)["Room"]);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
     }
 
     [Fact]
@@ -906,7 +906,7 @@ public class BoardServiceTests
 
         Assert.True(s.Undo().Ok);
         Assert.Equal(BoardStatus.Registered, Status(s, scout));
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("", AdultRow(s, id)["Room"]));
         Assert.Equal("", s.Snapshot(DataTable.Rooms).Single()["Scout"]);
         Assert.False(s.CanUndo);
     }
@@ -939,7 +939,7 @@ public class BoardServiceTests
         var row = s.Snapshot(DataTable.Scouts).Single(r => r["ID"] == scout);
         Assert.Equal(BoardStatus.InProgress, row["Status"]);
         Assert.Equal("", row["Result"]);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
         Assert.NotEqual("", s.Snapshot(DataTable.Rooms).Single()["Scout"]);
     }
 
@@ -966,7 +966,7 @@ public class BoardServiceTests
 
         Assert.True(s.Undo().Ok);
         Assert.Equal(BoardStatus.InProgress, Status(s, scout));
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
     }
 
     [Fact]
@@ -1068,7 +1068,7 @@ public class BoardServiceTests
 
         // Everything older sits behind the change that can't be taken back.
         Assert.False(s.CanUndo);
-        Assert.All(new[] { chair, m1, m2 }, id => Assert.Equal("101", AdultRow(s, id)["Room"]));
+        Assert.All([chair, m1, m2], id => Assert.Equal("101", AdultRow(s, id)["Room"]));
     }
 
     [Fact]

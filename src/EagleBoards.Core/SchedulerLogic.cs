@@ -176,7 +176,7 @@ public static class SchedulerLogic
                     var board = new List<Candidate> { chair };
                     board.AddRange(combo);
                     var taken = board.Select(c => c.Adult.Id).ToHashSet();
-                    var score = (CountSeatable(pool.Where(c => !taken.Contains(c.Adult.Id)).ToList(), queue),
+                    var score = (CountSeatable([.. pool.Where(c => !taken.Contains(c.Adult.Id))], queue),
                         -board.Sum(c => c.Chairs), -board.Sum(c => c.Useful));
                     if (best == null || score.CompareTo(bestScore) > 0)
                     {
@@ -212,18 +212,18 @@ public static class SchedulerLogic
         if (best != null)
         {
             chairIds = [best[0].Adult.Id];
-            memberIds = best.Skip(1).Select(c => c.Adult.Id).ToList();
+            memberIds = [.. best.Skip(1).Select(c => c.Adult.Id)];
         }
         else
         {
             // No full board: what there is, best first, and what is short.
-            chairIds = chairs.Take(1).Select(c => c.Adult.Id).ToList();
+            chairIds = [.. chairs.Take(1).Select(c => c.Adult.Id)];
             if (chairIds.Count == 0)
             {
                 problems.Add($"No {scout.BoardType} Chairs Available.");
             }
 
-            memberIds = sitters.Where(c => !chairIds.Contains(c.Adult.Id)).Take(need).Select(c => c.Adult.Id).ToList();
+            memberIds = [.. sitters.Where(c => !chairIds.Contains(c.Adult.Id)).Take(need).Select(c => c.Adult.Id)];
             if (memberIds.Count < need)
             {
                 problems.Add($"Only {memberIds.Count} {scout.BoardType} Members Available");
@@ -377,12 +377,11 @@ public static class SchedulerLogic
     /// then sign-in order.
     /// </summary>
     private static List<Candidate> RankFreeAdults(IReadOnlyList<AdultInfo> adults, IReadOnlyList<ScoutInfo> queue) =>
-        adults
+        [.. adults
             .Select((a, order) => new Candidate(a, ChairQualifications(a), queue.Count(w => CanSitFor(a, w)), a.FreeSince, order))
             .Where(c => c.Adult.IsFree)
             .OrderBy(c => c.Chairs).ThenBy(c => c.Useful).ThenBy(c => c.Adult.CameForAnyBoard ? 0 : 1)
-            .ThenBy(c => c.Since, StringComparer.Ordinal).ThenBy(c => c.Order)
-            .ToList();
+            .ThenBy(c => c.Since, StringComparer.Ordinal).ThenBy(c => c.Order)];
 
     /// <summary>
     /// Find a scout's leaders (an adult whose last name appears in the
@@ -433,10 +432,12 @@ public static class SchedulerLogic
         // Those who linked themselves to this scout at sign-in come first and
         // are not guessed at again.
         var supporting = SupportingAdults(scout.Id, adults);
-        return supporting.Select(a => new LocatedAdult(a, true, IsSupporting: true))
-            .Concat(leaders.Where(l => !supporting.Contains(l)).Select(a => new LocatedAdult(a, true)))
-            .Concat(parents.Where(p => !leaders.Contains(p) && !supporting.Contains(p)).Select(a => new LocatedAdult(a, false)))
-            .ToList();
+        return
+        [
+            .. supporting.Select(a => new LocatedAdult(a, true, IsSupporting: true)),
+            .. leaders.Where(l => !supporting.Contains(l)).Select(a => new LocatedAdult(a, true)),
+            .. parents.Where(p => !leaders.Contains(p) && !supporting.Contains(p)).Select(a => new LocatedAdult(a, false)),
+        ];
     }
 
     /// <summary>
@@ -445,7 +446,7 @@ public static class SchedulerLogic
     /// fetched to introduce them when their review starts.
     /// </summary>
     public static List<AdultInfo> SupportingAdults(string scoutId, IEnumerable<AdultInfo> adults) =>
-        adults.Where(a => a.Supports(scoutId)).ToList();
+        [.. adults.Where(a => a.Supports(scoutId))];
 
     /// <summary>
     /// Whom Start review reminds the operator to fetch (SPEC.md D-23): the
@@ -528,7 +529,7 @@ public static class SchedulerLogic
     public static (int Rank, int Number) RegNumSortKey(string regNum)
     {
         var rank = regNum.StartsWith('P') ? 0 : regNum.StartsWith('W') ? 1 : 2;
-        var digits = new string(regNum.SkipWhile(char.IsAsciiLetter).TakeWhile(char.IsAsciiDigit).ToArray());
+        var digits = new string([.. regNum.SkipWhile(char.IsAsciiLetter).TakeWhile(char.IsAsciiDigit)]);
         return (rank, int.TryParse(digits, out var n) ? n : 0);
     }
 
@@ -630,7 +631,7 @@ public static class SchedulerLogic
             i++;
         }
 
-        var number = unitName.Substring(i);
+        var number = unitName[i..];
         return number.Length > 0 && number.All(char.IsAsciiDigit) ? unitName[0] + number : unitName;
     }
 }

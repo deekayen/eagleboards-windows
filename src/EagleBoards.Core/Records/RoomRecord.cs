@@ -1,17 +1,12 @@
 namespace EagleBoards.Core.Records;
 
 /// <summary>A room boards can be seated in. Its ID is "ROOM:" + the room number.</summary>
-public sealed class RoomRecord : DataRecord
+public sealed class RoomRecord(IEnumerable<KeyValuePair<string, string>>? source) : DataRecord("ROOM", AllColumns, source)
 {
     public static readonly IReadOnlyList<string> AllColumns = ["Type", "ID", "Room", "BoardType", "Scout", "Leaders", "RegTime"];
 
     public RoomRecord()
         : this(null)
-    {
-    }
-
-    public RoomRecord(IEnumerable<KeyValuePair<string, string>>? source)
-        : base("ROOM", AllColumns, source)
     {
     }
 

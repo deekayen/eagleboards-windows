@@ -123,7 +123,7 @@ internal abstract class PreRegConverter<T>(DataRecordFile<T> file, Action<string
         }
 
         fields.Add(current.ToString());
-        return fields.ToArray();
+        return [.. fields];
     }
 }
 

@@ -65,10 +65,9 @@ public static class LanAddresses
             }
         }
 
-        return found
+        return [.. found
             .OrderBy(a => a.LooksVirtual)
-            .ThenByDescending(a => a.HasGateway)
-            .ToList();
+            .ThenByDescending(a => a.HasGateway)];
     }
 
     /// <summary>

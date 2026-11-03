@@ -11,17 +11,12 @@ namespace EagleBoards.Core;
 /// as the Java version's is, since the same youth can come up at more than
 /// one event.
 /// </summary>
-public sealed class ApprovalRecord : DataRecord
+public sealed class ApprovalRecord(IEnumerable<KeyValuePair<string, string>> source) : DataRecord("APPROVAL", AllColumns, source)
 {
     public static readonly IReadOnlyList<string> AllColumns = ["Type", "ID", "Event", "Last", "First", "UnitType", "Unit", "BoardChair", "BoardMembers", "Notes"];
 
     /// <summary>What is copied from the youth's record, as the file holds it.</summary>
     internal static readonly string[] Copied = ["Last", "First", "UnitType", "Unit", "BoardChair", "BoardMembers", "Notes"];
-
-    public ApprovalRecord(IEnumerable<KeyValuePair<string, string>> source)
-        : base("APPROVAL", AllColumns, source)
-    {
-    }
 }
 
 /// <summary>

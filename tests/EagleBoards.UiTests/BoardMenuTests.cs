@@ -34,9 +34,9 @@ public class BoardMenuTests
         return (e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final), chair, [chair, b, c]);
     }
 
-    private static MenuItem[] TopMenus(MainWindow window) => OffScreen.Descendant<Menu>(window)!.Items.OfType<MenuItem>().ToArray();
+    private static MenuItem[] TopMenus(MainWindow window) => [.. OffScreen.Descendant<Menu>(window)!.Items.OfType<MenuItem>()];
 
-    private static MenuItem[] BoardItems(MainWindow window) => TopMenus(window).Single(m => (string)m.Header == "_Board").Items.OfType<MenuItem>().ToArray();
+    private static MenuItem[] BoardItems(MainWindow window) => [.. TopMenus(window).Single(m => (string)m.Header == "_Board").Items.OfType<MenuItem>()];
 
     private static MenuItem Item(MainWindow window, string header) => BoardItems(window).Single(i => (string)i.Header == header);
 
@@ -163,7 +163,7 @@ public class BoardMenuTests
         Assert.False(BoardCommands.RenameRoom.CanExecute(null, w));
 
         // An icon-only button looks disabled too: its glyph kept the enabled colour.
-        Color Of(object brush) => ((SolidColorBrush)brush).Color;
+        static Color Of(object brush) => ((SolidColorBrush)brush).Color;
         var glyph = OffScreen.Descendant<Glyph>(w.RemoveRoomButton)!;
         Assert.Equal(Of(w.FindResource("TextFillColorDisabledBrush")), Of(glyph.Foreground));
 
@@ -191,7 +191,7 @@ public class BoardMenuTests
             asked.Add(dialog);
             return answer;
         };
-        string[] Rooms() => e.Service.Snapshot(DataTable.Rooms).Select(r => r["Room"]).Order().ToArray();
+        string[] Rooms() => [.. e.Service.Snapshot(DataTable.Rooms).Select(r => r["Room"]).Order()];
 
         w.RoomList.SelectedItem = w.RoomList.Items.Cast<RoomCard>().First(r => r.Room == "101");
         OffScreen.Pump();

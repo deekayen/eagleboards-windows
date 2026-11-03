@@ -208,7 +208,7 @@ internal static class Demo
         using (var dc = visual.RenderOpen())
         {
             dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x1B, 0x2A, 0x41)), null, new Rect(0, 0, w, h));
-            FormattedText Text(string t, double size, FontWeight weight, Brush brush) => new(t, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            static FormattedText Text(string t, double size, FontWeight weight, Brush brush) => new(t, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
                 new Typeface(new FontFamily("Segoe UI Variable Display, Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal), size, brush, 1.0);
             dc.DrawText(Text("Eagle Board Scheduler", 52, FontWeights.SemiBold, Brushes.White), new Point(64, 56));
             dc.DrawText(Text("Check-in and room scheduling for Eagle Scout board of review events", 24, FontWeights.Normal,

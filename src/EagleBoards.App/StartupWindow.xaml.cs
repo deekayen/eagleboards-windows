@@ -357,10 +357,7 @@ public partial class StartupWindow : Window
         _unflag = () =>
         {
             _unflag = null;
-            if (box != null)
-            {
-                box.TextChanged -= Changed;
-            }
+            box?.TextChanged -= Changed;
 
             if (binding != null)
             {
@@ -371,10 +368,7 @@ public partial class StartupWindow : Window
                 AutomationProperties.SetHelpText(field, help);
             }
         };
-        if (box != null)
-        {
-            box.TextChanged += Changed;
-        }
+        box?.TextChanged += Changed;
 
         field.Focus();
         box?.SelectAll();

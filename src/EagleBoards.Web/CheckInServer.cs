@@ -300,7 +300,7 @@ public sealed class CheckInServer : IAsyncDisposable
         }
 
         var userData = Fields(p.Get("data"), null);
-        var columns = _service.Read(table, f => Fields(p.Get("cols"), f.Columns.ToArray())!);
+        var columns = _service.Read(table, f => Fields(p.Get("cols"), [.. f.Columns])!);
 
         // SPEC.md D-7 / O-5: a birthdate already on file stays there but is
         // never served, here or in an export, and nor is a youth's phone
@@ -352,7 +352,7 @@ public sealed class CheckInServer : IAsyncDisposable
         contentType = fmt == "csv" ? "text/csv" : "text/xml";
         if (p.Get("filename") is { Length: > 0 } filename)
         {
-            var safe = new string(filename.Where(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_').ToArray());
+            var safe = new string([.. filename.Where(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')]);
             context.Response.Headers.ContentDisposition = "attachment;filename=" + safe;
         }
 
@@ -415,7 +415,7 @@ public sealed class CheckInServer : IAsyncDisposable
     private Task ApprovedProposalsCells(HttpContext context, IReadOnlyDictionary<string, string> p, bool isLocal)
     {
         var fmt = p.Get("fmt") ?? "rows";
-        string[]? Shown(string[]? columns) => columns?.Select(c => ApprovalRecord.AllColumns.Contains(c) ? c : c + " (withheld)").ToArray();
+        static string[]? Shown(string[]? columns) => columns?.Select(c => ApprovalRecord.AllColumns.Contains(c) ? c : c + " (withheld)").ToArray();
         var columns = Fields(p.Get("cols"), [.. ApprovalRecord.AllColumns])!;
         var read = _service.ReadApprovedProposals();
         var attributes = new StringBuilder(" read=\"").Append(read.Events.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append('"');
@@ -564,7 +564,7 @@ public sealed class CheckInServer : IAsyncDisposable
             ? null
             : _service.Read<List<(string Column, string Value)>?>(table, f =>
                 f.AllRecords.FirstOrDefault(r => Matchable(r.GetValue("Email")) == wanted) is { } record
-                    ? columns.Select(c => (Column: c, Value: record.GetValue(c))).ToList()
+                    ? [.. columns.Select(c => (Column: c, Value: record.GetValue(c)))]
                     : null);
         return SendJsonAsync(context, json =>
         {

@@ -65,7 +65,7 @@ public sealed class DataRecordFile<T> : IDataRecordFile
     public T? Get(string? id) => id != null && _byId.TryGetValue(id, out var r) ? r : null;
 
     /// <summary>Every record whose raw <paramref name="field"/> equals <paramref name="value"/>.</summary>
-    public List<T> Where(string field, string value) => _records.Where(r => r.Get(field) == value).ToList();
+    public List<T> Where(string field, string value) => [.. _records.Where(r => r.Get(field) == value)];
 
     public void Remove(string id)
     {

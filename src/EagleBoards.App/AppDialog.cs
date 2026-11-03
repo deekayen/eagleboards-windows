@@ -176,8 +176,8 @@ internal sealed class AppDialog : Window
             DisplayMemberPath = "Value",
             SelectedValuePath = "Key",
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            SelectedValue = selected ?? (items.Count > 0 ? items[0].Key : null)
         };
-        combo.SelectedValue = selected ?? (items.Count > 0 ? items[0].Key : null);
         AddLabelled(label, combo);
         return combo;
     }

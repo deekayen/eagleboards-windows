@@ -66,3 +66,8 @@ dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 dotnet_naming_rule.private_fields_begin_with_underscore.symbols = private_fields
 dotnet_naming_rule.private_fields_begin_with_underscore.style = underscore_camel_case
 dotnet_naming_rule.private_fields_begin_with_underscore.severity = warning
+
+# Deconstructing a tuple into locals (IDE0042) is left off: the fixer names
+# the locals in PascalCase, against the naming rules above, and `board.Youth`
+# says more at the call site than a bare `Youth` does.
+dotnet_diagnostic.IDE0042.severity = none

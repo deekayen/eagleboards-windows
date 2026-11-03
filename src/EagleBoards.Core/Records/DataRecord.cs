@@ -169,7 +169,7 @@ public abstract partial class DataRecord
             {
                 if (IsColumn(header[i]))
                 {
-                    _values[header[i]] = line.Substring(start);
+                    _values[header[i]] = line[start..];
                 }
 
                 break;
@@ -177,7 +177,7 @@ public abstract partial class DataRecord
 
             if (IsColumn(header[i]))
             {
-                _values[header[i]] = line.Substring(start, end - start);
+                _values[header[i]] = line[start..end];
             }
 
             start = end + 1;

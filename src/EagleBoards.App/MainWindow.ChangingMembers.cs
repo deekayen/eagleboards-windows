@@ -25,10 +25,9 @@ public partial class MainWindow
 
     /// <summary>Free adults who could join this youth's board, as dropdown choices; same-unit ones last and marked.</summary>
     private List<PickRow> JoinChoices(ScoutRow scout) =>
-        _adults.Where(a => a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
+        [.. _adults.Where(a => a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
             .Select(a => new PickRow(a, scout))
-            .OrderBy(p => p.SameUnit).ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .OrderBy(p => p.SameUnit).ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>A dropdown of adults, each shown with the marks after their name (SPEC.md D-20); its value is the adult's ID.</summary>
     private ComboBox AddAdultChoice(AppDialog dialog, string label, IReadOnlyList<PickRow> adults) =>

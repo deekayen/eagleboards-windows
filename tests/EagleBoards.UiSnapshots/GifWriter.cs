@@ -18,7 +18,7 @@ internal static class GifWriter
         var width = frames[0].Image.PixelWidth;
         var height = frames[0].Image.PixelHeight;
         var pixels = frames.Select(f => ToBgra(f.Image, width, height)).ToList();
-        var palette = BuildPalette(frames.Select(f => f.Image).ToList());
+        var palette = BuildPalette([.. frames.Select(f => f.Image)]);
         var indexed = pixels.Select(p => Map(p, palette)).ToList();
 
         using var file = File.Create(path);
