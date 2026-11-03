@@ -31,8 +31,14 @@ public partial class MainWindow
 
         // A board proposed for the open youth, and not changed since, follows
         // the event: an adult who signs in or frees up is weighed at once,
-        // without Start over (SPEC.md D-12).
-        if (_current is { } open && BoardStatus.IsWaiting(open.Status) && _proposal?.ScoutId == open.Id && ProposalUntouched())
+        // without Start over (SPEC.md D-12). One the operator has changed keeps
+        // its picks, but its room still follows the event: a room the app
+        // proposed that is taken or switched to the other board type is
+        // withdrawn (D-24), not left for the operator to find in the warnings.
+        // A board the operator emptied is theirs and stays empty, so a
+        // proposal alone, with no picks left, is not enough to propose again.
+        if (_current is { } open && BoardStatus.IsWaiting(open.Status)
+            && ((_proposal?.ScoutId == open.Id && ProposalUntouched()) || _adults.Any(IsPicked)))
         {
             ProposeBoard(open);
         }

@@ -107,4 +107,32 @@ public class BoardCheckTests
     [Fact]
     public void NoMembersSaysSo() =>
         Assert.Equal(["No members yet"], Titles(Check(Final, [], chairId: null), IssueLevel.Block));
+
+    private static string NoRoomMessage(ScoutInfo scout, params RoomInfo[]? freeRooms) =>
+        BoardCheck.Review(scout, [Chair], "chair", null, freeRooms).Single(i => i.Title == "No room").Message;
+
+    [Fact]
+    public void NoRoomSaysWhyWhenOnlyTheOtherTypesRoomsAreFree()
+    {
+        // SPEC.md D-24: never proposed in the other type's room, so the
+        // operator is told to switch a room's type or choose one on purpose.
+        var message = NoRoomMessage(Project, FreeFinal);
+
+        Assert.StartsWith("No free room is set up for project reviews.", message, StringComparison.Ordinal);
+        Assert.Contains("Switch room type", message, StringComparison.Ordinal);
+        Assert.StartsWith("No free room is set up for final boards.", NoRoomMessage(Final, new RoomInfo("ROOM:102", "102", BoardTypes.Project, "")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NoRoomSaysSoWhenEveryRoomHasABoard()
+    {
+        Assert.StartsWith("Every room has a board.", NoRoomMessage(Final), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NoRoomJustAsksForOneWhenARoomOfTheTypeIsFreeOrNothingIsKnown()
+    {
+        Assert.Equal("Choose a free room.", NoRoomMessage(Final, FreeFinal));
+        Assert.Equal("Choose a free room.", NoRoomMessage(Final, freeRooms: null));
+    }
 }

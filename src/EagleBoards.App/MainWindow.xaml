@@ -594,8 +594,8 @@
                     <ListBox.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="_Move or swap board..." Click="OnChangeRoom" />
-                        <MenuItem Header="Re_name..." InputGestureText="F2" Click="OnRenameRoom" />
-                        <MenuItem Header="S_witch type" Click="OnSwitchRoomType" />
+                        <MenuItem Header="Re_name room..." InputGestureText="F2" Click="OnRenameRoom" />
+                        <MenuItem Header="S_witch room type" Click="OnSwitchRoomType" />
                         <MenuItem Header="_Remove room..." Click="OnRemoveRoom" />
                       </ContextMenu>
                     </ListBox.ContextMenu>

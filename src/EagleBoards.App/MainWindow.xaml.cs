@@ -15,7 +15,8 @@ namespace EagleBoards.App;
 /// The operator's window: a menu bar over the pages Event (the youth queue,
 /// the rooms, and a details pane that builds and runs the selected youth's
 /// board), and a page per table (Results, Adults and the rest), editable in
-/// place, besides the read-only Adult history CSV. Settings, Help and the QR code open windows of their own.
+/// place, besides the read-only Adult history CSV and Approved proposals.
+/// Settings, Help and the QR code open windows of their own.
 ///
 /// Data is read from and written to <see cref="BoardService"/> in-process,
 /// and every change, including a sign-in on the website, raises

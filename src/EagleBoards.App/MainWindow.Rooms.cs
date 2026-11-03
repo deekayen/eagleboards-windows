@@ -154,7 +154,7 @@ public partial class MainWindow
     {
         if (SelectedRoom is not { } room)
         {
-            Notice.Show(Severity.Informational, "Select a room first", "Select the room to switch, then select Switch type.");
+            Notice.Show(Severity.Informational, "Select a room first", "Select the room to switch, then select Switch room type.");
             return;
         }
 

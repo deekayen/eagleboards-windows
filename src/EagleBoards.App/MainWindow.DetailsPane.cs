@@ -126,7 +126,8 @@ public partial class MainWindow
         NoAvailableText.Visibility = available.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var room = _rooms.FirstOrDefault(r => r.Id == _builderRoomId);
-        var issues = BoardCheck.Review(scout.Info, [.. picked.Select(p => p.Adult.Info)], _chairId, room?.Info);
+        var issues = BoardCheck.Review(scout.Info, [.. picked.Select(p => p.Adult.Info)], _chairId, room?.Info,
+            [.. _rooms.Where(r => r.IsFree).Select(r => r.Info)]);
         ShowIssues(scout, issues);
 
         var warn = issues.Any(i => i.Level == IssueLevel.Warn);
@@ -134,6 +135,13 @@ public partial class MainWindow
         FillButton.IsEnabled = picked.Count < BoardRules.MinMembers(scout.BoardType) || picked.All(p => !p.CanChair);
         SeatText.Text = warn ? "_Seat anyway" : "_Seat board";
         AutomationProperties.SetName(SeatButton, warn ? "Seat anyway" : "Seat board");
+
+        // A disabled button is skipped by Tab, so someone using the keyboard or
+        // a screen reader never reaches the reason in the bars under Board
+        // members; the button carries it as help text, which a screen reader reads
+        // when it describes the button.
+        var firstProblem = issues.FirstOrDefault(i => i.Level == IssueLevel.Block);
+        AutomationProperties.SetHelpText(SeatButton, firstProblem is null ? "" : $"{firstProblem.Title}. {firstProblem.Message}".Replace("**", ""));
     }
 
     /// <summary>

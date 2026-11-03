@@ -23,7 +23,12 @@ public sealed record BoardIssue(IssueLevel Level, string Title, string Message);
 /// </summary>
 public static class BoardCheck
 {
-    public static IReadOnlyList<BoardIssue> Review(ScoutInfo scout, IReadOnlyList<AdultInfo> picked, string? chairId, RoomInfo? room)
+    /// <param name="freeRooms">
+    /// The rooms with no board, so "No room" can say why none was chosen and
+    /// what to do (SPEC.md D-24). Null when the caller doesn't know.
+    /// </param>
+    public static IReadOnlyList<BoardIssue> Review(ScoutInfo scout, IReadOnlyList<AdultInfo> picked, string? chairId, RoomInfo? room,
+        IReadOnlyCollection<RoomInfo>? freeRooms = null)
     {
         var issues = new List<BoardIssue>();
         void Block(string title, string message) => issues.Add(new BoardIssue(IssueLevel.Block, title, message));
@@ -109,7 +114,7 @@ public static class BoardCheck
 
         if (room == null)
         {
-            Block("No room", "Choose a free room.");
+            Block("No room", NoRoomAdvice(type, freeRooms));
         }
         else if (room.Scout is not ("" or "-"))
         {
@@ -121,5 +126,24 @@ public static class BoardCheck
         }
 
         return issues;
+    }
+
+    /// <summary>
+    /// Why no room is chosen and what to do about it. A board is only
+    /// proposed in a free room of its own type (SPEC.md D-24), so when the
+    /// only free rooms are the other type's, the operator has to switch one
+    /// or choose it on purpose: they are told so, not just "choose a room".
+    /// </summary>
+    private static string NoRoomAdvice(string boardType, IReadOnlyCollection<RoomInfo>? freeRooms)
+    {
+        if (freeRooms is null || freeRooms.Any(r => r.BoardType == boardType))
+        {
+            return "Choose a free room.";
+        }
+
+        var kinds = boardType == BoardTypes.Project ? "project reviews" : "final boards";
+        return freeRooms.Count == 0
+            ? "Every room has a board. Add a room in Rooms, or wait for a board to finish."
+            : $"No free room is set up for {kinds}. Select a free room in Rooms and switch its type (Board menu, Switch room type), or choose a room set up for the other board type.";
     }
 }

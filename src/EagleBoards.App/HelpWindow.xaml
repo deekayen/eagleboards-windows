@@ -86,6 +86,8 @@
       <List MarkerStyle="Decimal">
         <ListItem><Paragraph>Check each youth's paperwork as they arrive. If it isn't in order, select the youth, and then select <Bold>Postpone</Bold>.</Paragraph></ListItem>
         <ListItem><Paragraph>Seat the board. Select a waiting youth, and the scheduler proposes a board: a room, a qualified chair, and members from other units.
+          The room is a free one set up for the youth's board type, final boards or project reviews. If none is free, no room is proposed, and the bar under <Bold>Board members</Bold> says so:
+          select a free room in Rooms and switch its type (<Bold>Board</Bold> > <Bold>Switch room type</Bold>), or choose a room of the other type yourself in <Bold>Room</Bold>.
           Change any of it you need to, and then select <Bold>Seat board</Bold>. The members go to the room to read the paperwork. The youth waits outside.</Paragraph></ListItem>
         <ListItem><Paragraph>Start the review when the members have finished reading: select <Bold>Start review</Bold>.
           For a board of review, it first says whom to fetch to introduce the youth to the board, and where they are: whoever said so at sign-in, or else the youth's leader.
@@ -139,7 +141,7 @@
       </List>
 
       <app:Heading Style="{StaticResource H}">The menu bar</app:Heading>
-      <Paragraph><Bold>View</Bold> switches between the Event page and a page for each table the scheduler keeps. Every table can be corrected where it is.
+      <Paragraph><Bold>View</Bold> switches between the Event page and a page for each table the scheduler keeps. Every table can be corrected where it is, except the Adult history CSV and Approved proposals, which are read only.
         To change a cell, double-click it, or select it and use F2. A cell with a list of choices opens it on one click, or with F4.
         A choice is saved as soon as you make it, and text when you select Enter or leave the cell. Esc cancels.</Paragraph>
       <List>
@@ -199,7 +201,7 @@
           <TableRow><TableCell><Paragraph><Bold>Enter</Bold>, <Bold>Esc</Bold> in Find a person</Paragraph></TableCell><TableCell><Paragraph>Open the board of the person found, or show every room again.</Paragraph></TableCell></TableRow>
           <TableRow><TableCell><Paragraph><Bold>Ctrl+Enter</Bold></Paragraph></TableCell><TableCell><Paragraph>Take the open youth's next step: Seat board, Start review or Complete.</Paragraph></TableCell></TableRow>
           <TableRow><TableCell><Paragraph><Bold>Alt+B</Bold></Paragraph></TableCell><TableCell><Paragraph>Open the Board menu: the open youth's steps, and the selected room's commands.</Paragraph></TableCell></TableRow>
-          <TableRow><TableCell><Paragraph><Bold>Shift+F10</Bold> or the <Bold>Application key</Bold></Paragraph></TableCell><TableCell><Paragraph>Open the shortcut menu. On a room: Move or swap board, Rename, Switch type and Remove room.
+          <TableRow><TableCell><Paragraph><Bold>Shift+F10</Bold> or the <Bold>Application key</Bold></Paragraph></TableCell><TableCell><Paragraph>Open the shortcut menu. On a room: Move or swap board, Rename room, Switch room type and Remove room.
             In the Youth list: the open youth's steps. On the check-in address: Copy address.</Paragraph></TableCell></TableRow>
           <TableRow><TableCell><Paragraph><Bold>F2</Bold></Paragraph></TableCell><TableCell><Paragraph>Rename the room you're on in Rooms, or else the room selected.</Paragraph></TableCell></TableRow>
           <TableRow><TableCell><Paragraph><Bold>Alt+A</Bold></Paragraph></TableCell><TableCell><Paragraph>Add room.</Paragraph></TableCell></TableRow>

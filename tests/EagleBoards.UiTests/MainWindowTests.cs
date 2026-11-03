@@ -187,6 +187,80 @@ public class MainWindowTests
     });
 
     [Fact]
+    public void WithNoFreeRoomOfTheirTypeTheOperatorIsToldWhyAndWhatToDo() => OffScreen.Run(() =>
+    {
+        // SPEC.md D-24 stops a project review being proposed a final board's
+        // room, so the bar has to say why there is none, not only "No room".
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Member, BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member, BoardRoles.Member);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Project);
+        var w = e.Window;
+
+        Open(w, "Aldridge");
+
+        var noRoom = w.IssueList.Children.OfType<InfoBar>().Single(b => b.Text.StartsWith("No room", StringComparison.Ordinal));
+        Assert.Contains("No free room is set up for project reviews.", noRoom.Text, StringComparison.Ordinal);
+        Assert.Contains("Switch room type", noRoom.Text, StringComparison.Ordinal);
+
+        // The disabled Seat button carries the reason too: Tab skips it, so a
+        // screen reader user would never reach the bar.
+        Assert.StartsWith("No room. No free room is set up for project reviews.", AutomationProperties.GetHelpText(w.SeatButton), StringComparison.Ordinal);
+    });
+
+    [Fact]
+    public void AProposedRoomTakenAwayAfterTheOperatorEditedTheBoardIsWithdrawn() => OffScreen.Run(() =>
+    {
+        // Once the operator changes the picks the board is theirs, but its
+        // room is still the app's until they choose one (SPEC.md D-24): it
+        // must not stay on a room that has become the other type's.
+        using var e = new TestEvent();
+        e.Room("102", BoardTypes.Project);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Member, BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member, BoardRoles.Member);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Project);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        var room = e.Service.Snapshot(DataTable.Rooms).Single()["ID"];
+        Assert.Equal(room, w.BuilderRoom.SelectedValue);
+
+        w.PickList.Items.Cast<PickRow>().First(p => p.Adult.Last == "Blackwood").Adult.Sel = false;
+        OffScreen.Pump();
+        Assert.Equal(room, w.BuilderRoom.SelectedValue);
+
+        Assert.True(e.Service.SetRoomType(room, BoardTypes.Final).Ok);
+        OffScreen.Pump();
+
+        Assert.Null(w.BuilderRoom.SelectedValue);
+    });
+
+    [Fact]
+    public void ABoardTheOperatorEmptiedStaysEmptyThroughTheNextRefresh() => OffScreen.Run(() =>
+    {
+        // CLAUDE.md: picks are the operator's work in progress; only Start
+        // over and seating clear them. The refresh that follows removing the
+        // last member must not propose the board again.
+        using var e = new TestEvent();
+        e.Room("102", BoardTypes.Project);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Member, BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member, BoardRoles.Member);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Project);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        Assert.Equal(["Abernathy", "Blackwood"], Picks(w));
+
+        foreach (var row in w.PickList.Items.Cast<PickRow>().ToList())
+        {
+            row.Adult.Sel = false;
+        }
+
+        OffScreen.Pump();
+
+        Assert.Empty(Picks(w));
+    });
+
+    [Fact]
     public void AProposalTakesTheProjectRoomWhenThereIsOneBesideAFinalRoom() => OffScreen.Run(() =>
     {
         using var e = new TestEvent();
