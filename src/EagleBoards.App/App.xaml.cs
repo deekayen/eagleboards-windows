@@ -91,7 +91,30 @@ public partial class App : Application
             return;
         }
 
-        var main = new MainWindow(_session);
+        MainWindow main;
+        try
+        {
+            main = new MainWindow(_session);
+        }
+        catch (Exception ex)
+        {
+            // DispatcherUnhandledException keeps the app running when a
+            // window fails (OnUnhandledException), and while the shutdown
+            // mode is still OnExplicitShutdown that left the check-in website
+            // up, holding the port and the event folder, with no window to
+            // close. Nothing is open, so there is nothing to keep running for.
+            _session.Log("MAIN WINDOW FAILED: " + ex);
+            await _session.DisposeAsync().ConfigureAwait(true);
+
+            // Stopped before it is said to be, and let go of, so OnExit
+            // doesn't stop it a second time.
+            _session = null;
+            AppDialog.Alert(null, "The scheduler couldn't open its window", ex.Message
+                + "\n\nThe check-in website has been stopped. Every change made so far is saved. Start the scheduler again.");
+            Shutdown(1);
+            return;
+        }
+
         MainWindow = main;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         KeepAwake.Start();
@@ -220,16 +243,19 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Last resort. Something went wrong in the window, not in the data:
-    /// every change is already on disk by the time it is shown. Say so and
-    /// keep running, because closing would also take the check-in site down.
+    /// Last resort. Keep running, because closing would also take the check-in
+    /// site down. A file that couldn't be written (open in Excel, read-only,
+    /// no space) means the change being made may not have been saved, and the
+    /// screen may show it anyway: say so, and not that nothing was lost.
+    /// Anything else went wrong in the window, not in the data, and every
+    /// earlier change is already on disk.
     /// </summary>
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         _session?.Log("UNHANDLED: " + e.Exception);
-        var (title, message) = e.Exception is IOException
-            ? ("A data file couldn't be saved", "If it's open in Excel, close it and try again. " + e.Exception.Message)
-            : ("Something went wrong", e.Exception.Message + "\n\nNothing was lost: every change is saved as it happens, and the check-in website is still running.");
+        var (title, message) = e.Exception is IOException or UnauthorizedAccessException
+            ? ("A data file couldn't be saved", "The last change may not be saved. If the file is open in Excel, close it, check the Event page, and then make the change again.\n\n" + e.Exception.Message)
+            : ("Something went wrong", e.Exception.Message + "\n\nEvery earlier change is saved, and the check-in website is still running.");
         AppDialog.Alert(MainWindow, title, message, Severity.Warning);
         e.Handled = true;
     }

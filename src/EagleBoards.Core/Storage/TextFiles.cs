@@ -50,13 +50,24 @@ public static class TextFiles
     {
         var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(contents);
         var temp = path + ".tmp";
-        File.WriteAllBytes(temp, bytes);
         try
         {
+            using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                stream.Write(bytes);
+
+                // The rename below is atomic, but without this the new name
+                // can reach the disk before the new contents do, and a power
+                // cut then leaves an empty file under the real name.
+                stream.Flush(flushToDisk: true);
+            }
+
             File.Move(temp, path, overwrite: true);
         }
         catch
         {
+            // Any failure, including the temporary file itself: a stale .tmp
+            // beside the data would be taken for a half-finished save.
             TryDelete(temp);
             throw;
         }

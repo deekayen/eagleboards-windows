@@ -157,4 +157,36 @@ public class StorageTests
             DataRecord.Clock = saved;
         }
     }
+
+    [Fact]
+    public void AnAtomicWriteReplacesTheFileAndLeavesNoTemporaryOne()
+    {
+        using var box = new Sandbox();
+        var path = Path.Combine(box.Root, "scouts.csv");
+        File.WriteAllText(path, "old");
+
+        TextFiles.WriteAtomically(path, "new contents");
+
+        Assert.Equal("new contents", File.ReadAllText(path));
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public void AnAtomicWriteToAFileHeldOpenKeepsTheOldContentsAndLeavesNoTemporaryFile()
+    {
+        // A volunteer opens scouts.csv in Excel mid-event, which holds it.
+        using var box = new Sandbox();
+        var path = Path.Combine(box.Root, "scouts.csv");
+        File.WriteAllText(path, "old");
+
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            // Replacing a file another program holds throws one or the other.
+            var refusal = Record.Exception(() => TextFiles.WriteAtomically(path, "new"));
+            Assert.True(refusal is IOException or UnauthorizedAccessException, refusal?.ToString());
+        }
+
+        Assert.Equal("old", File.ReadAllText(path));
+        Assert.False(File.Exists(path + ".tmp"));
+    }
 }
