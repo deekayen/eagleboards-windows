@@ -104,8 +104,8 @@ The menu bar has the rest. **View** switches to a page for each table
 Ctrl+2 through Ctrl+7), each one editable where it is but the adult history:
 double-click a cell, or select it and use F2, and a cell with a list of
 choices opens it on one click. **View** also has **Approved proposals**
-(Ctrl+8), the project proposals approved at earlier events in the data
-folder, for a youth who comes without the signed page. **Board** has the
+(Ctrl+8), read only: the project proposals approved at earlier events in the
+data folder, for a youth who comes without the signed page. **Board** has the
 Event page's steps for the open youth: the next one, named for it (**Seat
 board**, **Start review** or **Complete**; Ctrl+Enter), **Postpone**,
 **Reset**, **Link an adult** and **Unlink**; then the selected room's **Add
@@ -225,10 +225,11 @@ Deliberate changes. The server-side ones each have a unit test in
   the scheduler immediately rather than at the next poll. Boards are built in
   one pane with every rule listed as you go, instead of a pop-up per problem.
 - **Stations can only check in.** The endpoints the old admin pages used
-  (seat, complete, record edits, room changes, settings) still exist with the
-  same wire formats, but answer only requests from the admin computer itself.
-  From the network, the youth and adult lists return names and units only,
-  never phones or emails.
+  (seat, complete, record edits, room changes, settings) are not served by the
+  app at all: they answer `404`, even on the admin computer itself. The
+  headless test server keeps them, with the same wire formats, for the
+  end-to-end event test. The youth and adult lists return names and units
+  only, never phones or emails, to the network and to this computer alike.
 - **Seating is stricter where the old checks had gaps.** One adult listed
   twice no longer counts as two members, and an adult marked Unavailable for
   that board type is refused wherever they appear in the list (the browser
@@ -267,6 +268,10 @@ tests/EagleBoards.UiTests     xUnit: the operator window driven off-screen over 
 tests/EagleBoards.UiSnapshots renders every window off-screen over synthetic data, and this README's pictures
 scripts/test-board-event.sh   the Java project's HTTP end-to-end event, run against this server
 scripts/test-handoff.sh       the Java and Windows versions taking turns on one event folder
+docs/decisions                why the Windows version is built as it is (short records)
+docs/release-checklist.md     what to check before publishing a release, and before an event
+CHANGELOG.md                  what changed, for operators
+.github/workflows             build.yml (the gate for every change) and release.yml
 ```
 
 ```bat
@@ -299,9 +304,12 @@ workflow**. That releases `main` as today's date (`v2026.09.22`); type a
 version to override it, for example `2026.09.22.1` for a second release the
 same day. Or tag a commit and push the tag
 (`git tag v2026.09.22 && git push origin v2026.09.22`).
-Either way the workflow builds, runs every test, checks the exe carries no data
-files, smoke-tests the exact exe, and only then publishes it with a SHA-256
-checksum. The version is stamped in from the tag; there's no file to bump.
+Either way the workflow wants a passing build of the same commit, builds, runs
+every test, checks the exe carries no data files, smoke-tests the exact exe, and
+only then attaches it, with a SHA-256 checksum, to a **draft** release. Work
+through [`docs/release-checklist.md`](docs/release-checklist.md), and then
+publish the draft from the Releases page. The version is stamped in from the
+tag; there's no file to bump.
 Every push to `main` also leaves a build as the **EagleBoards-win-x64**
 artifact on its Actions run; use a release for an event.
 

@@ -19,11 +19,12 @@ runs a native WPF app instead of the Java app's browser pages.
   `SchedulerLogic`.
   **Every rule lives here.** The website and the app both call `BoardService`.
 - `EagleBoards.Web`: `CheckInServer` (Kestrel) serves the embedded check-in
-  pages in `wwwroot/` plus every endpoint the Java server had, same wire
-  formats. Only the check-in endpoints answer the network; the rest answer
-  loopback only.
-- `EagleBoards.Server`: headless host taking the Java jar's options. Used by
-  the tests.
+  pages in `wwwroot/` and the check-in endpoints, which answer the network.
+  The Java server's admin endpoints, same wire formats and loopback only,
+  are served only when `ServeAdminEndpoints` is on (decision 0003): the app
+  leaves it off.
+- `EagleBoards.Server`: headless host taking the Java jar's options, with the
+  admin endpoints on. Used by the tests.
 - `EagleBoards.App`: the WPF app (`EagleBoards.exe`). Start-up window, the
   main window (`MainWindow`: a menu bar -- File, Edit, View, Board, Help -- over the
   Event page, the youth queue, the rooms, and a details pane that builds and
@@ -88,8 +89,12 @@ runs a native WPF app instead of the Java app's browser pages.
 - **Releases** (`.github/workflows/release.yml`): Run workflow (today's date)
   or push a `vYYYY.MM.DD[.N]` tag. The tag is the only place the version lives;
   it's stamped into the exe with `-p:Version`, and local builds say `dev`. The
-  workflow re-runs every test, refuses data files in the build, checks the exe
-  reports the version, smoke-tests it, then attaches the exe and its SHA-256.
+  workflow wants a passing `build.yml` run of the same commit, re-runs every
+  test, refuses data files in the build, checks the exe reports the version,
+  smoke-tests it (including that the window opened), then attaches the exe and
+  its SHA-256 to a **draft** release: publish it after
+  [`docs/release-checklist.md`](docs/release-checklist.md). Keep
+  [`CHANGELOG.md`](CHANGELOG.md) current as you change what an operator sees.
   Don't run `smoke-test-exe.sh` on the owner's desktop: it opens the window.
   CI runs on Windows Server, so before an event release someone should open
   the exe once on a Windows 10 PC: volunteers' donated machines may still run

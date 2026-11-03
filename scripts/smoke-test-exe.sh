@@ -8,7 +8,8 @@
 # trimmed away) shows up only in the published single-file exe, never in the
 # dotnet build the other tests run against. So this starts the exe itself on a
 # throwaway data folder with synthetic data, serves loopback only, and checks
-# the sign-in pages load and a sign-in lands on disk.
+# the sign-in pages load, a sign-in lands on disk, and the scheduler's window
+# opened.
 #
 # Used by both workflows. The scheduler window opens on the CI runner's
 # desktop, which nobody sees; don't run this on a desk someone is using.
@@ -55,6 +56,25 @@ if [ "$ready" != 1 ]; then
     exit 1
 fi
 
+# The site answering does not prove the window opened: when the main window
+# fails to build, the app catches it and the process (and its website) go on
+# (App.OnStartup). A running window carries the page's name in its title.
+WINPID=$(cat "/proc/$APP/winpid" 2>/dev/null || echo "$APP")
+title=""
+for _ in $(seq 1 30); do
+    title=$(powershell -NoProfile -Command "(Get-Process -Id $WINPID -ErrorAction SilentlyContinue).MainWindowTitle" | tr -d '\r')
+    case "$title" in "Event - Eagle Board Scheduler"*) break ;; esac
+    sleep 1
+done
+case "$title" in
+    "Event - Eagle Board Scheduler"*) ;;
+    *)
+        echo "FAIL: the exe served the check-in page but opened no scheduler window (title: '$title')"
+        cat run/eagleboards.log 2>/dev/null || true
+        exit 1
+        ;;
+esac
+
 # Fetch to files, then grep: `curl | grep -q` under pipefail fails exactly
 # when grep matches early and curl takes the SIGPIPE.
 curl -sf -o youth.html "$B/youth_register"
@@ -68,4 +88,4 @@ grep -q "ebFetchRows" data.js
 curl -sf -X POST --data "Last=Smoke&First=Test&UnitType=Troop&Unit=1&BoardType=Final" "$B/register-youth"
 grep -q "SCOUT:Smoke:Test:1" run/scouts.csv
 
-echo "published exe OK: serves the check-in pages and records a sign-in"
+echo "published exe OK: opens its window, serves the check-in pages and records a sign-in"

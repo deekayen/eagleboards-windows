@@ -14,9 +14,16 @@ name: release
 # the only place the version is written: it is stamped into the exe at build
 # time, so there is no file to bump first.
 #
-# Nothing is published unless the exact exe being attached builds, passes the
+# Nothing is released unless the exact exe being attached builds, passes the
 # tests and the board event test, carries no data files, reports the right
-# version, and serves the check-in site in a smoke test.
+# version, opens its window and serves the check-in site in a smoke test, and
+# the commit has a passing build.yml run (which holds the checks only it runs:
+# no participant data in the tree, the shared check-in pages and rule cases
+# match their pins, code style).
+#
+# The release is made as a DRAFT. Work through docs/release-checklist.md, and
+# then publish it from the Releases page: nothing reaches the "latest" link,
+# or anyone's download, until then.
 
 on:
   push:
@@ -30,13 +37,40 @@ on:
 
 permissions:
   contents: write        # create the tag and the release, upload the exe
+  actions: read          # look up the build.yml run of this commit
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
+  already-released:
+    # Publishing the draft that Run workflow made creates its tag, and a tag
+    # created from the Releases page fires the tag trigger above again. That
+    # run would only fail on "release already exists", a red run beside a
+    # good release, so it is skipped when the release is there.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.look.outputs.exists }}
+    steps:
+      - id: look
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "release $GITHUB_REF_NAME is already there; nothing to do"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
+    needs: already-released
+    # Run unless the job above found the release (it is skipped, with no
+    # output, for a Run workflow start).
+    if: ${{ !cancelled() && needs.already-released.outputs.exists != 'true' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -46,6 +80,22 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+
+      - name: Require a passing build on this exact commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A tag can be pushed from any commit. This workflow re-runs the
+          # tests, but not the checks only build.yml has (see above), so
+          # take its word for them: the same commit must have passed it.
+          PASSED=$(gh run list --workflow build.yml --commit "$GITHUB_SHA" --json conclusion \
+            --jq '[.[] | select(.conclusion == "success")] | length')
+          if [ "${PASSED:-0}" -lt 1 ]; then
+            echo "FAIL: no passing build.yml run for $GITHUB_SHA. Push the commit, wait for the build to pass, and run this again."
+            exit 1
+          fi
+          echo "ok: build.yml passed for $GITHUB_SHA"
 
       - name: Work out the version
         id: version
@@ -140,7 +190,7 @@ jobs:
         shell: bash
         run: bash scripts/smoke-test-exe.sh publish/EagleBoards.exe 18778
 
-      - name: Publish the release
+      - name: Create the draft release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -159,6 +209,8 @@ jobs:
             echo "**More info**, then **Run anyway**. The first time it serves the check-in site,"
             echo "Windows Firewall asks too: allow it on **private** networks."
             echo
+            echo "What changed: see [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/CHANGELOG.md)."
+            echo
             echo "Don't run this and the Java version at the same time: they share the port and"
             echo "the data files. The SignUpGenius key is not in this build: paste it into the"
             echo "start-up window once, and it's kept, encrypted, for your Windows account."
@@ -170,7 +222,7 @@ jobs:
               echo "**Full changelog:** https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
             fi
           } > release-notes.md
-          gh release create "$TAG" publish/EagleBoards.exe publish/EagleBoards.exe.sha256 \
+          gh release create "$TAG" publish/EagleBoards.exe publish/EagleBoards.exe.sha256 --draft \
             --target "$GITHUB_SHA" \
             --title "$TAG" \
             --notes-file release-notes.md

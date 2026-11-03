@@ -11,8 +11,14 @@ for AI assistants. The short version:
   here. Why the Windows version is built as it is: [`docs/decisions`](docs/decisions/README.md).
 - **Build and test:** `dotnet build -c Release`, then
   `dotnet test --project tests/EagleBoards.Tests -c Release` and
-  `dotnet test --project tests/EagleBoards.UiTests -c Release`. CI runs the same and
-  more; it is what decides whether a change is accepted.
+  `dotnet test --project tests/EagleBoards.UiTests -c Release`. You need the
+  .NET 10 SDK, and Git Bash for the `scripts/*.sh` tests. CI runs the same and
+  more, including the code style gate (`dotnet format whitespace
+  EagleBoards.slnx --verify-no-changes` and the naming rules in
+  `.editorconfig`, so run `dotnet format whitespace EagleBoards.slnx` before
+  you push); it is what decides whether a change is accepted.
+- **What an operator would notice** goes in [`CHANGELOG.md`](CHANGELOG.md);
+  releases follow [`docs/release-checklist.md`](docs/release-checklist.md).
 - **Never commit real people's data.** Tests and screenshots use made-up
   names only. Install the guard once per clone:
   `git config core.hooksPath scripts/hooks`.
