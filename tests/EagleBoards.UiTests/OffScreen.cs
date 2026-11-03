@@ -11,7 +11,7 @@ using EagleBoards.Core;
 using EagleBoards.Core.Records;
 
 // One UI thread for every test, one test at a time.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]
 
 namespace EagleBoards.UiTests;
 

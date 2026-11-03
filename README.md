@@ -271,8 +271,8 @@ scripts/test-handoff.sh       the Java and Windows versions taking turns on one 
 
 ```bat
 dotnet build -c Release
-dotnet test tests/EagleBoards.Tests -c Release
-dotnet test tests/EagleBoards.UiTests -c Release
+dotnet test --project tests/EagleBoards.Tests -c Release
+dotnet test --project tests/EagleBoards.UiTests -c Release
 bash scripts/test-board-event.sh
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots
 dotnet run --project tests/EagleBoards.UiSnapshots -c Release -- snapshots-dark --dark

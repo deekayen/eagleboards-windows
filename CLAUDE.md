@@ -37,12 +37,14 @@ runs a native WPF app instead of the Java app's browser pages.
 
 ## Build, test, verify
 
-- `dotnet build -c Release` (SDK 10; `global.json` pins the major).
-- `dotnet test tests/EagleBoards.Tests -c Release`: the rule, auto-select
+- `dotnet build -c Release` (SDK 10; `global.json` pins the major and picks the
+  Microsoft.Testing.Platform runner, so `dotnet test` takes `--project`;
+  decision 0002).
+- `dotnet test --project tests/EagleBoards.Tests -c Release`: the rule, auto-select
   and fill-the-rest cases all three versions share (`SharedCaseTests`, see
   below), storage format, lifecycle, the seating review, and each deliberate
   divergence from Java.
-- `dotnet test tests/EagleBoards.UiTests -c Release`: the operator window
+- `dotnet test --project tests/EagleBoards.UiTests -c Release`: the operator window
   driven off-screen over synthetic data (`OffScreen`, `TestEvent`): a
   proposed board following sign-ins (SPEC.md D-12), a choice cell opening on
   one click, the Start review reminder's words (D-23). Adults sign in over

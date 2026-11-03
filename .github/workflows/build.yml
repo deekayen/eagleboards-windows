@@ -99,12 +99,12 @@ jobs:
           dotnet format style EagleBoards.slnx --verify-no-changes --diagnostics IDE1006 --severity warn
 
       - name: Unit tests
-        run: dotnet test tests/EagleBoards.Tests -c Release --no-build
+        run: dotnet test --project tests/EagleBoards.Tests -c Release --no-build
 
       # The operator window, driven off-screen over synthetic data: a proposed
       # board following sign-ins, a choice cell opening on one click.
       - name: Window tests
-        run: dotnet test tests/EagleBoards.UiTests -c Release --no-build
+        run: dotnet test --project tests/EagleBoards.UiTests -c Release --no-build
 
       # The Java project's end-to-end event test, unchanged apart from how the
       # server is launched: the proof that the port's server behaves the same.

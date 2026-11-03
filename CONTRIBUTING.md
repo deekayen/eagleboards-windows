@@ -10,8 +10,8 @@ for AI assistants. The short version:
   in `deekayen/eagleboards-shared`. Open an issue there before changing it
   here. Why the Windows version is built as it is: [`docs/decisions`](docs/decisions/README.md).
 - **Build and test:** `dotnet build -c Release`, then
-  `dotnet test tests/EagleBoards.Tests -c Release` and
-  `dotnet test tests/EagleBoards.UiTests -c Release`. CI runs the same and
+  `dotnet test --project tests/EagleBoards.Tests -c Release` and
+  `dotnet test --project tests/EagleBoards.UiTests -c Release`. CI runs the same and
   more; it is what decides whether a change is accepted.
 - **Never commit real people's data.** Tests and screenshots use made-up
   names only. Install the guard once per clone:

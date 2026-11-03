@@ -51,3 +51,4 @@ supersedes it and update the old one's status. The format is
 Written so far:
 
 - [0001. Split the main window into partial files, one per part](0001-split-the-main-window-into-partial-files.md)
+- [0002. Test with xunit.v3 on the Microsoft Testing Platform](0002-test-with-xunit-v3-on-the-microsoft-testing-platform.md)
