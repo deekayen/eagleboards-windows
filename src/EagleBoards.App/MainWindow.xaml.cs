@@ -73,7 +73,7 @@ public partial class MainWindow : Window
     private string _page = "Event";
 
     /// <summary>The rooms Find a person narrows the Rooms card to, or null when it's empty.</summary>
-    private HashSet<string>? _foundRooms;
+    private IReadOnlySet<string>? _foundRooms;
 
     /// <summary>What Find a person last read out, so a sign-in that changes nothing isn't read again.</summary>
     private string _personFindSpoken = "";

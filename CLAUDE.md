@@ -329,8 +329,9 @@ or change; don't sweep the rest of the code to match.
   `MainWindow` is one type in a file per part (`MainWindow.Rooms.cs`,
   `MainWindow.Picks.cs`; decision 0001): add to the part a change belongs to.
   What reads no window state belongs in a class of its own (`BoardCommands`,
-  `FocusSearch`), moved when you touch it, with a test first if it isn't
-  covered. The window tests reach members of `MainWindow` by name
+  `FocusSearch`, `PersonFindSummary`, and in Core `RoomProposal`), moved when
+  you touch it, with a test first if it isn't covered. The window keeps its
+  fields and applies what the class returns. The window tests reach members of `MainWindow` by name
   (`OffScreen.Invoke`/`Field`), so a member that moves to another type breaks
   them: run `EagleBoards.UiTests` after each move.
 - **Decisions have one home.** A rule more than one version shares is a

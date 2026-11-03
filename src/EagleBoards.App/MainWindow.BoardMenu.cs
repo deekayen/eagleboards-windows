@@ -155,11 +155,11 @@ public partial class MainWindow
     /// </summary>
     private void ProposeBoard(ScoutRow scout)
     {
-        var free = _rooms.Where(r => r.IsFree).ToList();
+        var free = _rooms.Where(r => r.IsFree).Select(r => r.Info).ToList();
         if (_adults.Any(IsPicked) && !ProposalUntouched())
         {
             // Keep their picks; just make sure there's a sensible room.
-            var freeRoomOfTheirType = free.FirstOrDefault(r => r.BoardType == scout.BoardType)?.Id;
+            var freeRoomOfTheirType = RoomProposal.FirstFreeRoomOfType(scout.BoardType, free);
             KeepOrChooseRoom(scout, free, freeRoomOfTheirType, mayKeepCurrentRoom: true);
             return;
         }
@@ -181,33 +181,20 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// The room for the board being built (SPEC.md D-24). The room already
-    /// chosen stays while it's free, and while it is this youth's board type
-    /// or the operator chose it themselves; otherwise it is
-    /// <paramref name="proposed"/>. Nothing is proposed in a room set up for
-    /// the other board type: a project review never lands in a final board's
-    /// room on its own. With no room of the right type free, the operator
-    /// switches one's type or chooses another.
+    /// Sets the room for the board being built by <see cref="RoomProposal"/>'s
+    /// rule (SPEC.md D-24), which the window only applies to its two fields.
     /// </summary>
-    /// <param name="mayKeepCurrentRoom">
-    /// False when the current room was chosen for another youth.
-    /// </param>
-    private void KeepOrChooseRoom(ScoutRow scout, List<RoomCard> free, string? proposed, bool mayKeepCurrentRoom)
+    private void KeepOrChooseRoom(ScoutRow scout, List<RoomInfo> free, string? proposed, bool mayKeepCurrentRoom)
     {
-        var keep = mayKeepCurrentRoom
-            && free.FirstOrDefault(r => r.Id == _builderRoomId) is { } kept
-            && (_roomChosenByOperator || kept.BoardType == scout.BoardType);
-        if (!keep)
-        {
-            _builderRoomId = proposed;
-            _roomChosenByOperator = false;
-        }
+        var room = RoomProposal.KeepOrChoose(scout.BoardType, free, new RoomChoice(_builderRoomId, _roomChosenByOperator),
+            proposed, mayKeepCurrentRoom);
+        (_builderRoomId, _roomChosenByOperator) = (room.RoomId, room.ChosenByOperator);
     }
 
     /// <summary>The picks are still the board last proposed: the operator hasn't changed it.</summary>
     private bool ProposalUntouched() =>
         _proposal is { } proposal
-        && proposal.IsUntouched(_adults.Where(IsPicked).Select(a => a.Id).ToList(),
+        && proposal.IsUntouched([.. _adults.Where(IsPicked).Select(a => a.Id)],
             id => _adults.FirstOrDefault(a => a.Id == id)?.CanPick == true, _chairId);
 
     /// <summary>

@@ -40,7 +40,11 @@ and the class summary stay in `MainWindow.xaml.cs`.
 Pull out into classes of their own only what reads no window state, and only
 when a part is next changed (Fowler's
 [opportunistic refactoring](https://martinfowler.com/bliki/OpportunisticRefactoring.html)).
-Done so far: `BoardCommands`, `RelayCommand` and `FocusSearch`.
+Done so far: `BoardCommands`, `RelayCommand` and `FocusSearch`; then, for the
+board builder, `RoomProposal` in Core (which room a proposed board goes in,
+SPEC.md D-24) and `PersonFindSummary` (the find box's wording, D-21). Each has
+tests that need no window (`RoomProposalTests`, `PersonFindSummaryTests`); the
+window keeps the fields and only applies what they return.
 
 ## Consequences
 

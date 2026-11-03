@@ -43,29 +43,13 @@ public partial class MainWindow
     /// </summary>
     private void UpdatePersonFind()
     {
-        var query = PersonFind.Text.Trim();
-        HashSet<string>? found = null;
-        var note = "";
-        var spoken = "";
-        if (query.Length > 0)
-        {
-            var people = SchedulerLogic.FindPeople(query, _scouts.Select(s => s.Info), _adults.Select(a => a.Info));
-            var inRooms = people.Where(p => p.Room != null).ToList();
-            var named = _rooms.Select(r => r.Room).Where(r => r.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
-            found = inRooms.Select(p => p.Room!).Concat(named).ToHashSet(StringComparer.Ordinal);
-            var elsewhere = people.Where(p => p.Room == null).ToList();
-            note = found.Count == 0 && elsewhere.Count == 0 ? "No one by that name has signed in."
-                : string.Join(" ", elsewhere.Take(4).Select(p => $"{p.Name} {p.Where}."))
-                  + (elsewhere.Count > 4 ? $" And {elsewhere.Count - 4} more." : "");
-            var rooms = string.Join(" ", inRooms.Take(4).Select(p => $"{p.Name} {p.Where}."))
-                + (inRooms.Count > 4 ? $" And {inRooms.Count - 4} more in rooms." : "")
-                + (named.Count == 0 ? "" : $" {Display.Count(named.Count, "room", "rooms")} by that name: {string.Join(", ", named)}.");
-            spoken = (rooms.Trim() + " " + note).Trim();
-        }
-
+        var summary = PersonFindSummary.For(PersonFind.Text, _scouts.Select(s => s.Info), _adults.Select(a => a.Info),
+            _rooms.Select(r => r.Room));
+        var found = summary.Rooms;
+        var spoken = summary.Spoken;
         var changed = found == null ? _foundRooms != null : _foundRooms == null || !_foundRooms.SetEquals(found);
         _foundRooms = found;
-        PersonFindNote.Text = note;
+        PersonFindNote.Text = summary.Note;
         AutomationProperties.SetName(PersonFindNote, spoken);
         if (changed)
         {
