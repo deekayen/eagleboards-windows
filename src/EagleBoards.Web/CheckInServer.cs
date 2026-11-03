@@ -22,6 +22,15 @@ public sealed class CheckInServerOptions
 
     public bool Verbose { get; init; }
 
+    /// <summary>
+    /// Also answer the endpoints the Java server's admin pages used (record
+    /// edits, board actions), to requests from this machine. Off, as the app
+    /// runs it: nothing in the app calls them, and a web page open in the
+    /// operator's browser could otherwise reach them through the loopback
+    /// address. The headless server the tests drive turns it on (decision 0003).
+    /// </summary>
+    public bool ServeAdminEndpoints { get; init; }
+
     public Action<string> Log { get; init; } = _ => { };
 }
 
@@ -29,11 +38,12 @@ public sealed class CheckInServerOptions
 /// The web server the check-in stations use. It serves the three sign-in
 /// pages and the endpoints they call to anyone on the network.
 ///
-/// It also answers every other endpoint the Java server had -- the grid
-/// reads, record edits and board actions the old browser admin pages used --
-/// with the same wire formats, but only to requests from this machine. Nothing
-/// in the Windows app needs them (it calls <see cref="BoardService"/>
-/// directly); they are kept so the HTTP test suite written against the Java
+/// With <see cref="CheckInServerOptions.ServeAdminEndpoints"/> it also answers
+/// every other endpoint the Java server had -- the grid reads, record edits
+/// and board actions the old browser admin pages used -- with the same wire
+/// formats, but only to requests from this machine. Nothing in the Windows
+/// app needs them (it calls <see cref="BoardService"/> directly); the
+/// headless server keeps them so the HTTP test suite written against the Java
 /// server can prove the port behaves the same, and so a sign-in station can
 /// no longer seat a board or read a phone number it has no business with.
 /// </summary>
@@ -109,6 +119,16 @@ public sealed class CheckInServer : IAsyncDisposable
             // The Java version's Undo (SPEC.md O-2): the last reversible action, once.
             ["/restore-board"] = new(BoardAction(_ => _service.RestoreBoard()), false),
         };
+
+        if (!options.ServeAdminEndpoints)
+        {
+            // Not registered, so they answer 404 like any other unknown path,
+            // even from this machine (decision 0003).
+            foreach (var path in _endpoints.Where(e => !e.Value.Public).Select(e => e.Key).ToList())
+            {
+                _endpoints.Remove(path);
+            }
+        }
     }
 
     public int Port => _options.Port;
@@ -311,10 +331,12 @@ public sealed class CheckInServer : IAsyncDisposable
         var valueColumns = Withhold(table, columns)!;
         var valueUserData = Withhold(table, userData);
 
-        if (!isLocal)
+        if (!isLocal || !_options.ServeAdminEndpoints)
         {
             // A station needs names and units for the "who's here" lists, not
-            // phones, emails or dates of birth.
+            // phones, emails or dates of birth. Without the admin endpoints
+            // (the app, decision 0003) this machine is held to the same: a web
+            // page open in the operator's browser reaches it as loopback.
             var asked = columns.Concat(userData ?? []).Append(filterField ?? "Last");
             if (fmt != "rows" || !asked.All(PublicListColumns.Contains))
             {

@@ -66,13 +66,17 @@ timings, no personal information.
 The check-in site is plain HTTP with no authentication, meant for a trusted
 venue network for the length of one event.
 
-- **Only the check-in endpoints answer the network.** The sign-in pages, the
+- **Only the check-in endpoints are served.** The sign-in pages, the
   `/api/*` calls they make, and the sign-in calls the Java version's pages
-  made answer any address. Every other endpoint (the record reads and edits,
+  made answer any address. The other endpoints (the record reads and edits,
   board actions, room changes and settings that the Java version's admin
-  pages used, and its email autofill) answers only the computer running the
-  app, and anyone else gets `403`. The admin pages themselves are gone (`404`): the scheduler, records
-  and settings are native windows. `CheckInServerTests` checks both.
+  pages used, and its email autofill) are not registered in the app: they
+  answer `404` to everyone, the computer running it included, so a web page
+  open in the operator's browser can't reach them through `localhost`. The
+  headless test server serves them to its own computer only, and anyone else
+  gets `403`. The admin pages themselves are gone (`404`): the scheduler,
+  records and settings are native windows. `CheckInServerTests` checks each
+  of these (decision 0003).
 - **Responses are trimmed to what each page shows.** The lists at the door get
   names and units. An email lookup is a POST, so an address never lands in a
   URL on a shared tablet, and returns the fields its form fills in, with

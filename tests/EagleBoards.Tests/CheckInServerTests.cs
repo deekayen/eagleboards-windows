@@ -37,7 +37,7 @@ public class CheckInServerTests
         return (context.Response.StatusCode, Encoding.UTF8.GetString(body.ToArray()));
     }
 
-    private static CheckInServer Server(Sandbox box) => new(box.Open(), new CheckInServerOptions());
+    private static CheckInServer Server(Sandbox box) => new(box.Open(), new CheckInServerOptions { ServeAdminEndpoints = true });
 
     [Fact]
     public async Task AStationGetsTheSignInPages()
@@ -50,6 +50,37 @@ public class CheckInServerTests
         Assert.Equal(200, (await Send(server, Station, "GET", "/eb-data.js")).Status);
         Assert.Contains("ebSignInForm", (await Send(server, Station, "GET", "/checkin.js")).Body, StringComparison.Ordinal);
         Assert.Equal(200, (await Send(server, Station, "GET", "/checkin.css")).Status);
+    }
+
+    [Fact]
+    public async Task TheAppsServerAnswersNoAdminEndpointEvenToThisMachine()
+    {
+        // Decision 0003: a web page open in the operator's browser can reach
+        // the loopback address, so the app does not register these at all.
+        using var box = new Sandbox();
+        var server = new CheckInServer(box.Open(), new CheckInServerOptions());
+
+        foreach (var path in new[] { "/seat-board", "/restore-board", "/room-change", "/update-config", "/youth-update", "/room-cells" })
+        {
+            Assert.Equal(404, (await Send(server, IPAddress.Loopback, "GET", path)).Status);
+        }
+
+        Assert.Equal(200, (await Send(server, Station, "GET", "/")).Status);
+        Assert.Equal(200, (await Send(server, Station, "POST", "/register-youth", "Last=Aldridge&First=Alex&UnitType=Troop&Unit=1001&BoardType=Final")).Status);
+    }
+
+    [Fact]
+    public async Task TheAppsServerGivesThisMachineNoMoreOfTheListsThanAStation()
+    {
+        // The lists at the door are public endpoints, and from this machine
+        // the Java server gave every column. Without the admin endpoints
+        // (decision 0003) loopback is held to names and units too.
+        using var box = new Sandbox();
+        var server = new CheckInServer(box.Open(), new CheckInServerOptions());
+        Assert.Equal(200, (await Send(server, Station, "POST", "/register-adult", "Last=Able&First=Ann&UnitType=Troop&Unit=2001&Email=ann@example.org&Phone=555-765-4321")).Status);
+
+        Assert.Equal(403, (await Send(server, IPAddress.Loopback, "GET", "/adult-cells?cols=Last,Email,Phone")).Status);
+        Assert.Equal(200, (await Send(server, IPAddress.Loopback, "GET", "/adult-cells?cols=Last,First")).Status);
     }
 
     [Fact]
@@ -67,7 +98,7 @@ public class CheckInServerTests
             ["DOB"] = "2010-04-01",
             ["Phone"] = "555-123-4567",
         });
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
 
         var (status, body) = await Send(server, Station, "POST", "/api/youth-lookup", "email=%20ALEX%40example.org%20");
         Assert.Equal(200, status);
@@ -86,7 +117,7 @@ public class CheckInServerTests
         using var box = new Sandbox();
         var svc = box.Open();
         svc.RegisterAdult(new Dictionary<string, string>(Seed.Adult("Able", "Ann", "2001", "Member", "Chair")) { ["Phone"] = "555-765-4321" });
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
 
         var (status, body) = await Send(server, Station, "POST", "/api/adult-lookup", "email=ann%40example.org");
         Assert.Equal(200, status);
@@ -156,7 +187,7 @@ public class CheckInServerTests
         using var box = new Sandbox();
         var svc = box.Open();
         svc.RegisterAdult(Seed.Adult("Able", "Ann", "2001", "Member", "Chair"));
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
 
         Assert.DoesNotContain("@", (await Send(server, IPAddress.Loopback, "GET", "/adult-autofill")).Body, StringComparison.Ordinal);
         Assert.DoesNotContain("@", (await Send(server, IPAddress.Loopback, "GET", "/adult-autofill?op=list")).Body, StringComparison.Ordinal);
@@ -197,7 +228,7 @@ public class CheckInServerTests
         svc.RegisterAdult(Seed.Adult("Cole", "Cat", "2003", "Member", "Member"));
         var (scout, chair) = (Seed.ScoutId("Aldridge", "Alex", "1001"), Seed.AdultId("Able", "Ann", "2001"));
         Assert.True(svc.SeatBoard("ROOM:101", scout, chair, $"{chair},{Seed.AdultId("Baker", "Bob", "2002")},{Seed.AdultId("Cole", "Cat", "2003")}").Ok);
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
 
         var youth = (await Send(server, IPAddress.Loopback, "POST", "/youth-update", $"!nativeeditor_status=deleted&gr_id={Uri.EscapeDataString(scout)}")).Body;
         Assert.Contains($"<action type=\"invalid\" sid=\"{scout}\" tid=\"{scout}\">Alex Aldridge&apos;s board is in room 101.", youth, StringComparison.Ordinal);
@@ -229,7 +260,7 @@ public class CheckInServerTests
             ["DOB"] = "2010-04-01",
             ["Phone"] = "555-123-4567",
         });
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
 
         foreach (var query in new[] { "/youth-autofill?Email=alex@example.org", "/youth-autofill?Email=alex@example.org&fmt=json" })
         {
@@ -255,7 +286,7 @@ public class CheckInServerTests
         // still goes there.
         using var box = new Sandbox();
         var svc = box.Open();
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
         Assert.Equal(200, (await Send(server, Station, "POST", "/register-youth",
             "Last=Aldridge&First=Alex&UnitType=Troop&Unit=1001&BoardType=Final&Phone=5551234567")).Status);
         Assert.Equal("", svc.Snapshot(DataTable.Scouts).Single()["Phone"]);
@@ -314,7 +345,7 @@ public class CheckInServerTests
             ["DOB"] = "2011-05-02",
         });
         svc.RegisterAdult(new Dictionary<string, string>(Seed.Adult("Able", "Ann", "2001", "Member", "Chair")) { ["Phone"] = "555-765-4321" });
-        var server = new CheckInServer(svc, new CheckInServerOptions());
+        var server = new CheckInServer(svc, new CheckInServerOptions { ServeAdminEndpoints = true });
 
         foreach (var query in new[]
         {

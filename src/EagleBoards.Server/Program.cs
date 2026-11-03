@@ -103,6 +103,7 @@ await using var server = new CheckInServer(service, new CheckInServerOptions
     Port = port,
     BindAddress = bound?.Address,
     Verbose = cmd.Verbose,
+    ServeAdminEndpoints = true,
     Log = Log,
 });
 
