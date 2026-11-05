@@ -10,6 +10,11 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
 
 ### Fixed
 
+- **Pre-registered phone numbers with a country code or only seven digits.**
+  `+1 (555) 222-0007` was stored as `155-522-20007` and `222-0005` as
+  `222-000-5`. They now come out `555-222-0007` and `222-0005`, and a number
+  that fits neither shape (one with an extension, or too few digits) is kept as
+  typed. The Mac and Java versions write them the same way.
 - **A project review is no longer proposed a final board's room**, nor a
   board of review a project room (found at the 2026-10-27 event; SPEC.md
   D-24). A board takes only a free room set up for its own type. When there

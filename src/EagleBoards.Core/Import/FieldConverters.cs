@@ -1,4 +1,3 @@
-using System.Text;
 using EagleBoards.Core.Records;
 
 namespace EagleBoards.Core.Import;
@@ -62,33 +61,35 @@ internal static class FieldConverters
         return true;
     }
 
-    /// <summary>
-    /// Normalizes to 555-123-4567. A 12-character value is taken as already
-    /// formatted. (The Java version formatted from the raw text instead of
-    /// the extracted digits, so "(555) 123-4567" came out "(55-5) -123-".)
-    /// </summary>
+    /// <summary>Stores a phone number as <see cref="FormatPhone"/> writes it.</summary>
     public static bool Phone(DataRecord r, string value)
     {
-        if (value.Length == 12)
-        {
-            r.SetValue("Phone", value);
-            return true;
-        }
-
-        var digits = new string([.. value.Where(char.IsDigit)]);
-        var sb = new StringBuilder();
-        for (var i = 0; i < digits.Length; i++)
-        {
-            if (i is 3 or 6)
-            {
-                sb.Append('-');
-            }
-
-            sb.Append(digits[i]);
-        }
-
-        r.SetValue("Phone", sb.ToString());
+        r.SetValue("Phone", FormatPhone(value));
         return true;
+    }
+
+    /// <summary>
+    /// Writes a phone number as 555-123-4567, so "(555) 123-4567", "5551234567",
+    /// "555.123.4567", and "+1 (555) 123-4567" all come out that way. Seven
+    /// digits are a local number and come out as 123-4567. Anything else, such
+    /// as a number with an extension or too few digits, is kept as typed (minus
+    /// the blanks around it): guessing where its dashes go only garbles it.
+    /// The Mac version and the Java version write the same.
+    /// </summary>
+    public static string FormatPhone(string typed)
+    {
+        var digits = new string([.. typed.Where(char.IsAsciiDigit)]);
+        if (digits.Length == 11 && digits[0] == '1')
+        {
+            digits = digits[1..];
+        }
+
+        return digits.Length switch
+        {
+            10 => $"{digits[..3]}-{digits[3..6]}-{digits[6..]}",
+            7 => $"{digits[..3]}-{digits[3..]}",
+            _ => typed.Trim(),
+        };
     }
 
     /// <summary>Digits are the unit number; the first letter picks Crew, Pack, or Troop.</summary>

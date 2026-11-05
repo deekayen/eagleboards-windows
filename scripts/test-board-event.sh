@@ -1394,6 +1394,33 @@ case "$(admin_delete /youth-update "$HELD")" in
 esac
 chk "nobody committed after section 29" "$(busy_adults)" "0"
 
+# ------ 30. sign-ins arriving together
+echo
+echo "== 30. simultaneous sign-ins =="
+
+# Thirty youth signing in at once must all be recorded, each with a readable
+# sign-in and update time. The Java version once stamped every record from one
+# SimpleDateFormat shared by all its threads, which is not thread-safe; that
+# race is checked in-process there. Here it is the server's answer to a burst
+# that is checked. The Java script's section 30 also loads a pre-registration
+# sheet at startup (-p) to check phone numbers; this version imports a sheet
+# from its menu, and its phone numbers are checked in BoardServiceTests.
+racers=""
+for n in $(seq 1 30); do
+    curl -s -o /dev/null -X POST --data "Last=Racer$n&First=Stamp&Email=racer$n@example.org&UnitType=Troop&Unit=$((4000 + n))&UnitName=Troop$((4000 + n))&BoardType=Final" \
+        "$B/register-youth" &
+    racers="$racers $!"
+done
+# Named pids: a bare `wait` would also wait for the server itself.
+wait $racers
+
+# Written out in full because some awks have no {n} repeat in a pattern.
+STAMP_FORMAT='^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_[0-9][0-9]:[0-9][0-9][+-][0-9][0-9][0-9][0-9]$'
+chk "all 30 simultaneous sign-ins were recorded" \
+    "$(awk -F, 'NR>1 && $5=="Stamp" {n++} END {print n+0}' "$SCOUTS")" "30"
+chk "every youth's sign-in and update time reads back as a time" \
+    "$(awk -F, -v fmt="$STAMP_FORMAT" 'NR>1 && ($14 !~ fmt || $15 !~ fmt) {n++} END {print n+0}' "$SCOUTS")" "0"
+
 echo
 echo "== the event ends clean =="
 chk "no board left convening"  "$(n_status Seated)" "0"

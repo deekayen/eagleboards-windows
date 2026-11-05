@@ -245,8 +245,10 @@ Deliberate changes. The server-side ones each have a unit test in
   import left them all as `ADULT:::` until a restart, so a sign-in that day
   created a duplicate history record). The API key is never written to the log.
 - **Adults' phone numbers** from pre-registration are normalized from their
-  digits; the Java code formatted the raw text, so `(555) 123-4567` came out
-  garbled. (A youth's isn't imported at all: see Privacy.)
+  digits (a leading country code 1 is dropped, seven digits become
+  `123-4567`, and anything else is kept as typed); the Java code formatted the
+  raw text, so `(555) 123-4567` came out garbled. (A youth's isn't imported at
+  all: see Privacy.)
 - **Files.** Every save writes a temporary file and swaps it in, so a crash
   can't leave half a file. Old files in the Windows ANSI code page (accented
   names in an adult history from the 2019 build) and files saved by Excel with

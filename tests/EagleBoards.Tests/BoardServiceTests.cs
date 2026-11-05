@@ -247,6 +247,34 @@ public class BoardServiceTests
         Assert.Equal("555-765-4321", adult["Phone"]);
     }
 
+    // The same cases as the Java version's checks in test-data-quirks.java and
+    // the Mac version's phonesAreFormattedFromTheirDigits.
+    [Theory]
+    [InlineData("(555) 123-4567", "555-123-4567")]
+    [InlineData("5551234567", "555-123-4567")]
+    [InlineData("555-123-4567", "555-123-4567")]
+    [InlineData("(555)123-4567", "555-123-4567")]
+    [InlineData("555.123.4567", "555-123-4567")]
+    [InlineData("+1 (555) 222-0007", "555-222-0007")]
+    [InlineData("1-555-222-0008", "555-222-0008")]
+    [InlineData("222-0005", "222-0005")]
+    [InlineData("555-123-4567 x12", "555-123-4567 x12")]
+    [InlineData("12345", "12345")]
+    [InlineData("25551234567", "25551234567")]
+    public void APreRegisteredPhoneNumberIsWrittenAsDashedDigitsOrKeptAsTyped(string typed, string stored)
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        var path = Path.Combine(box.Root, "prereg.csv");
+        File.WriteAllText(path,
+            "Email,First Name,Last Name,Scouts Contact Number,Scoutmasters Name,Unit Number,Item\n" +
+            $"ann@example.org,Ann,Able,{typed},,Troop 2001,Adult volunteer\n");
+
+        s.ImportPreRegistrations(path);
+
+        Assert.Equal(stored, s.Snapshot(DataTable.AdultHistory).Single()["Phone"]);
+    }
+
     [Fact]
     public void ABlankEmailDoesNotMatchABlankPreRegistration()
     {
