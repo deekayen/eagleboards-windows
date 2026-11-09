@@ -29,6 +29,15 @@ public partial class MainWindow
             _current = null;
         }
 
+        // A board for a youth who was seated elsewhere (the other computer, or
+        // an undo) has no one to seat it for (SPEC.md D-12, amended 2026-11-08).
+        var waitingIds = _scouts.Where(s => BoardStatus.IsWaiting(s.Status)).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        _drafts.ForgetAllExcept(waitingIds);
+        if (_boardOwnerId is { } owner && !waitingIds.Contains(owner))
+        {
+            ClearBoardBuilder();
+        }
+
         // A board proposed for the open youth, and not changed since, follows
         // the event: an adult who signs in or frees up is weighed at once,
         // without Start over (SPEC.md D-12). One the operator has changed keeps

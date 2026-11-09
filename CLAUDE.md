@@ -164,7 +164,10 @@ runs a native WPF app instead of the Java app's browser pages.
   same-unit adults warn with an override down to the national floor (one
   member from outside the unit).
 - **Picks** (`Sel`) are the operator's work in progress, saved immediately.
-  Clicking around never clears them; only Start over and seating do. Opening a
+  Clicking around never clears them; only Start over and seating do. They
+  belong to one youth (`_boardOwnerId`): opening another waiting youth puts
+  the changed board in `BoardDrafts` and proposes that youth's own, and
+  coming back restores it (SPEC.md D-12, amended 2026-11-08). Opening a
   seated board shows its members; it doesn't pick them. A board the app
   proposed and the operator hasn't changed (`ProposedBoard.IsUntouched`) is
   not theirs yet: it is proposed again on every change to the event, so an

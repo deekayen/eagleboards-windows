@@ -114,8 +114,9 @@ public partial class MainWindow
     /// <summary>
     /// Show a youth in the details pane. A waiting youth gets a proposed board
     /// unless the operator has changed the picks: then they are their work in
-    /// progress and survive clicking around; only Start over and seating
-    /// clear them. A proposal they left alone is made afresh for this youth.
+    /// progress and survive clicking around, kept for that youth (SPEC.md
+    /// D-12, amended 2026-11-08); only Start over and seating clear them.
+    /// A proposal they left alone is made afresh for this youth.
     /// </summary>
     private void Open(ScoutRow scout)
     {
@@ -156,6 +157,22 @@ public partial class MainWindow
     private void ProposeBoard(ScoutRow scout)
     {
         var free = _rooms.Where(r => r.IsFree).Select(r => r.Info).ToList();
+
+        // The picks on screen belong to one youth (SPEC.md D-12, amended
+        // 2026-11-08): another youth gets their own board, and the first
+        // youth's is kept for when the operator comes back to them.
+        if (_boardOwnerId is { } owner && owner != scout.Id)
+        {
+            SetAsideBoardOf(owner);
+        }
+
+        _boardOwnerId = scout.Id;
+        if (_drafts.Take(scout.Id) is { } draft)
+        {
+            RestoreDraft(scout, free, draft);
+            return;
+        }
+
         if (_adults.Any(IsPicked) && !ProposalUntouched())
         {
             // Keep their picks; only make sure there's a sensible room.
@@ -189,6 +206,59 @@ public partial class MainWindow
         var room = RoomProposal.KeepOrChoose(scout.BoardType, free, new RoomChoice(_builderRoomId, _roomChosenByOperator),
             proposed, mayKeepCurrentRoom);
         (_builderRoomId, _roomChosenByOperator) = (room.RoomId, room.ChosenByOperator);
+    }
+
+    /// <summary>
+    /// Puts away the board on screen, which belongs to <paramref name="ownerId"/>:
+    /// kept as a draft if it is the operator's, dropped if the app proposed it
+    /// (it is proposed afresh on return) or the youth is no longer waiting.
+    /// </summary>
+    private void SetAsideBoardOf(string ownerId)
+    {
+        var stillWaiting = _scouts.Any(s => s.Id == ownerId && BoardStatus.IsWaiting(s.Status));
+        var operatorChangedIt = _proposal is { } proposal && proposal.ScoutId == ownerId
+            ? !ProposalUntouched()
+            : _adults.Any(IsPicked);   // picks found in the file at start-up have no proposal behind them
+        if (stillWaiting && operatorChangedIt)
+        {
+            _drafts.Keep(ownerId, new BoardDraft([.. _adults.Where(IsPicked).Select(a => a.Id)], _chairId,
+                new RoomChoice(_builderRoomId, _roomChosenByOperator), _proposal));
+        }
+
+        ClearBoardBuilder();
+    }
+
+    /// <summary>Nobody picked, no chair or room, and no board on screen belongs to anyone.</summary>
+    private void ClearBoardBuilder()
+    {
+        foreach (var adult in _adults.Where(a => a.Sel).ToList())
+        {
+            adult.Sel = false;
+        }
+
+        _chairId = null;
+        _builderRoomId = null;
+        _roomChosenByOperator = false;
+        _proposal = null;
+        _boardOwnerId = null;
+    }
+
+    /// <summary>
+    /// The operator's board for this youth, as they left it. An adult who
+    /// has since gone home or joined another board drops out, and the room
+    /// is kept only while it is still free.
+    /// </summary>
+    private void RestoreDraft(ScoutRow scout, List<RoomInfo> free, BoardDraft draft)
+    {
+        foreach (var adult in _adults.Where(a => a.CanPick && a.Sel != draft.AdultIds.Contains(a.Id)))
+        {
+            adult.Sel = draft.AdultIds.Contains(adult.Id);
+        }
+
+        _chairId = draft.ChairId;
+        _proposal = draft.Proposal;
+        (_builderRoomId, _roomChosenByOperator) = (draft.Room.RoomId, draft.Room.ChosenByOperator);
+        KeepOrChooseRoom(scout, free, RoomProposal.FirstFreeRoomOfType(scout.BoardType, free), mayKeepCurrentRoom: true);
     }
 
     /// <summary>The picks are still the board last proposed: the operator hasn't changed it.</summary>

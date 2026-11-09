@@ -10,6 +10,14 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
 
 ### Fixed
 
+- **A board you changed stays with its youth.** Change one waiting youth's
+  proposed board, open another youth, and the second youth's pane showed the
+  first youth's members and chair. Now the second youth gets their own
+  proposal, and returning to the first shows the board as you left it (SPEC.md
+  D-12, amended 2026-11-08). Start over, Seat board, and a youth being seated
+  from another computer end the kept board. The kept boards are held by the
+  open window, so closing it forgets them; the members you picked for the open
+  youth are still saved as before.
 - **Pre-registered phone numbers with a country code or only seven digits.**
   `+1 (555) 222-0007` was stored as `155-522-20007` and `222-0005` as
   `222-000-5`. They now come out `555-222-0007` and `222-0005`, and a number

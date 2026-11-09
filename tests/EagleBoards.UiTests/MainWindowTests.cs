@@ -153,6 +153,110 @@ public class MainWindowTests
     });
 
     [Fact]
+    public void ABoardTheOperatorChangedStaysWithItsYouth() => OffScreen.Run(() =>
+    {
+        // SPEC.md D-12 (amended 2026-11-08), eagleboards-shared#22. One set of
+        // picks served every youth, so the second youth's pane showed the
+        // first youth's members and chair.
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Room("102", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member);
+        e.Adult("Castellano", "Clementine", "2003", BoardRoles.Chair);
+        e.Adult("Duxbury", "Desmond", "2004", BoardRoles.Member);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        e.Youth("Bram", "Beauregard", "1002", BoardTypes.Final);
+        var w = e.Window;
+
+        Open(w, "Bram");
+        var proposedForBram = Picks(w);
+        Open(w, "Aldridge");
+
+        // The operator takes Blackwood off Aldridge's board and makes Castellano the chair.
+        w.PickList.Items.Cast<PickRow>().First(p => p.Adult.Last == "Blackwood").Adult.Sel = false;
+        w.AvailableList.Items.Cast<PickRow>().Concat(w.PickList.Items.Cast<PickRow>()).First(p => p.Adult.Last == "Castellano").Adult.Sel = true;
+        OffScreen.Invoke(w, "ShowDetails");
+        OffScreen.Pump();
+        w.PickList.Items.Cast<PickRow>().First(p => p.Adult.Last == "Castellano").IsChair = true;
+        OffScreen.Pump();
+        var changedForAldridge = Picks(w);
+        Assert.DoesNotContain("Blackwood", changedForAldridge);
+        Assert.Equal("Castellano", ChairOf(w));
+
+        // Bram's board is Bram's own: none of the operator's changes are on it.
+        Open(w, "Bram");
+        Assert.Equal(proposedForBram, Picks(w));
+        Assert.Contains("Blackwood", Picks(w));
+        Assert.NotEqual("Castellano", ChairOf(w));
+
+        // Back to Aldridge, the board is as the operator left it.
+        Open(w, "Aldridge");
+        Assert.Equal(changedForAldridge, Picks(w));
+        Assert.Equal("Castellano", ChairOf(w));
+    });
+
+    [Fact]
+    public void StartOverEndsTheOperatorsBoardForThatYouth() => OffScreen.Run(() =>
+    {
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member);
+        e.Adult("Castellano", "Clementine", "2003", BoardRoles.Chair);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        e.Youth("Bram", "Beauregard", "1002", BoardTypes.Final);
+        var w = e.Window;
+
+        Open(w, "Aldridge");
+        w.PickList.Items.Cast<PickRow>().First(p => p.Adult.Last == "Castellano").Adult.Sel = false;
+        OffScreen.Invoke(w, "ShowDetails");
+        OffScreen.Pump();
+        Open(w, "Bram");
+
+        // Bram's board is a proposal again, so Start over for Aldridge, once
+        // reopened, finds nothing of the earlier change to bring back.
+        Open(w, "Aldridge");
+        Assert.Equal(["Abernathy", "Blackwood"], Picks(w));
+        OffScreen.Invoke(w, "OnClearPicks", new object(), new RoutedEventArgs());
+        OffScreen.Pump();
+        Open(w, "Bram");
+        Open(w, "Aldridge");
+        Assert.Equal(["Abernathy", "Blackwood", "Castellano"], Picks(w));
+    });
+
+    [Fact]
+    public void AnOperatorsBoardIsDroppedWhenItsYouthIsSeatedElsewhere() => OffScreen.Run(() =>
+    {
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        e.Adult("Blackwood", "Bartholomew", "2002", BoardRoles.Member);
+        e.Adult("Castellano", "Clementine", "2003", BoardRoles.Chair);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        e.Youth("Bram", "Beauregard", "1002", BoardTypes.Final);
+        var w = e.Window;
+
+        Open(w, "Aldridge");
+        w.PickList.Items.Cast<PickRow>().First(p => p.Adult.Last == "Castellano").Adult.Sel = false;
+        OffScreen.Invoke(w, "ShowDetails");
+        OffScreen.Pump();
+        Open(w, "Bram");
+
+        var drafts = OffScreen.Field<BoardDrafts>(w, "_drafts");
+        var aldridge = e.Service.Snapshot(DataTable.Scouts).First(r => r["Last"] == "Aldridge")["ID"];
+        Assert.True(drafts.Has(aldridge));
+
+        Assert.True(e.Service.PostponeBoard(aldridge).Ok);
+        OffScreen.Pump();
+
+        Assert.False(drafts.Has(aldridge));
+    });
+
+    private static string? ChairOf(MainWindow window) =>
+        window.PickList.Items.Cast<PickRow>().FirstOrDefault(p => p.IsChair)?.Adult.Last;
+
+    [Fact]
     public void AProposalIsNeverProposedARoomSetUpForFinalBoards() => OffScreen.Run(() =>
     {
         // Reported after the 2026-10-27 event: a project review was proposed

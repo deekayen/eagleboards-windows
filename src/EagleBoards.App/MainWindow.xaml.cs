@@ -98,6 +98,12 @@ public partial class MainWindow : Window
     /// <summary>The board last proposed, to tell it from the operator's own (SPEC.md D-12).</summary>
     private ProposedBoard? _proposal;
 
+    /// <summary>The youth the picks, chair and room on screen are for, so another youth never shows them (SPEC.md D-12).</summary>
+    private string? _boardOwnerId;
+
+    /// <summary>Boards the operator changed for youth other than the one open, kept until they come back.</summary>
+    private readonly BoardDrafts _drafts = new();
+
     /// <summary>
     /// Shows a question (Remove room's) and says whether its primary button
     /// was pressed. A test replaces it, to read the question without showing

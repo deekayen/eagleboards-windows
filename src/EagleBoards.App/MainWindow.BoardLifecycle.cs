@@ -44,6 +44,8 @@ public partial class MainWindow
         _builderRoomId = null;
         _roomChosenByOperator = false;
         _proposal = null;
+        _boardOwnerId = null;
+        _drafts.Forget(scout.Id);
         RefreshAll();
         Open(scout);
         if (result.Ok)
