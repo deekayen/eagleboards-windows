@@ -8,6 +8,8 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
 
 ## Not yet released
 
+## 2026.11.12
+
 ### Fixed
 
 - **A board you changed stays with its youth.** Change one waiting youth's
@@ -59,6 +61,13 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   menu, the room's shortcut menu, and Help. Help explains the room rule.
 - *Seat board*, when unavailable, gives the reason as help text for a
   screen reader.
+- **Start review lists each adult as Name (where they are)**, as the Mac and
+  Java versions do. Before, one adult read "They're on the board in room 104"
+  and a list read "Name, on the board in room 104". Whom it names has not
+  changed: the adults who said at sign-in they will introduce the youth, or
+  else the youth's leaders, never a parent.
+- Help and the README explain how a board you changed is kept for its youth,
+  and what ends it.
 
 ### For contributors
 
@@ -69,3 +78,4 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   rule and the find box's wording are classes of their own with tests.
 - The release workflow makes a draft and wants a passing build of the same
   commit. See [`docs/release-checklist.md`](docs/release-checklist.md).
+- xunit.v3 is 4.0.3 (was 4.0.2).
