@@ -335,7 +335,7 @@ or change; don't sweep the rest of the code to match.
   Types and members have a `<summary>` in the style of their neighbors.
 - **A file is named for what it holds.** New code is one type per file, named
   for that type (`BoardCommands.cs`). A file of related small types is named
-  for the group, never `Ui`, `Helpers` or `Utils`. (`Ui.cs` and `Rows.cs` used
+  for the group, never `Ui`, `Helpers`, or `Utils`. (`Ui.cs` and `Rows.cs` used
   to be that: each is now a file per type.)
 - **A big type is made smaller when you next change that area.**
   `MainWindow` is one type in a file per part (`MainWindow.Rooms.cs`,

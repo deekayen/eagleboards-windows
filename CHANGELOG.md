@@ -47,7 +47,7 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   the last change may not be saved and what to do. Files are flushed to disk
   when written, and a failed write leaves no stray `.tmp` file.
 - **A refused step's error is brought into view.** After a refused Replace,
-  Remove or Add member, the bar that says why sat at the top of the details
+  Remove, or Add member, the bar that says why sat at the top of the details
   pane, out of sight when the pane was scrolled down to the buttons.
 - **If the main window can't be built, the scheduler now stops** instead of
   leaving the check-in website running with no window to close it.
