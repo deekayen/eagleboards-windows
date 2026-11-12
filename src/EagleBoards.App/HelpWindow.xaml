@@ -104,7 +104,12 @@
       <Paragraph>To choose someone yourself, remove who you don't want, and then add who you do from <Bold>Add members</Bold>. <Bold>Fill the rest</Bold> completes the board around your choices.
         <Bold>Start over</Bold> clears the board and proposes a fresh one.</Paragraph>
       <Paragraph>Until you change it, the proposed board keeps up with the event. When an adult signs in, goes home, or leaves a board, the board is proposed again.
-        Another youth you open gets a board of their own. Once you remove, add, fill, or change the chair, the board is yours, and it's kept while you move between youth and rooms.</Paragraph>
+        Another youth you open gets a board of their own. Once you remove, add, fill, or change the chair, the board is yours.</Paragraph>
+      <Paragraph>A board you changed stays with its youth. Open another waiting youth and you see the board proposed for them, with nothing from the first youth's board on it.
+        Go back to the first youth, and their board is as you left it, even if you emptied it. An adult on one youth's kept board can still be proposed for another youth.
+        If an adult on a kept board has since gone home or joined another board, they're left off when you return, and the room is kept only while it's still free.</Paragraph>
+      <Paragraph>A kept board ends when you select <Bold>Start over</Bold> or <Bold>Seat board</Bold> for its youth, or when that youth is no longer waiting, such as when another computer seats them.
+        The scheduler holds kept boards in its window, so closing it forgets them. The members you picked for the youth that's open are saved, as before.</Paragraph>
 
       <app:Heading Style="{StaticResource H3}">How a board is proposed</app:Heading>
       <Paragraph>The proposal has the whole waiting line in mind. In this order, it:</Paragraph>

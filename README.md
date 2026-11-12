@@ -122,6 +122,9 @@ happens; there is no "save" step.
 
 1. Select a waiting youth in the Youth list. The details pane proposes a
    board: a free room, a qualified chair, and members from other units.
+   If you change it, the board stays with that youth: open another youth
+   and you see their own, then come back to find yours as you left it.
+   **Start over**, **Seat board**, or closing the scheduler ends a kept board.
 2. Select **Seat board** to convene it in that room. The members read the
    paperwork; the youth waits outside.
 
@@ -238,9 +241,10 @@ Deliberate changes. The server-side ones each have a unit test in
   picks; before, they stayed ticked and blocked auto-select for the next
   youth.
 - **Sign-in numbering.** Submitting the sign-in form twice keeps your place
-  in the queue instead of renumbering you to the back, and a youth with no
-  email is no longer counted as pre-registered because some sign-up also had
-  none.
+  in the queue instead of renumbering you to the back, a new number is one
+  more than the highest in use (deleting a waiting youth no longer hands the
+  next walk-in a number already taken), and a youth with no email is no longer
+  counted as pre-registered because some sign-up also had none.
 - **SignUpGenius.** Imported adults get their real ID straight away (the Java
   import left them all as `ADULT:::` until a restart, so a sign-in that day
   created a duplicate history record). The API key is never written to the log.
