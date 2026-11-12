@@ -94,19 +94,23 @@ public partial class MainWindow
         return dialog;
     }
 
-    /// <summary>Whom to fetch for the introduction, and where they are; never a parent.</summary>
+    /// <summary>
+    /// Whom to fetch for the introduction, and where they are; never a parent.
+    /// Each adult reads "Name (where they are)", as in the Mac and Java
+    /// versions' reminders, so the three agree on what the operator sees.
+    /// </summary>
     internal static string IntroductionReminder(ScoutRow scout, Introduction introduction)
     {
-        static string Name(AdultInfo a) => $"**{a.First} {a.Last}**";
+        static string Located(AdultInfo a) => $"**{a.First} {a.Last}** ({SchedulerLogic.Whereabouts(a)})";
         var youth = $"**{scout.FullName}**";
         return introduction switch
         {
-            { Introducers: [var one] } => $"Fetch {Name(one)} to introduce {youth} to the board. They're {SchedulerLogic.Whereabouts(one)}.",
+            { Introducers: [var one] } => $"Fetch {Located(one)} to introduce {youth} to the board.",
             { Introducers.Count: > 1 } => $"Fetch whoever introduces {youth} to the board:\n"
-                + string.Join("\n", introduction.Introducers.Select(a => $"{Name(a)}, {SchedulerLogic.Whereabouts(a)}")),
-            { Leaders: [var one] } => $"No one has said they'll introduce {youth}. Their leader, {Name(one)}, is {SchedulerLogic.Whereabouts(one)}.",
+                + string.Join("\n", introduction.Introducers.Select(Located)),
+            { Leaders: [var one] } => $"No one has said they'll introduce {youth}. Their leader: {Located(one)}.",
             { Leaders.Count: > 1 } => $"No one has said they'll introduce {youth}. Their leaders:\n"
-                + string.Join("\n", introduction.Leaders.Select(a => $"{Name(a)}, {SchedulerLogic.Whereabouts(a)}")),
+                + string.Join("\n", introduction.Leaders.Select(Located)),
             _ => $"No one has said they'll introduce {youth}, and their leader hasn't signed in. Ask {scout.First} who will.",
         };
     }

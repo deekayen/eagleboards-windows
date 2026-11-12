@@ -675,10 +675,15 @@ public class MainWindowTests
         });
         static AdultInfo Adult(string first, string last, string room) => new("A" + last, last, first, "Troop1001", room, BoardRoles.Member, BoardRoles.Member);
 
-        Assert.Equal("Fetch **Jo Jones** to introduce **Alexander Aldridge** to the board. They're on the board in room 104.",
+        // Each adult reads "Name (where they are)", as in the Mac and Java versions.
+        Assert.Equal("Fetch **Jo Jones** (on the board in room 104) to introduce **Alexander Aldridge** to the board.",
             MainWindow.IntroductionReminder(youth, new Introduction([Adult("Jo", "Jones", "104")], [])));
-        Assert.Equal("No one has said they'll introduce **Alexander Aldridge**. Their leader, **Sam Smith**, is in the main room.",
+        Assert.Equal("Fetch whoever introduces **Alexander Aldridge** to the board:\n**Jo Jones** (on the board in room 104)\n**Pat Poe** (in the main room)",
+            MainWindow.IntroductionReminder(youth, new Introduction([Adult("Jo", "Jones", "104"), Adult("Pat", "Poe", "")], [])));
+        Assert.Equal("No one has said they'll introduce **Alexander Aldridge**. Their leader: **Sam Smith** (in the main room).",
             MainWindow.IntroductionReminder(youth, new Introduction([], [Adult("Sam", "Smith", "")])));
+        Assert.Equal("No one has said they'll introduce **Alexander Aldridge**. Their leaders:\n**Sam Smith** (in the main room)\n**Kim Kay** (marked as gone home)",
+            MainWindow.IntroductionReminder(youth, new Introduction([], [Adult("Sam", "Smith", ""), Adult("Kim", "Kay", AdultRoom.Disabled)])));
         Assert.Equal("No one has said they'll introduce **Alexander Aldridge**, and their leader hasn't signed in. Ask Alexander who will.",
             MainWindow.IntroductionReminder(youth, new Introduction([], [])));
     });
