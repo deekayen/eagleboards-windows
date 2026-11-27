@@ -58,6 +58,25 @@ internal static class OffScreen
         }
     }
 
+    /// <summary>
+    /// Let queued work run until <paramref name="done"/>, and stop there: each
+    /// round ends behind the work already queued at Background priority, so
+    /// what that work queues in turn (the window's deferred refresh) is left
+    /// for later.
+    /// </summary>
+    public static void PumpUntil(Func<bool> done)
+    {
+        var giveUp = DateTime.UtcNow.AddSeconds(5);
+        while (!done())
+        {
+            Assert.True(DateTime.UtcNow < giveUp, "Timed out waiting for the window.");
+            Thread.Sleep(20);
+            var frame = new DispatcherFrame();
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, () => frame.Continue = false);
+            Dispatcher.PushFrame(frame);
+        }
+    }
+
     public static object? Invoke(object target, string method, params object[] args) =>
         target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!.Invoke(target, args);
 
@@ -249,6 +268,14 @@ internal sealed class TestEvent : IDisposable
 
     public void Dispose()
     {
+        // The window may still have a refresh queued (PumpUntil stops short
+        // of one), and a refresh saves the picks: run it while the event's
+        // folder is still there, not in the next test.
+        if (_window != null)
+        {
+            OffScreen.Pump();
+        }
+
         _window?.Hide();
         _http.Dispose();
         Task.Run(async () => await _session!.DisposeAsync()).GetAwaiter().GetResult();

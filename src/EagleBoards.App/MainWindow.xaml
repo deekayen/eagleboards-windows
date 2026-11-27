@@ -670,7 +670,7 @@
                         <ItemsControl x:Name="AvailableList" ItemTemplate="{StaticResource AvailableTemplate}" Focusable="False"
                                       AutomationProperties.Name="Adults who can join"
                                       KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Contained" />
-                        <TextBlock x:Name="NoAvailableText" Style="{StaticResource Hint}" Text="No other adults are free for this board." />
+                        <TextBlock x:Name="NoAvailableText" Style="{StaticResource Hint}" Text="No other adults are free for this board." AutomationProperties.LiveSetting="Polite" />
                       </StackPanel>
 
                       <!-- Seated, in review, or finished -->

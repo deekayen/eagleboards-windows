@@ -38,12 +38,18 @@ public partial class App : Application
     ];
 
     private EventSession? _session;
+    private ComputerWatch? _watch;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         ThemeSetup.Apply(this, ThemeMode.System);
         DispatcherUnhandledException += OnUnhandledException;
+
+        // Off the window's thread these end the process, or are lost, with
+        // nothing in the event's log to say why (docs/decisions/0004).
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => _session?.Log("CRASHED: " + args.ExceptionObject);
+        TaskScheduler.UnobservedTaskException += (_, args) => _session?.Log("UNOBSERVED: " + args.Exception);
 
         CommandLine cmd;
         try
@@ -118,6 +124,7 @@ public partial class App : Application
         MainWindow = main;
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         KeepAwake.Start();
+        _watch = new ComputerWatch(_session.Log, _session.Plan.BindAddress);
         main.Closed += (_, _) => KeepAwake.Stop();
         main.Show();
     }
@@ -212,6 +219,7 @@ public partial class App : Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        _watch?.Dispose();
         if (_session != null)
         {
             await _session.DisposeAsync();

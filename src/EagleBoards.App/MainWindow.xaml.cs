@@ -54,6 +54,10 @@ public partial class MainWindow : Window
     private readonly Button _signInButton;
     private readonly Button _backButton;
     private readonly DispatcherTimer _minute = new();
+    private readonly ResponsivenessLog _responsiveness;
+
+    /// <summary>When <see cref="_minute"/> is due to run next (a Stopwatch timestamp), to tell when it ran late.</summary>
+    private long _minuteDue;
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private readonly DispatcherTimer _copied = new() { Interval = TimeSpan.FromSeconds(3) };
     private readonly Dictionary<string, RadioButton> _resultButtons = [];
@@ -78,6 +82,9 @@ public partial class MainWindow : Window
 
     /// <summary>What Find a person last read out, so a sign-in that changes nothing isn't read again.</summary>
     private string _personFindSpoken = "";
+
+    /// <summary>What the line under Add members last read out, so the same words aren't read again for each letter typed.</summary>
+    private string _availableHintSpoken = "";
 
     /// <summary>The seating review's problems as last shown, and for whom: rebuilt, and read out, only when they change.</summary>
     private string _issueKey = "";
@@ -115,6 +122,7 @@ public partial class MainWindow : Window
     {
         _session = session;
         _svc = session.Service;
+        _responsiveness = new ResponsivenessLog(session.Log);
         InitializeComponent();
 
         // Every youth in one list, stacked in three groups that are always
@@ -230,16 +238,19 @@ public partial class MainWindow : Window
             ShowImportError();
         }
 
-        _svc.Changed += (_, _) => Dispatcher.BeginInvoke(() =>
+        _svc.Changed += (_, _) =>
         {
-            _debounce.Stop();
-            _debounce.Start();
-        });
+            _responsiveness.ChangeMade(System.Diagnostics.Stopwatch.GetTimestamp());
+            Dispatcher.BeginInvoke(() =>
+            {
+                _debounce.Stop();
+                _debounce.Start();
+            });
+        };
         _debounce.Tick += (_, _) =>
         {
             _debounce.Stop();
-            RefreshAll();
-            SayArrivals();
+            RefreshForChange();
         };
         _minute.Tick += (_, _) => OnMinute();
         _copied.Tick += (_, _) =>

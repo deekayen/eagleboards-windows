@@ -62,7 +62,7 @@ public static class TextFiles
                 stream.Flush(flushToDisk: true);
             }
 
-            File.Move(temp, path, overwrite: true);
+            MoveOver(temp, path);
         }
         catch
         {
@@ -70,6 +70,35 @@ public static class TextFiles
             // beside the data would be taken for a half-finished save.
             TryDelete(temp);
             throw;
+        }
+    }
+
+    private const int MoveAttempts = 10;
+
+    /// <summary>How long a save waits between tries while another program holds the file.</summary>
+    private static readonly TimeSpan MoveRetryPause = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// Put the new file in the old one's place, trying again for about a
+    /// second while another program holds the old one. Antivirus scanning a
+    /// file that was just written, OneDrive uploading it, and the Windows
+    /// search indexer each hold a file for a moment, and a door sign-in that
+    /// met one failed. Excel holds a file until it is closed, which no wait
+    /// outlasts: that still fails, and says so.
+    /// </summary>
+    private static void MoveOver(string temp, string path)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, path, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < MoveAttempts)
+            {
+                Thread.Sleep(MoveRetryPause);
+            }
         }
     }
 

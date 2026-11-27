@@ -152,36 +152,43 @@ public static class SchedulerLogic
         var problems = new List<string>();
         var need = MembersBesideChair(scout.BoardType);
 
+        // The pool's adults are worked with by their index in it, so a board
+        // is a few numbers and the count of who else can be seated is a walk
+        // over flags (SeatableCounter says why that matters).
         var pool = RankFreeAdults(adults, queue);
-        var chairs = pool.Where(c => CanChairFor(c.Adult, scout)).ToList();
-        var sitters = pool.Where(c => CanSitFor(c.Adult, scout)).ToList();
+        var profiles = pool.Select(c => Profile(c.Adult)).ToArray();
+        var seatable = new SeatableCounter([.. pool.Select(c => c.Adult)], queue);
+        var taken = new bool[pool.Count];
+        var chairs = Enumerable.Range(0, pool.Count).Where(i => CanChairFor(pool[i].Adult, scout)).ToList();
+        var sitters = Enumerable.Range(0, pool.Count).Where(i => CanSitFor(pool[i].Adult, scout)).ToList();
 
-        List<Candidate>? best = null;
+        List<int>? best = null;
         var bestScore = (Seatable: -1, ChairsKept: 0, Flexibility: 0);
         var triedChairs = new HashSet<string>();
         foreach (var chair in chairs)
         {
-            if (!triedChairs.Add(Profile(chair.Adult)))
+            if (!triedChairs.Add(profiles[chair]))
             {
                 continue;
             }
 
-            var others = sitters.Where(c => c.Adult.Id != chair.Adult.Id).ToList();
-            var combo = new List<Candidate>();
+            var others = sitters.Where(i => pool[i].Adult.Id != pool[chair].Adult.Id).ToList();
+            var combo = new List<int>();
 
             void Visit(int start)
             {
                 if (combo.Count == need)
                 {
-                    var board = new List<Candidate> { chair };
-                    board.AddRange(combo);
-                    var taken = board.Select(c => c.Adult.Id).ToHashSet();
-                    var score = (CountSeatable([.. pool.Where(c => !taken.Contains(c.Adult.Id))], queue),
-                        -board.Sum(c => c.Chairs), -board.Sum(c => c.Useful));
+                    taken[chair] = true;
+                    combo.ForEach(i => taken[i] = true);
+                    var score = (seatable.Count(taken),
+                        -(pool[chair].Chairs + combo.Sum(i => pool[i].Chairs)), -(pool[chair].Useful + combo.Sum(i => pool[i].Useful)));
+                    taken[chair] = false;
+                    combo.ForEach(i => taken[i] = false);
                     if (best == null || score.CompareTo(bestScore) > 0)
                     {
                         bestScore = score;
-                        best = board;
+                        best = [chair, .. combo];
                     }
 
                     return;
@@ -193,7 +200,7 @@ public static class SchedulerLogic
                 var tried = new HashSet<string>();
                 for (var n = start; n < others.Count; n++)
                 {
-                    if (!tried.Add(Profile(others[n].Adult)))
+                    if (!tried.Add(profiles[others[n]]))
                     {
                         continue;
                     }
@@ -211,19 +218,19 @@ public static class SchedulerLogic
         List<string> memberIds;
         if (best != null)
         {
-            chairIds = [best[0].Adult.Id];
-            memberIds = [.. best.Skip(1).Select(c => c.Adult.Id)];
+            chairIds = [pool[best[0]].Adult.Id];
+            memberIds = [.. best.Skip(1).Select(i => pool[i].Adult.Id)];
         }
         else
         {
             // No full board: what there is, best first, and what is short.
-            chairIds = [.. chairs.Take(1).Select(c => c.Adult.Id)];
+            chairIds = [.. chairs.Take(1).Select(i => pool[i].Adult.Id)];
             if (chairIds.Count == 0)
             {
                 problems.Add($"No {scout.BoardType} Chairs Available.");
             }
 
-            memberIds = [.. sitters.Where(c => !chairIds.Contains(c.Adult.Id)).Take(need).Select(c => c.Adult.Id)];
+            memberIds = [.. sitters.Select(i => pool[i].Adult.Id).Where(id => !chairIds.Contains(id)).Take(need)];
             if (memberIds.Count < need)
             {
                 problems.Add($"Only {memberIds.Count} {scout.BoardType} Members Available");
@@ -290,46 +297,19 @@ public static class SchedulerLogic
     private static bool SharesUnit(AdultInfo a, ScoutInfo s) =>
         !string.IsNullOrEmpty(s.UnitName) && !string.IsNullOrEmpty(a.UnitName) && a.UnitName == s.UnitName;
 
-    private static bool CanSitFor(AdultInfo a, ScoutInfo s) =>
+    /// <summary>May sit on this scout's board: a chair or member for its type, from outside the unit.</summary>
+    internal static bool CanSitFor(AdultInfo a, ScoutInfo s) =>
         a.RoleFor(s.BoardType) is BoardRoles.Chair or BoardRoles.Member && !SharesUnit(a, s);
 
-    private static bool CanChairFor(AdultInfo a, ScoutInfo s) =>
+    /// <summary>May chair this scout's board: a chair for its type, from outside the unit.</summary>
+    internal static bool CanChairFor(AdultInfo a, ScoutInfo s) =>
         a.RoleFor(s.BoardType) == BoardRoles.Chair && !SharesUnit(a, s);
 
     private static int ChairQualifications(AdultInfo a) =>
         (a.FinalBoard == BoardRoles.Chair ? 1 : 0) + (a.ProjectReview == BoardRoles.Chair ? 1 : 0);
 
     /// <summary>Members beside the chair at the district's working size.</summary>
-    private static int MembersBesideChair(string boardType) => BoardRules.MinMembers(boardType) - 1;
-
-    /// <summary>
-    /// How many of <paramref name="waiting"/>, in queue order, can each still
-    /// get a full board at once from <paramref name="pool"/> (sorted by preference).
-    /// </summary>
-    private static int CountSeatable(List<Candidate> pool, IReadOnlyList<ScoutInfo> waiting)
-    {
-        var used = new HashSet<string>();
-        var seated = 0;
-        foreach (var t in waiting)
-        {
-            var chair = pool.FirstOrDefault(c => !used.Contains(c.Adult.Id) && CanChairFor(c.Adult, t));
-            if (chair == null)
-            {
-                continue;
-            }
-
-            var need = MembersBesideChair(t.BoardType);
-            var members = pool.Where(c => !used.Contains(c.Adult.Id) && c != chair && CanSitFor(c.Adult, t)).Take(need).ToList();
-            if (members.Count == need)
-            {
-                used.Add(chair.Adult.Id);
-                used.UnionWith(members.Select(c => c.Adult.Id));
-                seated++;
-            }
-        }
-
-        return seated;
-    }
+    internal static int MembersBesideChair(string boardType) => BoardRules.MinMembers(boardType) - 1;
 
     /// <summary>
     /// Complete a board around the adults the operator has already chosen:

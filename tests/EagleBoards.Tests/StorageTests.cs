@@ -172,6 +172,28 @@ public class StorageTests
     }
 
     [Fact]
+    public async Task AnAtomicWriteWaitsOutAProgramHoldingTheFileForAMoment()
+    {
+        // Antivirus or OneDrive opening a file that was just written.
+        using var box = new Sandbox();
+        var path = Path.Combine(box.Root, "adults.csv");
+        File.WriteAllText(path, "old");
+        var cancel = TestContext.Current.CancellationToken;
+        var held = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        var release = Task.Run(async () =>
+        {
+            await Task.Delay(300, cancel);
+            await held.DisposeAsync();
+        }, cancel);
+
+        TextFiles.WriteAtomically(path, "new");
+        await release;
+
+        Assert.Equal("new", File.ReadAllText(path));
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
     public void AnAtomicWriteToAFileHeldOpenKeepsTheOldContentsAndLeavesNoTemporaryFile()
     {
         // A volunteer opens scouts.csv in Excel mid-event, which holds it.

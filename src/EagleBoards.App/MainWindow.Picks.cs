@@ -34,7 +34,19 @@ public partial class MainWindow
         if (sender is FrameworkElement { Tag: PickRow row })
         {
             row.Adult.Sel = true;
-            ShowDetails();
+            if (AvailableFilter.Text.Length == 0)
+            {
+                ShowDetails();
+                return;
+            }
+
+            // The search found who it was for. Left in the box, it hid every
+            // adult who signed in afterwards until another youth was opened
+            // (found reproducing the 2026-11-17 report). Emptying it shows
+            // the details again, and the focus goes back to it for the next
+            // search, not to whichever row took the added adult's place.
+            AvailableFilter.Text = "";
+            AvailableFilter.Focus();
         }
     }
 

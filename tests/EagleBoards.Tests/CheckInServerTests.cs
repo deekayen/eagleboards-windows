@@ -415,4 +415,36 @@ public class CheckInServerTests
         Assert.DoesNotContain("example.org", body, StringComparison.Ordinal);
         Assert.Equal(403, (await Send(server, Station, "GET", "/approved-proposals-cells")).Status);
     }
+
+    [Fact]
+    public async Task EachStationRequestIsLoggedWithoutWhatWasSent()
+    {
+        // docs/decisions/0004: the log says a sign-in arrived, from which
+        // station, and how it was answered, never who it was.
+        using var box = new Sandbox();
+        var lines = new List<string>();
+        var server = new CheckInServer(box.Open(), new CheckInServerOptions { LogRequests = true, Log = lines.Add });
+
+        await Send(server, Station, "GET", "/adult_register");
+        await Send(server, Station, "GET", "/checkin.css");
+        await Send(server, Station, "POST", "/register-adult",
+            "Last=Quillfeather&First=Odessa&UnitType=Troop&Unit=4100&FinalBoard=Member&ProjectReview=Member&Email=odessa%40example.org");
+        await Send(server, Station, "GET", "/Quillfeather%0D%0Aforged?who=Quillfeather");
+
+        Assert.Collection(lines,
+            line => Assert.Matches(@"^GET /adult_register from 192\.168\.1\.50: 200, \d+ ms$", line),
+            line => Assert.Matches(@"^POST /register-adult from 192\.168\.1\.50: 200, \d+ ms$", line),
+            line => Assert.Matches(@"^GET \(a path it doesn't serve\) from 192\.168\.1\.50: 404, \d+ ms$", line));
+        Assert.DoesNotContain(lines, l => l.Contains("Quillfeather", StringComparison.Ordinal) || l.Contains("example.org", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RequestsAreNotLoggedUnlessAsked()
+    {
+        using var box = new Sandbox();
+        var lines = new List<string>();
+        var server = new CheckInServer(box.Open(), new CheckInServerOptions { Log = lines.Add });
+        await Send(server, Station, "GET", "/");
+        Assert.Empty(lines);
+    }
 }

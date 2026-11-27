@@ -111,19 +111,7 @@ public partial class MainWindow
 
         SetRows(PickList, [.. picked.OrderByDescending(p => p.Id == _chairId)]);
         NoPicksText.Visibility = picked.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        // Found by the unit in full or as the file's short form ("T1001").
-        var filter = AvailableFilter.Text.Trim();
-        var available = _adults
-            .Where(a => !a.Sel && a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
-            .Where(a => Matches(filter, a.Last, a.First, a.FullName, a.UnitName, a.UnitLabel, Display.Unit(a.UnitName)))
-            .Select(a => new PickRow(a, scout))
-            .OrderBy(p => p.SameUnit)
-            .ThenByDescending(p => p.CanChair && _chairId == null)
-            .ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        SetRows(AvailableList, available);
-        NoAvailableText.Visibility = available.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ShowAvailable(scout);
 
         var room = _rooms.FirstOrDefault(r => r.Id == _builderRoomId);
         var issues = BoardCheck.Review(scout.Info, [.. picked.Select(p => p.Adult.Info)], _chairId, room?.Info,
@@ -190,6 +178,51 @@ public partial class MainWindow
         _issueKey = key;
         _issueScoutId = scout.Id;
     }
+
+    /// <summary>
+    /// The free adults who could join this youth's board and aren't on it,
+    /// under Available: from outside the unit first, then chairs while the
+    /// board has none, then by last name. Found by the unit in full or as
+    /// the file's short form ("T1001").
+    /// </summary>
+    private void ShowAvailable(ScoutRow scout)
+    {
+        var filter = AvailableFilter.Text.Trim();
+        var free = _adults
+            .Where(a => !a.Sel && a.CanPick && a.Info.RoleFor(scout.BoardType) != BoardRoles.Unavailable)
+            .ToList();
+        var available = free
+            .Where(a => Matches(filter, a.Last, a.First, a.FullName, a.UnitName, a.UnitLabel, Display.Unit(a.UnitName)))
+            .Select(a => new PickRow(a, scout))
+            .OrderBy(p => p.SameUnit)
+            .ThenByDescending(p => p.CanChair && _chairId == null)
+            .ThenBy(p => p.Adult.Last, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        SetRows(AvailableList, available);
+
+        var hint = AvailableHint(available.Count, free.Count - available.Count);
+        NoAvailableText.Text = hint;
+        NoAvailableText.Visibility = hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// What the line under Add members says: that no one is free, or how
+    /// many free adults Find an adult is hiding. Empty when it has nothing
+    /// to add to the list.
+    /// </summary>
+    /// <remarks>
+    /// It said "No other adults are free for this board" while a search hid
+    /// them, and every adult who signed in after that was hidden too, so the
+    /// operator took them for people who hadn't signed in (found reproducing
+    /// the 2026-11-17 report).
+    /// </remarks>
+    internal static string AvailableHint(int shown, int hidden) => (shown, hidden) switch
+    {
+        (0, 0) => "No other adults are free for this board.",
+        (_, 0) => "",
+        (0, _) => $"No free adult matches your search. {Display.Count(hidden, "other adult is", "other adults are")} free. Clear Find an adult to see them.",
+        _ => Display.Count(hidden, "other free adult doesn't", "other free adults don't") + " match your search.",
+    };
 
     /// <summary>Show these rows, unless the list already shows the same: a rebuild loses the focus and the place in the list.</summary>
     private static void SetRows(ItemsControl list, List<PickRow> rows)

@@ -102,6 +102,116 @@ public class MainWindowTests
     });
 
     [Fact]
+    public void AnAdultWhoSignsInIsListedBeforeTheBoardIsProposedAgain() => OffScreen.Run(() =>
+    {
+        // At a large event the proposal took seconds, and an adult who had
+        // signed in stayed out of the board picker until it was done.
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        Assert.Equal(["Abernathy"], Picks(w));
+
+        e.AdultAtTheDoor("Blackwood", "Bartholomew", "3001", BoardRoles.Member);
+        OffScreen.PumpUntil(() => Available(w).Contains("Blackwood"));
+        Assert.Equal(["Abernathy"], Picks(w));
+
+        OffScreen.Pump();
+        Assert.Equal(["Abernathy", "Blackwood"], Picks(w));
+    });
+
+    [Fact]
+    public void AnAdultWhoSignsInIsOnTheAdultsPageBeforeTheBoardIsProposedAgain() => OffScreen.Run(() =>
+    {
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        var page = Page(w, "Adults");
+
+        e.AdultAtTheDoor("Blackwood", "Bartholomew", "3001", BoardRoles.Member);
+        OffScreen.PumpUntil(() => page.Grid.Items.Cast<RecordRow>().Any(r => r["Last"] == "Blackwood"));
+        Assert.Equal(["Abernathy"], Picks(w));
+    });
+
+    [Fact]
+    public void AnAdultFoundAndAddedEmptiesFindAnAdultSoLaterSignInsAreListed() => OffScreen.Run(() =>
+    {
+        // Found reproducing the 2026-11-17 report: a name left in Find an
+        // adult after that adult was added hid everyone who signed in later,
+        // until another youth was opened, under "No other adults are free".
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        foreach (var (last, unit) in new[] { ("Carrington", "2002"), ("Dunmore", "2003"), ("Ellsworth", "2004"), ("Fairbanks", "2005"), ("Gallagher", "2006") })
+        {
+            e.Adult(last, "Pat", unit, BoardRoles.Member);
+        }
+
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        var spare = Available(w).First();
+        w.AvailableFilter.Text = spare;
+        OffScreen.Pump();
+        var row = Assert.Single(w.AvailableList.Items.Cast<PickRow>());
+
+        OffScreen.Invoke(w, "OnAddPick", new Button { Tag = row }, new RoutedEventArgs());
+        OffScreen.Pump();
+        Assert.Contains(spare, Picks(w));
+        Assert.Equal("", w.AvailableFilter.Text);
+        Assert.True(w.AvailableFilter.IsKeyboardFocused);
+        Assert.True(Available(w).Length >= 2, string.Join(", ", Available(w)));
+
+        e.AdultAtTheDoor("Blackwood", "Bartholomew", "3001", BoardRoles.Member);
+        OffScreen.PumpUntil(() => Available(w).Contains("Blackwood"));
+        Assert.Contains("Blackwood", Available(w));
+    });
+
+    [Fact]
+    public void FindAnAdultSaysWhomItHides() => OffScreen.Run(() =>
+    {
+        // "No other adults are free" while a search hid free adults sent the
+        // operator looking for someone who was there (the 2026-11-17 report).
+        using var e = new TestEvent();
+        e.Room("101", BoardTypes.Final);
+        e.Adult("Abernathy", "Anneliese", "2001", BoardRoles.Chair);
+        foreach (var (last, unit) in new[] { ("Carrington", "2002"), ("Dunmore", "2003"), ("Ellsworth", "2004"), ("Fairbanks", "2005"), ("Gallagher", "2006"), ("Hargrove", "2007") })
+        {
+            e.Adult(last, "Pat", unit, BoardRoles.Member);
+        }
+
+        e.Youth("Aldridge", "Alexander", "1001", BoardTypes.Final);
+        var w = e.Window;
+        Open(w, "Aldridge");
+        var free = Available(w).Length;
+        Assert.True(free >= 2, $"{free} free");
+
+        w.AvailableFilter.Text = "Zzyzx";
+        OffScreen.Pump();
+        Assert.Empty(Available(w));
+        Assert.Equal(Visibility.Visible, w.NoAvailableText.Visibility);
+        Assert.Equal($"No free adult matches your search. {free} other adults are free. Clear Find an adult to see them.", w.NoAvailableText.Text);
+
+        w.AvailableFilter.Text = "";
+        OffScreen.Pump();
+        var first = Available(w).First();
+        w.AvailableFilter.Text = first;
+        OffScreen.Pump();
+        Assert.Equal([first], Available(w));
+        Assert.Equal(Visibility.Visible, w.NoAvailableText.Visibility);
+        Assert.Equal($"{free - 1} other free adults don't match your search.", w.NoAvailableText.Text);
+
+        w.AvailableFilter.Text = "";
+        OffScreen.Pump();
+        Assert.Equal(Visibility.Collapsed, w.NoAvailableText.Visibility);
+    });
+
+    [Fact]
     public void ABoardTheOperatorChangedIsKeptAndNewAdultsAreListedToAdd() => OffScreen.Run(() =>
     {
         using var e = new TestEvent();

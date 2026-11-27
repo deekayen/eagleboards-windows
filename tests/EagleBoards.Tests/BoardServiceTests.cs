@@ -544,6 +544,44 @@ public class BoardServiceTests
     }
 
     [Fact]
+    public void AnAdultWhoSignsInWhileTheHistoryIsOpenElsewhereIsStillShown()
+    {
+        // The window heard nothing of a sign-in whose save failed, and showed
+        // the adult only at the next change, minutes later in a quiet spell.
+        using var box = new Sandbox();
+        var s = box.Open();
+        var seen = new List<DataTable>();
+        s.Changed += (_, e) => seen.AddRange(e.Tables);
+
+        using (new FileStream(box.HistoryPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var refusal = Record.Exception(() => s.RegisterAdult(Seed.Adult("Abernathy", "Anneliese", "2001", "Member", "Chair")));
+            Assert.True(refusal is IOException or UnauthorizedAccessException, refusal?.ToString());
+        }
+
+        Assert.Contains(DataTable.Adults, seen);
+        Assert.Equal("Abernathy", Assert.Single(s.Snapshot(DataTable.Adults))["Last"]);
+    }
+
+    [Fact]
+    public void AYouthWhoSignsInWhileTheirFileIsOpenElsewhereIsStillShown()
+    {
+        using var box = new Sandbox();
+        var s = box.Open();
+        s.RegisterScout(Seed.Scout("Aldridge", "Alex", "1001", "Final"));
+        var seen = new List<DataTable>();
+        s.Changed += (_, e) => seen.AddRange(e.Tables);
+
+        using (new FileStream(Path.Combine(box.DataDir, "scouts.csv"), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.NotNull(Record.Exception(() => s.RegisterScout(Seed.Scout("Blackwood", "Bart", "1002", "Final"))));
+        }
+
+        Assert.Equal([DataTable.Scouts], seen);
+        Assert.Equal(2, s.Snapshot(DataTable.Scouts).Count);
+    }
+
+    [Fact]
     public void SignUpGeniusAdultsGetTheirRealId()
     {
         using var box = new Sandbox();
@@ -1353,5 +1391,60 @@ public class BoardServiceTests
         Assert.True(s.Undo().Ok);
         Assert.Equal("", AdultRow(s, id)["Room"]);
         Assert.False(s.CanUndo);
+    }
+
+    [Fact]
+    public void EachSignInIsLoggedWithoutAName()
+    {
+        // docs/decisions/0004: whether a sign-in reached the scheduler, and
+        // what it did, whatever the verbose setting.
+        using var box = new Sandbox();
+        var lines = new List<string>();
+        var s = box.Open(lines.Add);
+
+        s.RegisterAdult(Seed.Adult("Quillfeather", "Odessa", "4100", BoardRoles.Member, BoardRoles.Chair));
+        s.RegisterAdult(Seed.Adult("Quillfeather", "Odessa", "4100", BoardRoles.Member, BoardRoles.Chair));
+        Assert.True(s.DisableAdult(Seed.AdultId("Quillfeather", "Odessa", "4100")).Ok);
+        s.RegisterAdult(Seed.Adult("Quillfeather", "Odessa", "4100", BoardRoles.Member, BoardRoles.Chair));
+        s.RegisterScout(Seed.Scout("Brightwater", "Tobias", "4100", BoardTypes.Final));
+
+        Assert.Equal(
+        [
+            "adult signed in, new to the scheduler; 1 adult at this event",
+            "adult signed in again; 1 adult at this event",
+            "adult signed in again, still marked gone home; 1 adult at this event",
+            "youth W1 signed in; 1 waiting",
+        ], lines);
+    }
+
+    [Fact]
+    public void AnAdultKnownFromAnEarlierEventIsLoggedAsSuch()
+    {
+        using var box = new Sandbox();
+        box.Open().RegisterAdult(Seed.Adult("Quillfeather", "Odessa", "4100", BoardRoles.Member, BoardRoles.Chair));
+        Directory.Delete(box.DataDir, recursive: true);
+
+        var lines = new List<string>();
+        box.Open(lines.Add).RegisterAdult(Seed.Adult("Quillfeather", "Odessa", "4100", BoardRoles.Member, BoardRoles.Chair));
+
+        Assert.Equal(["adult signed in, known from an earlier event; 1 adult at this event"], lines);
+    }
+
+    [Fact]
+    public void ASignInWhoseSaveFailedIsLoggedAsNotSaved()
+    {
+        using var box = new Sandbox();
+        var lines = new List<string>();
+        var s = box.Open(lines.Add);
+        s.RegisterAdult(Seed.Adult("Quillfeather", "Odessa", "4100", BoardRoles.Member, BoardRoles.Chair));
+
+        // Excel holding the event's adults file.
+        using (new FileStream(Path.Combine(box.DataDir, "adults.csv"), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var refusal = Record.Exception(() => s.RegisterAdult(Seed.Adult("Brightwater", "Lena", "4100", BoardRoles.Member, BoardRoles.Member)));
+            Assert.True(refusal is IOException or UnauthorizedAccessException, refusal?.ToString());
+        }
+
+        Assert.Equal("adult signed in, new to the scheduler; 2 adults at this event, but not saved", lines[^1]);
     }
 }

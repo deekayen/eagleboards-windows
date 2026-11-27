@@ -31,6 +31,15 @@ public sealed class CheckInServerOptions
     /// </summary>
     public bool ServeAdminEndpoints { get; init; }
 
+    /// <summary>
+    /// Write each page and endpoint request to <see cref="Log"/> once it is
+    /// answered: method, path, the station's address, status, and time
+    /// taken, never the query or the form. The app turns it on; the headless
+    /// server leaves it to <see cref="Verbose"/>, as the Java server did
+    /// (docs/decisions/0004).
+    /// </summary>
+    public bool LogRequests { get; init; }
+
     public Action<string> Log { get; init; } = _ => { };
 }
 
@@ -191,6 +200,7 @@ public sealed class CheckInServer : IAsyncDisposable
             _options.Log($"{context.Request.Method} {path}{context.Request.QueryString} from {context.Connection.RemoteIpAddress}");
         }
 
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         try
         {
             if (_endpoints.TryGetValue(path, out var endpoint))
@@ -222,6 +232,21 @@ public sealed class CheckInServer : IAsyncDisposable
             {
                 context.Response.Clear();
                 await SendAsync(context, 500, "text/plain", "ERROR: " + ex.Message).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            // A page's stylesheet, script and pictures come with every page
+            // load and say nothing the page's own line doesn't.
+            if (_options.LogRequests && !Path.HasExtension(path))
+            {
+                // A path this server doesn't answer is whatever the requester
+                // typed, a name or a line break included: decision 0004 keeps
+                // typed text out of these lines, so it is not repeated.
+                var shown = _endpoints.ContainsKey(path) || context.Response.StatusCode != 404 ? path : "(a path it doesn't serve)";
+                var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(started);
+                _options.Log($"{context.Request.Method} {shown} from {context.Connection.RemoteIpAddress}: "
+                    + $"{context.Response.StatusCode}, {elapsed.TotalMilliseconds:0} ms");
             }
         }
     }

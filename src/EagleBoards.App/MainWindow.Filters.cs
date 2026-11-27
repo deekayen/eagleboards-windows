@@ -29,7 +29,24 @@ public partial class MainWindow
         return order != 0 ? order : string.CompareOrdinal(a.RegNumSort, b.RegNumSort);
     }
 
-    private void OnAvailableFilter(object sender, TextChangedEventArgs e) => ShowDetails();
+    /// <summary>
+    /// Find an adult narrows Add members, and the line under it is read out
+    /// as it changes, so a screen reader user hears that a search is hiding
+    /// free adults, not only a list that went quiet. Read here, as the
+    /// operator types, and never from a sign-in's refresh, which would talk
+    /// over them.
+    /// </summary>
+    private void OnAvailableFilter(object sender, TextChangedEventArgs e)
+    {
+        ShowDetails();
+        var hint = NoAvailableText.Visibility == Visibility.Visible ? NoAvailableText.Text : "";
+        if (hint.Length > 0 && hint != _availableHintSpoken)
+        {
+            Announcer.LiveRegionChanged(NoAvailableText);
+        }
+
+        _availableHintSpoken = hint;
+    }
 
     private void OnPersonFind(object sender, TextChangedEventArgs e) => UpdatePersonFind();
 

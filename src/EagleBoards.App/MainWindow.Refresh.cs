@@ -18,12 +18,70 @@ public partial class MainWindow
     // Refresh
     // ------------------------------------------------------------------
 
-    private void RefreshAll()
+    /// <summary>
+    /// A change from the service, the check-in stations' included: who signed
+    /// in is drawn first, and the rest of the refresh, the board proposal
+    /// with it, runs once that is on screen.
+    /// </summary>
+    /// <remarks>
+    /// The proposal weighs every legal board (<see cref="SchedulerLogic.AutoSelect"/>),
+    /// which at a large event takes the better part of a second, and nothing
+    /// drew until it was done: an adult who signed in during the rush stayed
+    /// out of the board picker and the Adults page for seconds. The rest runs
+    /// at Background priority, after the dispatcher has drawn the lists.
+    /// </remarks>
+    private void RefreshForChange()
+    {
+        var unshownSince = _responsiveness.TakeUnshown();
+        ShowArrivals();
+        _responsiveness.ChangesShown(unshownSince, Stopwatch.GetTimestamp());
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            var started = Stopwatch.GetTimestamp();
+            RefreshAll();
+            _responsiveness.RefreshTook(Stopwatch.GetElapsedTime(started));
+            SayArrivals();
+        });
+    }
+
+    /// <summary>
+    /// The queue, the rooms, the adults under Available, and the table page
+    /// on show, brought up to date without proposing a board. Nothing here
+    /// changes a pick, the chair or the room, so whether the open youth's
+    /// board is still the one proposed is decided by <see cref="RefreshAll"/>
+    /// as before.
+    /// </summary>
+    private void ShowArrivals()
+    {
+        SyncRows();
+        if (_current is { } open && _scouts.Contains(open) && BoardStatus.IsWaiting(open.Status))
+        {
+            if (MarkFocus() is { } mark)
+            {
+                Dispatcher.BeginInvoke(() => RestoreFocus(mark), DispatcherPriority.Loaded);
+            }
+
+            ShowAvailable(open);
+        }
+
+        foreach (var table in _tables.Values.Where(t => t.Visibility == Visibility.Visible))
+        {
+            table.Reload(quiet: true);
+        }
+    }
+
+    /// <summary>The window's rows from the service's tables: new people added, changed ones updated in place.</summary>
+    private void SyncRows()
     {
         _config = _svc.GetConfig();
         RowSync.Sync(_scouts, _svc.Snapshot(DataTable.Scouts), r => new ScoutRow(r), (row, r) => row.Update(r));
         RowSync.Sync(_adults, _svc.Snapshot(DataTable.Adults), r => new AdultRow(r) { OnSelChanged = OnPickChanged }, (row, r) => row.Update(r));
         RowSync.Sync(_rooms, _svc.Snapshot(DataTable.Rooms), r => new RoomCard(r), (row, r) => row.Update(r));
+    }
+
+    private void RefreshAll()
+    {
+        SyncRows();
         if (_current != null && !_scouts.Contains(_current))
         {
             _current = null;
@@ -101,11 +159,21 @@ public partial class MainWindow
         Announcer.Say(QueueList, text, "EagleBoards.SignIn");
     }
 
+    /// <summary>
+    /// The event's size for the log: counts only, which say whether a slow
+    /// window could have been the event's size (docs/decisions/0004).
+    /// </summary>
+    private string DescribeEvent() =>
+        $"{_adults.Count(a => !a.IsDisabled)} adults here, {_adults.Count(a => a.CanPick)} free; "
+        + $"{_scouts.Count(s => BoardStatus.IsWaiting(s.Status))} youth waiting, "
+        + $"{_scouts.Count(s => BoardStatus.IsActive(s.Status))} boards seated or in review";
+
     /// <summary>Times are stamped to the minute, so counts change on the clock's minute: tick just after it.</summary>
     private void ScheduleMinute()
     {
         var now = DateTime.Now;
         _minute.Interval = TimeSpan.FromSeconds(60 - now.Second) - TimeSpan.FromMilliseconds(now.Millisecond) + TimeSpan.FromMilliseconds(250);
+        _minuteDue = Stopwatch.GetTimestamp() + (long)(_minute.Interval.TotalSeconds * Stopwatch.Frequency);
         _minute.Start();
     }
 
@@ -117,6 +185,8 @@ public partial class MainWindow
     private void OnMinute()
     {
         _minute.Stop();
+        _responsiveness.MinuteTicked(Stopwatch.GetElapsedTime(_minuteDue));
+        _responsiveness.Summary(DateTime.Now, DescribeEvent);
         foreach (var s in _scouts)
         {
             s.Tick();

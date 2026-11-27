@@ -31,12 +31,12 @@ public sealed class Sandbox : IDisposable
 
     public string DataDir => Path.Combine(Root, "run");
 
-    public BoardService Open() => BoardService.Open(new EventOptions
+    public BoardService Open(Action<string>? log = null) => BoardService.Open(new EventOptions
     {
         DataDirectory = DataDir,
         AdultHistoryPath = HistoryPath,
         ConfigPath = ConfigPath,
-    });
+    }, log);
 
     public void Dispose()
     {

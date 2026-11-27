@@ -34,7 +34,7 @@ public sealed class LaunchPlan
 /// </summary>
 public sealed class EventSession : IAsyncDisposable
 {
-    private readonly StreamWriter? _log;
+    private StreamWriter? _log;
     private readonly Lock _logLock = new();
 
     private EventSession(LaunchPlan plan, StreamWriter? log)
@@ -136,6 +136,7 @@ public sealed class EventSession : IAsyncDisposable
             Port = Plan.Port,
             BindAddress = Plan.BindAddress,
             Verbose = Plan.Verbose,
+            LogRequests = true,
             Log = Log,
         });
         await Server.StartAsync().ConfigureAwait(true);
@@ -144,6 +145,7 @@ public sealed class EventSession : IAsyncDisposable
             ? [$"http://{Plan.BindAddress}:{Plan.Port}/"]
             : LanAddresses.Find().Select(a => $"http://{a.Address}:{Plan.Port}/").ToList();
         Log("check-in: " + string.Join("  ", CheckInUrls));
+        Log(ComputerWatch.DescribeAddresses(LanAddresses.Find(), Plan.BindAddress));
     }
 
     /// <summary>
@@ -221,6 +223,11 @@ public sealed class EventSession : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // Written before the first await. App.OnExit is async void, so the
+        // process can end before "--- stopped" is written, and a log without
+        // it can't tell a scheduler that was closed from one that crashed or
+        // was still running (the 2026-11-17 log has no stop line at all).
+        Log("--- stopping");
         if (Server != null)
         {
             await Server.DisposeAsync().ConfigureAwait(false);
@@ -229,7 +236,11 @@ public sealed class EventSession : IAsyncDisposable
         Log("--- stopped");
         lock (_logLock)
         {
+            // A window's minute timer can still run after the session it
+            // belongs to has stopped (the window tests leave each window
+            // hidden, not closed): with no log left, its lines go nowhere.
             _log?.Dispose();
+            _log = null;
         }
     }
 }

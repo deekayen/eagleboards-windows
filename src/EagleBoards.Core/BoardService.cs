@@ -465,51 +465,68 @@ public sealed class BoardService
     /// they get a "P" number, otherwise they are a walk-in and get "W"; each
     /// counter runs in sign-in order within its group.
     /// </summary>
+    /// <remarks>
+    /// The window is told even when a file couldn't be saved. A sign-in that
+    /// met a file held open by another program (Excel, a sync client,
+    /// antivirus) used to tell it nothing, so the person didn't appear until
+    /// some later change, which in a quiet spell was minutes, and the
+    /// operator took them for someone who hadn't signed in. They are signed
+    /// in: the record is in memory and the next save writes it. The station
+    /// still shows the error.
+    /// </remarks>
     public void RegisterScout(IEnumerable<KeyValuePair<string, string>> fields)
     {
-        lock (_lock)
+        try
         {
-            // A sign-in page cached from before SPEC.md D-7 still sends a
-            // birthdate, and one from before D-8 a phone number. Nothing uses
-            // either, so they are dropped here, never stored; one already on
-            // the record is left as it is (O-5, D-8).
-            var incoming = new ScoutRecord(SignInFields(fields, ScoutSignInFields));
-            var scout = Scouts.Get(incoming.Id);
-            if (scout != null)
+            lock (_lock)
             {
-                Trace("UPDATING EXISTING SCOUT RECORD: " + scout);
-                scout.UpdateFrom(incoming, ScoutRegFields);
-                scout.UpdateFields(false);
-                if (scout.Status.Length == 0)
+                // A sign-in page cached from before SPEC.md D-7 still sends a
+                // birthdate, and one from before D-8 a phone number. Nothing uses
+                // either, so they are dropped here, never stored; one already on
+                // the record is left as it is (O-5, D-8).
+                var incoming = new ScoutRecord(SignInFields(fields, ScoutSignInFields));
+                var scout = Scouts.Get(incoming.Id);
+                var isNew = scout == null;
+                if (scout != null)
                 {
+                    Trace("UPDATING EXISTING SCOUT RECORD: " + scout);
+                    scout.UpdateFrom(incoming, ScoutRegFields);
+                    scout.UpdateFields(false);
+                    if (scout.Status.Length == 0)
+                    {
+                        scout.Status = BoardStatus.Registered;
+                    }
+                }
+                else
+                {
+                    Trace("NEW SCOUT RECORD: " + incoming);
+                    scout = incoming;
+                    Scouts.Add(scout, false);
                     scout.Status = BoardStatus.Registered;
                 }
-            }
-            else
-            {
-                Trace("NEW SCOUT RECORD: " + incoming);
-                scout = incoming;
-                Scouts.Add(scout, false);
-                scout.Status = BoardStatus.Registered;
-            }
 
-            // An empty email matches nothing: a walk-in who left it blank is
-            // not "pre-registered" only because some sign-up also has none.
-            var preRegistered = ScoutsScheduled.Get(scout.Id) != null
-                || (scout.Email.Length > 0 && ScoutsScheduled.Where("Email", scout.Email).Count > 0);
-            var prefix = preRegistered ? 'P' : 'W';
+                // An empty email matches nothing: a walk-in who left it blank is
+                // not "pre-registered" only because some sign-up also has none.
+                var preRegistered = ScoutsScheduled.Get(scout.Id) != null
+                    || (scout.Email.Length > 0 && ScoutsScheduled.Where("Email", scout.Email).Count > 0);
+                var prefix = preRegistered ? 'P' : 'W';
 
-            // Someone who submits the form twice keeps their place in the
-            // queue instead of being renumbered to the back of it.
-            if (!scout.RegNum.StartsWith(prefix))
-            {
-                scout.RegNum = prefix + NextSignInNumber(prefix).ToString(CultureInfo.InvariantCulture);
+                // Someone who submits the form twice keeps their place in the
+                // queue instead of being renumbered to the back of it.
+                if (!scout.RegNum.StartsWith(prefix))
+                {
+                    scout.RegNum = prefix + NextSignInNumber(prefix).ToString(CultureInfo.InvariantCulture);
+                }
+
+                var line = $"youth {scout.RegNum} signed in{(isNew ? "" : " again")}; "
+                    + $"{Scouts.Records.Count(s => BoardStatus.IsWaiting(s.Status))} waiting";
+                StoreThenLog(line, Scouts.Store);
             }
-
-            Scouts.Store();
         }
-
-        OnChanged(DataTable.Scouts);
+        finally
+        {
+            OnChanged(DataTable.Scouts);
+        }
     }
 
     /// <summary>
@@ -566,56 +583,68 @@ public sealed class BoardService
     /// the cumulative history, whose board-history column gains the event's
     /// date. Flags record whether they were already known ("P") or new ("W").
     /// </summary>
+    /// <remarks>
+    /// The window is told even when a file couldn't be saved (see <see cref="RegisterScout"/>).
+    /// </remarks>
     public void RegisterAdult(IEnumerable<KeyValuePair<string, string>> fields)
     {
-        lock (_lock)
+        try
         {
-            var incoming = new AdultRecord(SignInFields(fields, AdultSignInFields)) { Room = "" };
-            incoming.WoodBadge = incoming.WoodBadge == "Y" ? "Y" : "";
-            incoming.Supporting = incoming.Supporting.Trim();
-            var adult = Adults.Get(incoming.Id);
-            if (adult != null)
+            lock (_lock)
             {
-                adult.UpdateFrom(incoming, AdultRegFields);
-                // Answers for this event only: the latest sign-in says what is true now.
-                adult.WoodBadge = incoming.WoodBadge;
-                adult.Supporting = incoming.Supporting;
-                adult.UpdateFields(false);
-            }
-            else
-            {
-                Trace("NEW ADULT RECORD: " + incoming);
-                adult = incoming;
-                Adults.Add(adult, false);
-            }
+                var incoming = new AdultRecord(SignInFields(fields, AdultSignInFields)) { Room = "" };
+                incoming.WoodBadge = incoming.WoodBadge == "Y" ? "Y" : "";
+                incoming.Supporting = incoming.Supporting.Trim();
+                var adult = Adults.Get(incoming.Id);
+                var isNew = adult == null;
+                if (adult != null)
+                {
+                    adult.UpdateFrom(incoming, AdultRegFields);
+                    // Answers for this event only: the latest sign-in says what is true now.
+                    adult.WoodBadge = incoming.WoodBadge;
+                    adult.Supporting = incoming.Supporting;
+                    adult.UpdateFields(false);
+                }
+                else
+                {
+                    Trace("NEW ADULT RECORD: " + incoming);
+                    adult = incoming;
+                    Adults.Add(adult, false);
+                }
 
-            var history = AdultHistory.Get(adult.Id);
-            if (history == null)
-            {
-                history = adult.Clone();
+                var history = AdultHistory.Get(adult.Id);
+                if (history == null)
+                {
+                    history = adult.Clone();
 
-                // The history pre-fills next month's form; whom someone came to
-                // support, and whether it counted toward Wood Badge, are for
-                // this event only.
-                history.WoodBadge = "";
-                history.Supporting = "";
-                Trace("Adding new Adult History Record: " + history);
-                AdultHistory.Add(history, false);
-                adult.Flags = "W";
-            }
-            else
-            {
-                history.UpdateFrom(adult, AdultRegFields);
-                history.UpdateFields(false);
-                adult.Flags = "P";
-            }
+                    // The history pre-fills next month's form; whom someone came to
+                    // support, and whether it counted toward Wood Badge, are for
+                    // this event only.
+                    history.WoodBadge = "";
+                    history.Supporting = "";
+                    Trace("Adding new Adult History Record: " + history);
+                    AdultHistory.Add(history, false);
+                    adult.Flags = "W";
+                }
+                else
+                {
+                    history.UpdateFrom(adult, AdultRegFields);
+                    history.UpdateFields(false);
+                    adult.Flags = "P";
+                }
 
-            history.BoardHistory += "(" + DataRecord.Clock().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ")";
-            Adults.Store();
-            AdultHistory.Store();
+                history.BoardHistory += "(" + DataRecord.Clock().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ")";
+                StoreThenLog(AdultSignInLine(isNew, adult, Adults.Records.Count), () =>
+                {
+                    Adults.Store();
+                    AdultHistory.Store();
+                });
+            }
         }
-
-        OnChanged(DataTable.Adults, DataTable.AdultHistory);
+        finally
+        {
+            OnChanged(DataTable.Adults, DataTable.AdultHistory);
+        }
     }
 
     /// <summary>
@@ -1857,6 +1886,62 @@ public sealed class BoardService
     }
 
     // ------------------------------------------------------------------
+
+    /// <summary>
+    /// A sign-in, written to the event's log whatever the verbose setting.
+    /// Never a name, email, or phone: the log is what the owner shares when
+    /// something goes wrong, and it is read by people who aren't at the event.
+    /// </summary>
+    /// <remarks>
+    /// At the 2026-11-17 event adults who had signed in didn't appear in the
+    /// window for minutes, and the log couldn't say whether a sign-in had
+    /// reached the scheduler at all, or when (docs/decisions/0004).
+    /// </remarks>
+    private void LogSignIn(string message) => _log(message);
+
+    /// <summary>
+    /// Save a sign-in and log it, saying so when the save failed. The person
+    /// is still signed in (the window is told; see <see cref="RegisterScout"/>),
+    /// and the log is where that shows: the station's error alone says only
+    /// that something went wrong.
+    /// </summary>
+    private void StoreThenLog(string line, Action store)
+    {
+        try
+        {
+            store();
+        }
+        catch
+        {
+            LogSignIn(line + ", but not saved");
+            throw;
+        }
+
+        LogSignIn(line);
+    }
+
+    /// <summary>
+    /// What an adult's sign-in did, without who they are: a new record or an
+    /// update, known from an earlier event or not, and anything that keeps
+    /// them out of the board builder.
+    /// </summary>
+    internal static string AdultSignInLine(bool isNew, AdultRecord adult, int adultsOnFile)
+    {
+        var what = isNew
+            ? "adult signed in, " + (adult.Flags == "P" ? "known from an earlier event" : "new to the scheduler")
+            : "adult signed in again";
+
+        // A record already marked gone home, or on a board, keeps that room
+        // through a second sign-in, and the builder offers only adults with
+        // no room: say so, or the log reads as if they were free.
+        var where = adult.Room switch
+        {
+            "" => "",
+            AdultRoom.Disabled => ", still marked gone home",
+            var room => $", on the board in room {room}",
+        };
+        return $"{what}{where}; {adultsOnFile} {(adultsOnFile == 1 ? "adult" : "adults")} at this event";
+    }
 
     private void Trace(string message)
     {
