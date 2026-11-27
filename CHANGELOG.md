@@ -6,10 +6,19 @@ with its exe; this says why to update. Decisions behind the changes are in
 [`docs/decisions`](docs/decisions/README.md) and, for behavior all three
 versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
 
-## Not yet released
+## 2026.11.27
 
 ### Fixed
 
+- **A search in Find an adult no longer hides everyone who signs in
+  later** (found reproducing a report from the 2026-11-17 event). If you
+  found someone in the details pane's *Find an adult* and added them, the
+  search stayed. Every adult who signed in afterwards was left out of *Add
+  members* until another youth was opened, under the words "No other adults
+  are free for this board." Now adding the person you found empties the
+  box. While a search is in it, the line under the list says how many free
+  adults it's hiding, instead of saying no one is free, and a screen reader
+  reads that line as you type.
 - **Someone who signs in shows up at once, even when a data file is open
   elsewhere.** If Excel, OneDrive, or antivirus had a data file open as a
   station sent a sign-in, the save failed and the scheduler wasn't told.
@@ -23,14 +32,6 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   the lists weren't drawn until it was done. Now the new name is drawn
   first, and the proposal follows. The proposal itself is four to eight
   times faster, with the same answers.
-- **A search in Find an adult no longer hides everyone who signs in
-  later.** If you found someone in the details pane's *Find an adult* and
-  added them, the search stayed. Every adult who signed in afterwards was
-  left out of *Add members* until another youth was opened, under the words
-  "No other adults are free for this board." Now adding the person you found empties
-  the box. While a search is in it, the line under the list says how many
-  free adults it's hiding, instead of saying no one is free, and a screen
-  reader reads that line as you type.
 
 ### Changed
 
@@ -38,9 +39,13 @@ versions share, `SPEC.md` in `deekayen/eagleboards-shared`.
   event's folder, now records each station request and how it was answered,
   what each sign-in did, when the window was slow to show a change, the
   computer's network addresses as they change, and sleep and waking. These
-  lines hold counts, times, rooms, and addresses, never a name, email, or phone, so
-  the log can be shared when reporting a problem. An error's own text, and
-  everything `-v` adds, can still hold more (decision 0004).
+  lines hold counts, times, rooms, and addresses, never a name, email, or
+  phone, so the log can be shared when reporting a problem. An error's own
+  text, and everything `-v` adds, can still hold more (decision 0004).
+
+### For contributors
+
+- QRCoder is 1.9.0 (was 1.8.1).
 
 ## 2026.11.12
 
